@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, redirect-manager
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.35.41
+Stable tag: 3.35.42
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -13,6 +13,10 @@ SEO + AEO (Answer Engine Optimization) for WordPress. Native head output, sitema
 == Description ==
 
 **AEO Orchestra** is the first WordPress plugin combining classic SEO and **AEO (Answer Engine Optimization)** — the practice of optimizing content to be cited by AI answer engines like ChatGPT, Claude, Gemini and Perplexity.
+
+**Source code**: this free version is open-source — https://github.com/jcappelliemer/aeo-orchestra
+
+**Pro version**: AI generation, Brand Voice Learning, Auto-Pilot Scheduler, Cannibalization detector, GSC Analytics — distributed separately at https://aeo-orchestra.com (NOT via WordPress.org).
 
 = What makes AEO Orchestra different =
 

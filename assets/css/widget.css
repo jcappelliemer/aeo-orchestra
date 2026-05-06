@@ -1,0 +1,219 @@
+/* AEO Orchestra - Score Widget */
+.seo-aeo-widget-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 999999;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.seo-aeo-widget-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #111;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+}
+
+.seo-aeo-widget-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+    border-color: rgba(255,255,255,0.3);
+}
+
+.seo-aeo-widget-icon {
+    display: flex;
+    color: #0055FF;
+}
+
+.seo-aeo-widget-scores {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.seo-aeo-widget-sep {
+    color: rgba(255,255,255,0.3);
+    font-weight: 300;
+}
+
+#seo-aeo-badge-seo { color: #0055FF; }
+#seo-aeo-badge-aeo { color: #8B5CF6; }
+
+.seo-aeo-widget-panel {
+    position: absolute;
+    bottom: 55px;
+    left: 0;
+    width: 340px;
+    background: #111;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    overflow: hidden;
+    animation: seoAeoSlideUp 0.3s ease;
+}
+
+@keyframes seoAeoSlideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.seo-aeo-widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.seo-aeo-widget-header h4 {
+    margin: 0;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.seo-aeo-widget-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    font-size: 22px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.seo-aeo-widget-close:hover {
+    color: #fff;
+}
+
+.seo-aeo-widget-body {
+    padding: 20px;
+    color: #fff;
+}
+
+.seo-aeo-widget-loading {
+    text-align: center;
+    color: rgba(255,255,255,0.5);
+    padding: 20px 0;
+}
+
+.seo-aeo-widget-loading::before {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255,255,255,0.1);
+    border-top: 2px solid #0055FF;
+    border-radius: 50%;
+    animation: seoAeoSpin 0.8s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes seoAeoSpin {
+    to { transform: rotate(360deg); }
+}
+
+.seo-aeo-widget-scores-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.seo-aeo-widget-score-box {
+    text-align: center;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.05);
+}
+
+.seo-aeo-widget-score-box .score-value {
+    font-size: 28px;
+    font-weight: 700;
+    display: block;
+}
+
+.seo-aeo-widget-score-box .score-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+    display: block;
+}
+
+.seo-aeo-widget-score-box.seo .score-value { color: #0055FF; }
+.seo-aeo-widget-score-box.aeo .score-value { color: #8B5CF6; }
+
+.seo-aeo-widget-details {
+    margin-top: 12px;
+}
+
+.seo-aeo-widget-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 13px;
+}
+
+.seo-aeo-widget-detail-row:last-child {
+    border-bottom: none;
+}
+
+.seo-aeo-widget-detail-label {
+    color: rgba(255,255,255,0.5);
+}
+
+.seo-aeo-widget-detail-value {
+    font-weight: 600;
+}
+
+.seo-aeo-widget-suggestion {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(0,85,255,0.1);
+    border-radius: 8px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.5;
+}
+
+.seo-aeo-widget-footer {
+    padding: 10px 20px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    text-align: center;
+}
+
+.seo-aeo-widget-footer a {
+    color: rgba(255,255,255,0.3);
+    font-size: 10px;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.seo-aeo-widget-footer a:hover {
+    color: rgba(255,255,255,0.6);
+}
+
+.seo-aeo-widget-error {
+    color: #EF4444;
+    font-size: 13px;
+    text-align: center;
+    padding: 10px;
+}
+
+/* Good/Medium/Bad colors */
+.score-good { color: #10B981 !important; }
+.score-medium { color: #F59E0B !important; }
+.score-bad { color: #EF4444 !important; }

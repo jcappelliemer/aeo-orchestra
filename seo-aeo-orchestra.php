@@ -4,14 +4,14 @@
  * Plugin Name: AEO Orchestra
  * Plugin URI: https://aeo-orchestra.com
  * Description: Plugin SEO + AEO completo: meta tags, generazione contenuti AI, analytics, calendario editoriale, Image SEO bulk, Brand Voice, migrazione da Yoast, garanzia rimborso.
- * Version: 3.35.42
+ * Version: 3.35.43
  * Requires at least: 5.8
  * Tested up to: 6.9
  * Requires PHP: 7.4
  * Author: Solaris Code SL
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: seo-aeo-orchestra
+ * Text Domain: aeo-orchestra
  * Domain Path: /languages
  *
  * Copyright 2026 Solaris Code SL - aeo-orchestra.com.
@@ -27,7 +27,7 @@
  */
 if (!defined('ABSPATH')) exit;
 
-define('SEO_AEO_VERSION', '3.35.42');
+define('SEO_AEO_VERSION', '3.35.43');
 define('SEO_AEO_DIR', plugin_dir_path(__FILE__));
 define('SEO_AEO_URL', plugin_dir_url(__FILE__));
 define('SEO_AEO_PLUGIN_DIR', SEO_AEO_DIR);

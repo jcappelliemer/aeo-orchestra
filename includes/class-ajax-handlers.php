@@ -3187,7 +3187,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             $templates_by_type = array();
             $theme = function_exists('wp_get_theme') ? wp_get_theme() : null;
             foreach ($post_types as $pt) {
-                $list = array(array('file' => 'default', 'name' => __('Default (theme default)', 'seo-aeo-orchestra')));
+                $list = array(array('file' => 'default', 'name' => __('Default (theme default)', 'aeo-orchestra')));
                 if ($theme) {
                     if (method_exists($theme, 'get_post_templates')) {
                         $tpls = $theme->get_post_templates();
@@ -3213,7 +3213,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             }
 
             // Categorie (solo per post)
-            $categories = array(array('id' => 0, 'name' => __('— Nessuna —', 'seo-aeo-orchestra')));
+            $categories = array(array('id' => 0, 'name' => __('— Nessuna —', 'aeo-orchestra')));
             foreach (get_categories(array('hide_empty' => false)) as $cat) {
                 $categories[] = array('id' => (int) $cat->term_id, 'name' => $cat->name);
             }

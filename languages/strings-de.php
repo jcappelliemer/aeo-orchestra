@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 return array(
 
+    'Specialisti AI orchestrati. Clicca per andare alla sezione.' => 'Orchestrierte KI-Spezialisten. Klicke, um zum Bereich zu springen.',
     // ─── Submenu admin labels ───
     '📊 Dashboard'           => '📊 Dashboard',
     '🪄 Wizard'              => '🪄 Assistent',
@@ -59,7 +60,6 @@ return array(
     '→ Apri Orchestratore'                                                               => '→ Orchestrator öffnen',
 
     '🧩 Tutte le sezioni del plugin'         => '🧩 Alle Plugin-Bereiche',
-    '11 strumenti integrati. Clicca per andare alla sezione.' => '11 integrierte Tools. Klicke, um zum Bereich zu springen.',
 
     // Cards descriptions in feature grid
     'Orchestratore'           => 'Orchestrator',
@@ -934,7 +934,6 @@ return array(
     'cliché 1, cliché 2, ...'            => 'klischee 1, klischee 2, ...',
 
     // ─── PHP wrapped (wizard-home + dashboard) ───
-    '15 strumenti integrati. Clicca per andare alla sezione.' => '15 integrierte Tools. Klick, um zum Abschnitt zu springen.',
     '25 crediti'                         => '25 Credits',
     'Funzioni dello stack Native attive: Output Renderer, Override Mode, Sitemap.xml, llms.txt, Schema, Redirect Manager. Più sono attive, più Yoast/RankMath sono sostituiti.' => 'Aktive Funktionen des Native-Stacks: Output Renderer, Override Mode, Sitemap.xml, llms.txt, Schema, Redirect Manager. Je mehr aktiv sind, desto mehr wird Yoast/RankMath ersetzt.',
     'Hai già un plugin SEO? Il Wizard fa shadow-copy reversibile dei tuoi meta + redirect e attiva lo stack Native — Yoast resta installato e silenziato (Override Mode). Niente perdita di ranking, niente downtime, e puoi tornare indietro in 30 secondi se cambi idea. Se preferisci testare prima senza migrare, salta questo step e prova le altre funzioni: Orchestra coesiste con Yoast.' => 'Du hast schon ein SEO-Plugin? Der Wizard erstellt eine reversible Shadow-Copy deiner Meta + Redirects und aktiviert den Native-Stack — Yoast bleibt installiert, aber stillgelegt (Override Mode). Kein Ranking-Verlust, keine Downtime, und du kannst in 30 Sekunden zurück, falls du es dir anders überlegst. Wenn du erst testen willst ohne zu migrieren, überspring diesen Schritt und probier die anderen Funktionen aus: Orchestra koexistiert mit Yoast.',

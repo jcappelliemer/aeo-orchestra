@@ -1,5 +1,10 @@
 # AEO Orchestra — Free version
 
+> **AI specialists, perfectly orchestrated.**
+> One conductor. Many AI specialists. One symphony of search visibility.
+
+**Latest release**: [v3.35.44](https://github.com/jcappelliemer/aeo-orchestra/releases/tag/v3.35.44) — see [CHANGELOG](https://wordpress.org/plugins/aeo-orchestra/#developers) on WordPress.org.
+
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 [![WordPress 5.8+](https://img.shields.io/badge/WordPress-5.8%2B-21759b.svg)](https://wordpress.org/)
 [![PHP 7.4+](https://img.shields.io/badge/PHP-7.4%2B-777bb4.svg)](https://www.php.net/)
@@ -45,7 +50,7 @@ WP Admin → Plugins → Add New → search **"AEO Orchestra"** → Install → 
 ### From this repo (developers)
 ```bash
 cd wp-content/plugins/
-git clone https://github.com/jcappelli/aeo-orchestra.git
+git clone https://github.com/jcappelliemer/aeo-orchestra.git
 ```
 Then activate via WP Admin → Plugins.
 

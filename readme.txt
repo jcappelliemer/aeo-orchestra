@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, redirect-manager
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.35.43
+Stable tag: 3.35.44
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -17,6 +17,8 @@ SEO + AEO (Answer Engine Optimization) for WordPress. Native head output, sitema
 **Source code**: this free version is open-source — https://github.com/jcappelliemer/aeo-orchestra
 
 **Pro version**: AI generation, Brand Voice Learning, Auto-Pilot Scheduler, Cannibalization detector, GSC Analytics — distributed separately at https://aeo-orchestra.com (NOT via WordPress.org).
+
+**AEO Orchestra coordinates a network of specialized AI agents — orchestrated to work as one.**
 
 = What makes AEO Orchestra different =
 
@@ -112,6 +114,10 @@ Yes. The Migration Wizard imports: meta title, meta description, focus keyword (
 = Does it support WordPress multisite? =
 
 Currently no. Multisite requires the Agency (Pro) plan. Working on it for the free version.
+
+= How many AI agents and integrated tools does AEO Orchestra include? =
+
+AEO Orchestra includes 12 specialized AI agents coordinated by a central orchestrator, plus 18 integrated tools covering analysis, generation, optimization, and migration. The list grows with each major release — see our roadmap at https://aeo-orchestra.com/roadmap
 
 = How do I report bugs or request features? =
 

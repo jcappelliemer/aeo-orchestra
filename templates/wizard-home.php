@@ -48,6 +48,10 @@ $seo_aeo_total_features = 5;
                         <div class="orch-wiz-stat-value"><?php echo $seo_aeo_bv_active ? '🎙️ ' . esc_html($seo_aeo_bv_active['_name']) : '—'; ?></div>
                         <div class="orch-wiz-stat-label"><?php SEO_AEO_T::e('Brand Voice'); ?></div>
                     </div>
+                    <div class="orch-wiz-stat" title="<?php echo esc_attr(SEO_AEO_T::t('Specialisti AI orchestrati e strumenti integrati nel plugin. Cresce a ogni release.')); ?>">
+                        <div class="orch-wiz-stat-value"><?php echo (int) SEO_AEO_AGENTS_COUNT; ?> &middot; <?php echo (int) SEO_AEO_TOOLS_COUNT; ?></div>
+                        <div class="orch-wiz-stat-label"><?php SEO_AEO_T::e('Specialisti AI &middot; Strumenti'); ?> <span style="cursor:help;opacity:.6;font-size:.8em;">&#9432;</span></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -100,7 +104,7 @@ $seo_aeo_total_features = 5;
     <!-- FEATURE GRID -->
     <section class="orch-wiz-section">
         <h2 class="orch-wiz-section-title"><?php SEO_AEO_T::e('🧩 Tutte le sezioni del plugin'); ?></h2>
-        <p class="orch-wiz-section-sub"><?php SEO_AEO_T::e('18 strumenti integrati. Clicca per andare alla sezione.'); ?></p>
+        <p class="orch-wiz-section-sub"><?php SEO_AEO_T::e('Specialisti AI orchestrati. Clicca per andare alla sezione.'); ?></p>
 
         <div class="orch-wiz-grid">
             <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-orchestratore'))); ?>" class="orch-wiz-card">

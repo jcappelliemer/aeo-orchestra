@@ -14,6 +14,24 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 return array(
 
+    'Specialisti AI orchestrati e strumenti integrati nel plugin. Cresce a ogni release.' => 'Orchestrated AI specialists and integrated tools in the plugin. Grows with every release.',
+    'Specialisti AI &middot; Strumenti' => 'AI Specialists &middot; Tools',
+    'Crea e gestisci redirect 301/302, importa da Yoast/Redirection, AI 404 suggester.' => 'Create and manage 301/302 redirects, import from Yoast/Redirection, AI 404 suggester.',
+    'Calendario AI' => 'AI Calendar',
+    'Pianifica articoli su date specifiche. AI genera N giorni prima, auto-pubblica. Bulk wizard.' => 'Schedule articles on specific dates. AI generates N days in advance, auto-publishes. Bulk wizard.',
+    'Image SEO' => 'Image SEO',
+    'Audit + bulk fix metadata immagini con AI Vision. Alt/title/caption auto-generati.' => 'Audit and bulk-fix image metadata with AI Vision. Alt/title/caption auto-generated.',
+    'Insights GSC + 5 KPI Orchestra proprietari. Sparkline period 7/28/90gg.' => 'GSC Insights and 5 proprietary Orchestra KPIs. Sparklines for 7/28/90 days.',
+    'Vedi quali pagine ricevono impressioni e clic da Google, l\'andamento giornaliero e l\'impatto di AEO Orchestra sul tuo posizionamento.' => 'See which pages get impressions and clicks from Google, daily trends, and how AEO Orchestra impacts your rankings.',
+    'Sostituisce il <head> di Yoast/RankMath/AIOSEO con output nativo Orchestra. Title, meta description, OpenGraph, Twitter Cards, canonical, sitemap.xml, llms.txt e schema JSON-LD strutturato.' => 'Replaces the <head> of Yoast/RankMath/AIOSEO with native Orchestra output. Title, meta description, OpenGraph, Twitter Cards, canonical, sitemap.xml, llms.txt and structured JSON-LD schema.',
+    'Gestisci redirect 301/302/307/308 con regex e backreferences, importa redirect da Yoast Premium o plugin Redirection, AI 404 suggester.' => 'Manage 301/302/307/308 redirects with regex and backreferences, import from Yoast Premium or the Redirection plugin, AI 404 suggester.',
+    'Caricamento Redirect Manager…' => 'Loading Redirect Manager…',
+    'Trova le pagine in conflitto sulla stessa keyword. L\'AI propone una pagina primaria, suggerisce keyword alternative per le supporting e link interni — il tutto applicabile con un click, sempre reversibile.' => 'Find pages competing for the same keyword. AI picks a primary page, suggests alternative keywords for supporting pages, and proposes internal links — all applicable with one click, always reversible.',
+    '2 articoli a settimana' => '2 articles per week',
+    '3 articoli a settimana' => '3 articles per week',
+    'Seleziona tutti i pianificati' => 'Select all scheduled',
+    'Elimina selezionati' => 'Delete selected',
+    'Specialisti AI orchestrati. Clicca per andare alla sezione.' => 'Orchestrated AI specialists. Click to jump to a section.',
     // ─── Submenu admin labels ───
     '📊 Dashboard'           => '📊 Dashboard',
     '🪄 Wizard'              => '📊 Dashboard',
@@ -62,7 +80,6 @@ return array(
     '→ Apri Orchestratore'                                                               => '→ Open Orchestrator',
 
     '🧩 Tutte le sezioni del plugin'         => '🧩 All plugin sections',
-    '11 strumenti integrati. Clicca per andare alla sezione.' => '11 integrated tools. Click to jump to a section.',
 
     // Cards descriptions in feature grid
     'Orchestratore'           => 'Orchestrator',
@@ -937,7 +954,6 @@ return array(
     'cliché 1, cliché 2, ...'            => 'cliché 1, cliché 2, ...',
 
     // ─── PHP wrapped (wizard-home + dashboard) ───
-    '15 strumenti integrati. Clicca per andare alla sezione.' => '15 integrated tools. Click to jump to the section.',
     '25 crediti'                         => '25 credits',
     'Funzioni dello stack Native attive: Output Renderer, Override Mode, Sitemap.xml, llms.txt, Schema, Redirect Manager. Più sono attive, più Yoast/RankMath sono sostituiti.' => 'Active Native stack features: Output Renderer, Override Mode, Sitemap.xml, llms.txt, Schema, Redirect Manager. The more active, the more Yoast/RankMath is replaced.',
     'Hai già un plugin SEO? Il Wizard fa shadow-copy reversibile dei tuoi meta + redirect e attiva lo stack Native — Yoast resta installato e silenziato (Override Mode). Niente perdita di ranking, niente downtime, e puoi tornare indietro in 30 secondi se cambi idea. Se preferisci testare prima senza migrare, salta questo step e prova le altre funzioni: Orchestra coesiste con Yoast.' => 'Already have an SEO plugin? The Wizard makes a reversible shadow-copy of your meta + redirects and activates the Native stack — Yoast stays installed but silenced (Override Mode). No ranking loss, no downtime, and you can roll back in 30 seconds if you change your mind. If you prefer to test without migrating first, skip this step and try the other features: Orchestra coexists with Yoast.',

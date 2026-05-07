@@ -174,13 +174,13 @@ def make_banner(width, height, out_path,
     # Tagline
     tag_y = logo_y + logo_size + line_gap
     draw_text_with_shadow(draw, (pad_left, tag_y),
-                          "AI-powered SEO + Money-back guarantee",
+                          "AI specialists, perfectly orchestrated.",
                           font_tag, fill=WHITE, shadow_offset=1)
 
     # Sub-tagline
     sub_y = tag_y + tag_size + int(line_gap * 0.6)
     draw_text_with_shadow(draw, (pad_left, sub_y),
-                          "Switch da Yoast in 3 click  -  Analytics, Calendar, Image SEO  -  14 giorni gratis",
+                          "Native llms.txt - Sitemap - Schema - Redirect Manager - 1-click Yoast migration",
                           font_sub, fill=SOFT, shadow_offset=1)
 
     img.save(out_path, "PNG", optimize=True)
@@ -228,6 +228,76 @@ def make_icon(size, out_path, corner_radius, mono_size_ratio=0.55):
     return out_path
 
 
+
+
+# ──────────────────────────────────────────────────────────────
+# Product Image 800x500 (for deal pages, marketplace listings)
+# ──────────────────────────────────────────────────────────────
+def make_product_image(width, height, out_path):
+    img = make_diagonal_gradient(width, height, GRADIENT_COLORS)
+    img = draw_wave_decoration(
+        img,
+        cx=int(width * 0.86),
+        cy=int(height * 0.5),
+        max_radius=int(height * 0.46),
+        color_hex=CYAN,
+        rings=5,
+    )
+    draw = ImageDraw.Draw(img)
+
+    pad_left = 56
+    # Logo block
+    logo_size = 64
+    aeo_size = int(logo_size * 1.05)
+    font_logo = find_font(logo_size, bold=True)
+    font_aeo = find_font(aeo_size, bold=True)
+    logo_y = 50
+    aeo_w = draw.textlength("AEO", font=font_aeo)
+    draw_text_with_shadow(draw, (pad_left, logo_y - 3), "AEO", font_aeo, fill=CYAN, shadow_offset=2)
+    draw_text_with_shadow(draw, (pad_left + int(aeo_w), logo_y), " ORCHESTRA", font_logo, fill=WHITE, shadow_offset=2)
+
+    # Eyebrow
+    font_eyebrow = find_font(16, bold=False)
+    draw_text_with_shadow(draw, (pad_left, logo_y + logo_size + 14),
+                          "AEO  -  SEO  -  GEO  for  WordPress",
+                          font_eyebrow, fill=SOFT, shadow_offset=1)
+
+    # Hero claim — main canonical line
+    font_hero = find_font(46, bold=True)
+    draw_text_with_shadow(draw, (pad_left, 220),
+                          "AI specialists,",
+                          font_hero, fill=WHITE, shadow_offset=2)
+    draw_text_with_shadow(draw, (pad_left, 270),
+                          "perfectly orchestrated.",
+                          font_hero, fill=CYAN, shadow_offset=2)
+
+    # Feature list
+    font_feat = find_font(20, bold=False)
+    draw_text_with_shadow(draw, (pad_left, 350),
+                          "Native llms.txt  -  Sitemap  -  Schema  -  Redirects  -  Brand Voice",
+                          font_feat, fill=SOFT, shadow_offset=1)
+
+    # Bottom dark chip with engines
+    chip_text = "Optimized for ChatGPT  -  Claude  -  Perplexity  -  Gemini  -  Google AI Overviews"
+    font_chip = find_font(15, bold=True)
+    bbox = draw.textbbox((0, 0), chip_text, font=font_chip)
+    chip_pad_x, chip_pad_y = 18, 10
+    chip_w = bbox[2] - bbox[0] + chip_pad_x * 2
+    chip_h = bbox[3] - bbox[1] + chip_pad_y * 2
+    chip_y = height - chip_h - 36
+    draw.rounded_rectangle(
+        [pad_left, chip_y, pad_left + chip_w, chip_y + chip_h],
+        radius=20,
+        fill=(10, 14, 39),
+        outline=(0, 229, 255),
+        width=1,
+    )
+    draw.text((pad_left + chip_pad_x, chip_y + chip_pad_y - 1), chip_text, font=font_chip, fill=WHITE)
+
+    img.save(out_path, "PNG", optimize=True)
+    return out_path
+
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
 
@@ -260,6 +330,12 @@ def main():
     p4 = os.path.join(OUT_DIR, "icon-128x128.png")
     make_icon(128, p4, corner_radius=12)
     results.append(p4)
+
+
+    # Product Image 800x500 (deal pages, marketplaces)
+    p5 = os.path.join(OUT_DIR, "product-image-800x500.png")
+    make_product_image(800, 500, p5)
+    results.append(p5)
 
     # Report
     for p in results:

@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  */
 return array(
 
+    'Specialisti AI orchestrati. Clicca per andare alla sezione.' => 'Spécialistes IA orchestrés. Cliquez pour aller à la section.',
     // ─── Submenu admin labels ───
     '📊 Dashboard'           => '📊 Tableau de bord',
     '🪄 Wizard'              => '🪄 Assistant',
@@ -59,7 +60,6 @@ return array(
     '→ Apri Orchestratore'                                                               => '→ Ouvrir Orchestrateur',
 
     '🧩 Tutte le sezioni del plugin'         => '🧩 Toutes les sections du plugin',
-    '11 strumenti integrati. Clicca per andare alla sezione.' => '11 outils intégrés. Cliquez pour aller à la section.',
 
     // Cards descriptions in feature grid
     'Orchestratore'           => 'Orchestrateur',
@@ -934,7 +934,6 @@ return array(
     'cliché 1, cliché 2, ...'            => 'cliché 1, cliché 2, ...',
 
     // ─── PHP wrapped (wizard-home + dashboard) ───
-    '15 strumenti integrati. Clicca per andare alla sezione.' => '15 outils intégrés. Cliquez pour aller à la section.',
     '25 crediti'                         => '25 crédits',
     'Funzioni dello stack Native attive: Output Renderer, Override Mode, Sitemap.xml, llms.txt, Schema, Redirect Manager. Più sono attive, più Yoast/RankMath sono sostituiti.' => 'Fonctions du stack Native actives : Output Renderer, Override Mode, Sitemap.xml, llms.txt, Schema, Redirect Manager. Plus elles sont actives, plus Yoast/RankMath est remplacé.',
     'Hai già un plugin SEO? Il Wizard fa shadow-copy reversibile dei tuoi meta + redirect e attiva lo stack Native — Yoast resta installato e silenziato (Override Mode). Niente perdita di ranking, niente downtime, e puoi tornare indietro in 30 secondi se cambi idea. Se preferisci testare prima senza migrare, salta questo step e prova le altre funzioni: Orchestra coesiste con Yoast.' => 'Vous avez déjà un plugin SEO ? L\'Assistant fait une shadow-copy réversible de vos meta + redirections et active le stack Native — Yoast reste installé mais silencé (Override Mode). Aucune perte de classement, aucun downtime, et vous pouvez revenir en arrière en 30 secondes si vous changez d\'avis. Si vous préférez tester sans migrer d\'abord, passez cette étape et essayez les autres fonctions : Orchestra coexiste avec Yoast.',

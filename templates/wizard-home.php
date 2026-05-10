@@ -24,7 +24,35 @@ foreach (array($seo_aeo_native_output_on, $seo_aeo_native_sitemap_on, $seo_aeo_n
 $seo_aeo_total_features = 5;
 ?>
 
+<?php
+// 3.35.83: load Business Profile completion stats (transient cache 5min)
+$seo_aeo_bp_stats = get_transient('seo_aeo_bp_dashboard_stats');
+if ($seo_aeo_bp_stats === false) {
+    $seo_aeo_bp_stats = array('populated' => 0, 'total' => 14, 'percent' => 0, 'is_complete' => false, 'confirmed' => false);
+    if (class_exists('SEO_AEO_API_Client')) {
+        $api = new SEO_AEO_API_Client();
+        if (method_exists($api, 'get_business_profile')) {
+            $resp = $api->get_business_profile();
+            if (is_array($resp) && !empty($resp['stats'])) {
+                $stats = $resp['stats'];
+                $tot = isset($stats['total_count']) ? max(1, (int) $stats['total_count']) : 14;
+                $pop = isset($stats['populated_count']) ? (int) $stats['populated_count'] : 0;
+                $seo_aeo_bp_stats = array(
+                    'populated'    => $pop,
+                    'total'        => $tot,
+                    'percent'      => (int) round(100 * $pop / $tot),
+                    'is_complete'  => !empty($stats['is_complete']),
+                    'confirmed'    => isset($resp['profile']) && !empty($resp['profile']['customer_confirmed']),
+                );
+            }
+        }
+    }
+    set_transient('seo_aeo_bp_dashboard_stats', $seo_aeo_bp_stats, 5 * MINUTE_IN_SECONDS);
+}
+?>
 <div class="wrap orch-wiz-page">
+
+    <?php // 3.35.84.4: BP banner now rendered by SEO_AEO_Admin_Notices on `admin_notices` hook (above wrap). ?>
 
     <!-- HERO -->
     <div class="orch-wiz-hero">
@@ -48,6 +76,18 @@ $seo_aeo_total_features = 5;
                         <div class="orch-wiz-stat-value"><?php echo $seo_aeo_bv_active ? '🎙️ ' . esc_html($seo_aeo_bv_active['_name']) : '—'; ?></div>
                         <div class="orch-wiz-stat-label"><?php SEO_AEO_T::e('Brand Voice'); ?></div>
                     </div>
+                    <!-- 3.35.83: 5° stat — Profilo Business completion -->
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-business-profile')); ?>" class="orch-wiz-stat orch-wiz-stat--clickable<?php echo !empty($seo_aeo_bp_stats['confirmed']) ? ' orch-wiz-stat--confirmed' : ''; ?>" title="<?php echo esc_attr(SEO_AEO_T::t('Completamento del profilo business — clicca per editarlo')); ?>">
+                        <div class="orch-wiz-stat-value"><?php echo (int) $seo_aeo_bp_stats['percent']; ?>%</div>
+                        <div class="orch-wiz-stat-label">
+                            <?php SEO_AEO_T::e('Profilo Business'); ?>
+                            <?php if (empty($seo_aeo_bp_stats['confirmed'])): ?>
+                                <span style="color:#d97706; font-weight:700; margin-left:4px;">⚠</span>
+                            <?php else: ?>
+                                <span style="color:#16a34a; font-weight:700; margin-left:4px;" title="<?php echo esc_attr(SEO_AEO_T::t('Profilo confermato')); ?>">✓</span>
+                            <?php endif; ?>
+                        </div>
+                    </a>
                     <div class="orch-wiz-stat" title="<?php echo esc_attr(SEO_AEO_T::t('Specialisti AI orchestrati e strumenti integrati nel plugin. Cresce a ogni release.')); ?>">
                         <div class="orch-wiz-stat-value"><?php echo (int) SEO_AEO_AGENTS_COUNT; ?> &middot; <?php echo (int) SEO_AEO_TOOLS_COUNT; ?></div>
                         <div class="orch-wiz-stat-label"><?php SEO_AEO_T::e('Specialisti AI &middot; Strumenti'); ?> <span style="cursor:help;opacity:.6;font-size:.8em;">&#9432;</span></div>
@@ -59,10 +99,21 @@ $seo_aeo_total_features = 5;
 
     <!-- QUICKSTART 4 STEP -->
     <section class="orch-wiz-section">
-        <h2 class="orch-wiz-section-title"><?php SEO_AEO_T::e('🚀 Per iniziare in 4 mosse'); ?></h2>
+        <h2 class="orch-wiz-section-title"><?php SEO_AEO_T::e('🚀 Per iniziare in 5 mosse'); ?></h2>
         <p class="orch-wiz-section-sub"><?php SEO_AEO_T::e('Se sei alla prima volta, segui questi passi nell\'ordine. Ogni step è autonomo: puoi fermarti dove vuoi.'); ?></p>
 
         <div class="orch-wiz-steps">
+            <!-- 3.35.83: Step ⭐ Business Profile -->
+            <?php $bp_done = !empty($seo_aeo_bp_stats['confirmed']); ?>
+            <div class="orch-wiz-step <?php echo $bp_done ? 'orch-wiz-step--done' : 'orch-wiz-step--required'; ?>">
+                <div class="orch-wiz-step-num <?php echo $bp_done ? 'orch-wiz-step-num--done' : 'orch-wiz-step-num--required'; ?>"><?php echo $bp_done ? '✓' : '⭐'; ?></div>
+                <div class="orch-wiz-step-body">
+                    <div class="orch-wiz-step-badge<?php echo $bp_done ? ' orch-wiz-step-badge--done' : ''; ?>"><?php echo $bp_done ? '✓ DONE' : 'RICHIESTO'; ?></div>
+                    <h3><?php SEO_AEO_T::e('Compila il Profilo Business'); ?></h3>
+                    <p><?php SEO_AEO_T::e('I tool AI di Orchestra (Verify-Live, Contenuti AI, Analisi AEO) usano il profilo per generare suggerimenti specifici al tuo business. Senza questi dati, le risposte AI sono generiche. 4 campi critici richiesti — bastano 5 minuti.'); ?></p>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-business-profile')); ?>" class="orch-wiz-step-cta<?php echo $bp_done ? ' orch-wiz-step-cta--done' : ' orch-wiz-step-cta--required'; ?>"><?php echo $bp_done ? esc_html(SEO_AEO_T::t('→ Modifica profilo')) : esc_html(SEO_AEO_T::t('→ Apri Profilo Business')); ?></a>
+                </div>
+            </div>
             <div class="orch-wiz-step">
                 <div class="orch-wiz-step-num">1</div>
                 <div class="orch-wiz-step-body">
@@ -77,7 +128,7 @@ $seo_aeo_total_features = 5;
                 <div class="orch-wiz-step-body">
                     <h3><?php SEO_AEO_T::e('Crea il tuo profilo Brand Voice'); ?></h3>
                     <p><?php SEO_AEO_T::e('L\'AI analizza i tuoi articoli pubblicati ed estrae il tuo stile. Ogni generazione futura suonerà come te, non come AI.'); ?></p>
-                    <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-brand-voice'))); ?>" class="orch-wiz-step-cta"><?php SEO_AEO_T::e('→ Apri Brand Voice'); ?></a>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-brand-voice')); ?>" class="orch-wiz-step-cta"><?php SEO_AEO_T::e('→ Apri Brand Voice'); ?></a>
                 </div>
             </div>
 
@@ -86,7 +137,7 @@ $seo_aeo_total_features = 5;
                 <div class="orch-wiz-step-body">
                     <h3><?php SEO_AEO_T::e('Genera il tuo primo articolo AI'); ?></h3>
                     <p><?php SEO_AEO_T::e('Scegli un argomento, definisci le keyword e l\'AI scrive un articolo SEO+AEO con la tua voce. Include FAQ e immagine generata.'); ?></p>
-                    <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-content'))); ?>" class="orch-wiz-step-cta"><?php SEO_AEO_T::e('→ Apri Contenuti AI'); ?></a>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-content')); ?>" class="orch-wiz-step-cta"><?php SEO_AEO_T::e('→ Apri Contenuti AI'); ?></a>
                 </div>
             </div>
 
@@ -95,7 +146,7 @@ $seo_aeo_total_features = 5;
                 <div class="orch-wiz-step-body">
                     <h3><?php SEO_AEO_T::e('Pubblica e verifica i risultati'); ?></h3>
                     <p><?php SEO_AEO_T::e('Connetti Google Search Console per vedere posizionamento e CTR. Risolvi cannibalizzazioni con 1 click. Imposta redirect dai 404.'); ?></p>
-                    <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-orchestratore'))); ?>" class="orch-wiz-step-cta"><?php SEO_AEO_T::e('→ Apri Orchestratore'); ?></a>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-orchestratore')); ?>" class="orch-wiz-step-cta"><?php SEO_AEO_T::e('→ Apri Orchestratore'); ?></a>
                 </div>
             </div>
         </div>
@@ -106,156 +157,262 @@ $seo_aeo_total_features = 5;
         <h2 class="orch-wiz-section-title"><?php SEO_AEO_T::e('🧩 Tutte le sezioni del plugin'); ?></h2>
         <p class="orch-wiz-section-sub"><?php SEO_AEO_T::e('Specialisti AI orchestrati. Clicca per andare alla sezione.'); ?></p>
 
-        <div class="orch-wiz-grid">
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-orchestratore'))); ?>" class="orch-wiz-card">
+        <div class="orch-cards-categories">
+        <div class="orch-cards-section orch-cards-section--foundation">
+            <div class="orch-cards-section-header" style="border-bottom-color: #16a34a; color: #15803d;">
+                <span class="orch-cards-section-icon">🟢</span>
+                <span class="orch-cards-section-label">Foundation & Profili</span>
+                <span class="orch-cards-section-count">3 <?php SEO_AEO_T::e('strumenti'); ?></span>
+            </div>
+            <div class="orch-wiz-grid orch-wiz-grid--foundation">
+<a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-business-profile')); ?>" class="orch-wiz-card orch-wiz-card--foundation" data-category="foundation">
+                <span class="orch-wiz-card-badge">⭐ FOUNDATION v3.35.83</span>
+                <div class="orch-wiz-card-icon">🏢</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Profilo Business'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('14 campi compilabili (11 public + 3 internal) usati da tutti i tool AI. Anteprima context AI live + visibility scope public/internal + zero leak in llms.txt.'); ?></div>
+            </a>
+
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-brand-voice')); ?>" class="orch-wiz-card orch-wiz-card--foundation" data-category="foundation">
+                
+                <div class="orch-wiz-card-icon">🎙️</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Brand Voice'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('L\'AI analizza i tuoi articoli pubblicati ed estrae il tuo stile. Ogni generazione futura suonerà come te, non come AI.'); ?></div>
+            </a>
+
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-migration-wizard')); ?>" class="orch-wiz-card orch-wiz-card--foundation" data-category="foundation">
+                
+                <div class="orch-wiz-card-icon">🚀</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Migrazione SEO'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Wizard 6-step: detect Yoast/RankMath/AIOSEO + shadow-copy meta + import redirect + attiva stack Native + disinstalla. Reversibile.'); ?></div>
+            </a>
+            </div>
+        </div>
+
+        <div class="orch-cards-section orch-cards-section--analisi">
+            <div class="orch-cards-section-header" style="border-bottom-color: #3b82f6; color: #1d4ed8;">
+                <span class="orch-cards-section-icon">🔵</span>
+                <span class="orch-cards-section-label">Analisi & Verifica</span>
+                <span class="orch-cards-section-count">8 <?php SEO_AEO_T::e('strumenti'); ?></span>
+            </div>
+            <div class="orch-wiz-grid orch-wiz-grid--analisi">
+<a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-orchestratore')); ?>" class="orch-wiz-card orch-wiz-card--analisi" data-category="analisi">
+                
                 <div class="orch-wiz-card-icon">🎯</div>
                 <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Orchestratore'); ?></div>
                 <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Strumento operativo: scansiona pagine, genera proposte AI, applica modifiche, gestisci cronologia.'); ?></div>
             </a>
 
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-analyze'))); ?>" class="orch-wiz-card">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-native-output')); ?>" class="orch-wiz-card orch-wiz-card--analisi" data-category="analisi">
+                <span class="orch-wiz-card-badge">🆕 NEW v3.35.82</span>
+                <div class="orch-wiz-card-icon">🔬</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Verify-Live'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Test in 30 secondi sui motori AI. Score 0-100 + 8-15 suggerimenti specifici per migliorare visibilità nei motori AI.'); ?></div>
+            </a>
+
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-orchestra')); ?>" class="orch-wiz-card orch-wiz-card--analisi" data-category="analisi">
+                <span class="orch-wiz-card-badge">🆕 NEW v3.35.84</span>
+                <div class="orch-wiz-card-icon">🤖</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('AI Performance'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Tracking attività di 22 bot AI con dato GDPR-compliant. Top 10 pagine + trend 28gg + compliance robots.txt. Phase 2 Bing API in arrivo.'); ?></div>
+            </a>
+
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-analyze')); ?>" class="orch-wiz-card orch-wiz-card--analisi" data-category="analisi">
+                
                 <div class="orch-wiz-card-icon">🔍</div>
                 <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Analisi SEO'); ?></div>
                 <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Score 0-100 per pagina, problemi rilevati, keyword secondarie LSI, suggerimenti azionabili.'); ?></div>
             </a>
 
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-meta'))); ?>" class="orch-wiz-card">
-                <div class="orch-wiz-card-icon">🏷️</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Meta Tags'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Generazione AI title + description ottimizzati. Scrive su Yoast/RankMath/AIOSEO/native automaticamente.'); ?></div>
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-aeo-analysis')); ?>" class="orch-wiz-card orch-wiz-card--analisi" data-category="analisi">
+                
+                <div class="orch-wiz-card-icon">🧠</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Analisi AEO'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Verifica visibilità nei motori AI (ChatGPT, Claude, Perplexity, Gemini). Score per pagina + suggerimenti GEO.'); ?></div>
             </a>
 
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-content'))); ?>" class="orch-wiz-card">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-cannibalization')); ?>" class="orch-wiz-card orch-wiz-card--analisi" data-category="analisi">
+                
+                <div class="orch-wiz-card-icon">🌳</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Cannibalizzazione SEO'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Detect pagine che competono sulla stessa query + AI fix proposal con keyword distinct + internal linking.'); ?></div>
+            </a>
+
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-keyword-research')); ?>" class="orch-wiz-card orch-wiz-card--analisi" data-category="analisi">
+                
+                <div class="orch-wiz-card-icon">🎯</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Keyword Research'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Discover keyword opportunità per il tuo settore via AI + GSC integration + intent classification.'); ?></div>
+            </a>
+
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-orchestra-analytics')); ?>" class="orch-wiz-card orch-wiz-card--analisi" data-category="analisi">
+                
+                <div class="orch-wiz-card-icon">📈</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Analytics'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Top queries + top pages dal GSC integrato. Daily aggregate scalabile.'); ?></div>
+            </a>
+            </div>
+        </div>
+
+        <div class="orch-cards-section orch-cards-section--creazione">
+            <div class="orch-cards-section-header" style="border-bottom-color: #9333ea; color: #7e22ce;">
+                <span class="orch-cards-section-icon">🟣</span>
+                <span class="orch-cards-section-label">Creazione & Generazione</span>
+                <span class="orch-cards-section-count">5 <?php SEO_AEO_T::e('strumenti'); ?></span>
+            </div>
+            <div class="orch-wiz-grid orch-wiz-grid--creazione">
+<a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-content')); ?>" class="orch-wiz-card orch-wiz-card--creazione" data-category="creazione">
+                
                 <div class="orch-wiz-card-icon">✨</div>
                 <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Contenuti AI'); ?></div>
                 <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Articoli SEO completi con H2/H3, FAQ, sommario. Brand Voice applicato in linea.'); ?></div>
             </a>
 
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-local'))); ?>" class="orch-wiz-card">
-                <div class="orch-wiz-card-icon">📍</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Local SEO'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Pagine servizio + landing per attività locali con città-target e schema.'); ?></div>
-            </a>
-
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-cannibalization'))); ?>" class="orch-wiz-card">
-                <div class="orch-wiz-card-icon">⚔️</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Cannibalizzazione SEO'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Trova pagine in conflitto sulla stessa keyword. AI propone fix con 1 click.'); ?></div>
-            </a>
-
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-aeo-analysis'))); ?>" class="orch-wiz-card">
-                <div class="orch-wiz-card-icon">🧠</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Analisi AEO'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Verifica visibilità su Google AI Overviews, ChatGPT, Perplexity, Bing Copilot. Score citability.'); ?></div>
-            </a>
-
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-aeo-content'))); ?>" class="orch-wiz-card">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-aeo-content')); ?>" class="orch-wiz-card orch-wiz-card--creazione" data-category="creazione">
+                
                 <div class="orch-wiz-card-icon">💬</div>
                 <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Contenuti AEO'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Articoli ottimizzati per essere CITATI dalle AI: domanda-risposta, schema.org, dati concreti.'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Articoli AEO-first ottimizzati per Answer Engine Optimization. Struttura Q&A + listicle + comparison.'); ?></div>
             </a>
 
-            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-native-output')); ?>" class="orch-wiz-card<?php if ($seo_aeo_active_count >= 3) echo ' orch-wiz-card-on'; ?>">
-                <div class="orch-wiz-card-icon">⚡</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('SEO Output Nativo'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Sostituto completo di Yoast/RankMath: meta head, sitemap.xml, llms.txt, schema, redirect, AI 404 suggester.'); ?></div>
-                <?php if ($seo_aeo_active_count > 0): ?><div class="orch-wiz-card-badge">⚡ <?php echo (int) $seo_aeo_active_count; ?> <?php SEO_AEO_T::e('attivi'); ?></div><?php endif; ?>
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-meta')); ?>" class="orch-wiz-card orch-wiz-card--creazione" data-category="creazione">
+                
+                <div class="orch-wiz-card-icon">🏷️</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Meta Tags'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Generazione AI title + description ottimizzati. Scrive su Yoast/RankMath/AIOSEO/native automaticamente.'); ?></div>
             </a>
 
-            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-redirect')); ?>" class="orch-wiz-card<?php if ($seo_aeo_native_redirect_on) echo ' orch-wiz-card-on'; ?>">
-                <div class="orch-wiz-card-icon">🔀</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Redirect Manager'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Crea e gestisci redirect 301/302, importa da Yoast/Redirection, AI 404 suggester.'); ?></div>
-            </a>
-
-            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-migration-wizard')); ?>" class="orch-wiz-card">
-                <div class="orch-wiz-card-icon">🚀</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Migrazione SEO'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Wizard 6 step per migrare da Yoast/RankMath/AIOSEO. Backup, copia meta, import redirect, attivazione.'); ?></div>
-            </a>
-
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-brand-voice'))); ?>" class="orch-wiz-card<?php if ($seo_aeo_bv_active) echo ' orch-wiz-card-on'; ?>">
-                <div class="orch-wiz-card-icon">🎙️</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Brand Voice'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('L\'AI impara il tuo stile dai tuoi articoli. Applicato a ogni generazione per non "sembrare AI".'); ?></div>
-                <?php if ($seo_aeo_bv_active): ?><div class="orch-wiz-card-badge">🎙️ <?php SEO_AEO_T::e('Attivo'); ?>: <?php echo esc_html($seo_aeo_bv_active['_name']); ?></div><?php endif; ?>
-            </a>
-
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-keyword-research'))); ?>" class="orch-wiz-card">
-                <div class="orch-wiz-card-icon">🎯</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Keyword Research'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Da nicchia a 30 keyword strategiche con cluster, intent, difficolta. Genera articoli direttamente.'); ?></div>
-            </a>
-
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-orchestra-calendar'))); ?>" class="orch-wiz-card">
-                <div class="orch-wiz-card-icon">📅</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Calendario AI'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Pianifica articoli su date specifiche. AI genera N giorni prima, auto-pubblica. Bulk wizard.'); ?></div>
-                <div class="orch-wiz-card-badge">💚 Money-back</div>
-            </a>
-
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-orchestra-images'))); ?>" class="orch-wiz-card">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-orchestra-images')); ?>" class="orch-wiz-card orch-wiz-card--creazione" data-category="creazione">
+                
                 <div class="orch-wiz-card-icon">🖼</div>
                 <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Image SEO'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Audit + bulk fix metadata immagini con AI Vision. Alt/title/caption auto-generati.'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Manager bulk per alt text, file naming, compression. AI auto-suggest alt text contestuale per immagini.'); ?></div>
             </a>
 
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-orchestra-analytics'))); ?>" class="orch-wiz-card">
-                <div class="orch-wiz-card-icon">📈</div>
-                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Analytics'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Insights GSC + 5 KPI Orchestra proprietari. Sparkline period 7/28/90gg.'); ?></div>
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-local')); ?>" class="orch-wiz-card orch-wiz-card--creazione" data-category="creazione">
+                
+                <div class="orch-wiz-card-icon">📍</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Local SEO'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Schema LocalBusiness + Google Business Profile sync + NAP consistency check + local citation suggestions.'); ?></div>
+            </a>
+            </div>
+        </div>
+
+        <div class="orch-cards-section orch-cards-section--operations">
+            <div class="orch-cards-section-header" style="border-bottom-color: #d97706; color: #b45309;">
+                <span class="orch-cards-section-icon">🟡</span>
+                <span class="orch-cards-section-label">Operations & Automazione</span>
+                <span class="orch-cards-section-count">5 <?php SEO_AEO_T::e('strumenti'); ?></span>
+            </div>
+            <div class="orch-wiz-grid orch-wiz-grid--operations">
+<a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-native-output')); ?>" class="orch-wiz-card orch-wiz-card--operations" data-category="operations">
+                
+                <div class="orch-wiz-card-icon">⚡</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('SEO Output Nativo'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Sostituisce Yoast: meta + OG + Twitter + canonical + sitemap.xml + llms.txt + schema. Override mode silenzia plugin esistenti.'); ?></div>
             </a>
 
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-autopilot'))); ?>" class="orch-wiz-card">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-autopilot')); ?>" class="orch-wiz-card orch-wiz-card--operations" data-category="operations">
+                
                 <div class="orch-wiz-card-icon">🤖</div>
                 <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Auto-Pilot'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Cron WP che genera articoli automaticamente da set keyword. Configura una volta, dimentica. Premium.'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Cron WP genera articoli automaticamente: pesca keyword + crea draft (default) o pubblica (opt-in). 1/giorno · 2-sett · 3-sett · 1-sett.'); ?></div>
             </a>
 
-            <a href="<?php echo esc_url((defined('SEO_AEO_IS_FREE') && SEO_AEO_IS_FREE ? admin_url('admin.php?page=seo-aeo-pro') : admin_url('admin.php?page=seo-aeo-usage'))); ?>" class="orch-wiz-card">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-orchestra-calendar')); ?>" class="orch-wiz-card orch-wiz-card--operations" data-category="operations">
+                
+                <div class="orch-wiz-card-icon">📅</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Pianificazione articoli'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Pianifica articoli su date specifiche. AI genera N giorni prima, auto-pubblica. Bulk wizard 7/30 articoli.'); ?></div>
+            </a>
+
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-redirect')); ?>" class="orch-wiz-card orch-wiz-card--operations" data-category="operations">
+                
+                <div class="orch-wiz-card-icon">🔀</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Redirect Manager'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Tabella redirect 301/302/307 + 404 log + AI suggester per fix dei link rotti. Import da Yoast Premium / Redirection plugin.'); ?></div>
+            </a>
+
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-ai-crawlers')); ?>" class="orch-wiz-card orch-wiz-card--operations" data-category="operations">
+                
+                <div class="orch-wiz-card-icon">🛡️</div>
+                <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('AI Crawlers'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Allowlist + robots.txt management per 22 bot AI. Privacy IP toggle + log query + export CSV. Plus blocco/allow granulare per provider.'); ?></div>
+            </a>
+            </div>
+        </div>
+
+        <div class="orch-cards-section orch-cards-section--account">
+            <div class="orch-cards-section-header" style="border-bottom-color: #64748b; color: #475569;">
+                <span class="orch-cards-section-icon">⚫</span>
+                <span class="orch-cards-section-label">Account & Settings</span>
+                <span class="orch-cards-section-count">2 <?php SEO_AEO_T::e('strumenti'); ?></span>
+            </div>
+            <div class="orch-wiz-grid orch-wiz-grid--account">
+<a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-usage')); ?>" class="orch-wiz-card orch-wiz-card--account" data-category="account">
+                
                 <div class="orch-wiz-card-icon">💳</div>
                 <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Consumo Crediti'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Storia chiamate AI, costi per tipo operazione, residuo wallet. Esportabile.'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Storico uso wallet: plan_credits + topup + per-task breakdown. Auto-topup configurabile.'); ?></div>
             </a>
 
-            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-settings')); ?>" class="orch-wiz-card">
+            <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-settings')); ?>" class="orch-wiz-card orch-wiz-card--account" data-category="account">
+                
                 <div class="orch-wiz-card-icon">⚙️</div>
                 <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Impostazioni'); ?></div>
-                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Licenza, configurazione tecnica, opzioni avanzate.'); ?></div>
+                <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('Setup license key, lingua plugin, privacy preferences, advanced toggles.'); ?></div>
             </a>
+            </div>
+        </div>
         </div>
     </section>
 
-    <!-- NEWS -->
-    <section class="orch-wiz-section">
-        <h2 class="orch-wiz-section-title"><?php SEO_AEO_T::e('✨ Cosa c\'è di nuovo in v'); ?><?php echo esc_html($seo_aeo_plugin_version); ?></h2>
-        <div class="orch-wiz-news">
-            <div class="orch-wiz-news-item">
-                <div class="orch-wiz-news-icon">🎙️</div>
-                <div>
-                    <strong><?php SEO_AEO_T::e('Brand Voice Learning'); ?></strong> — <?php SEO_AEO_T::e('l\'AI impara il tuo stile dai tuoi articoli e lo applica a ogni generazione. Modificabile inline dalla pagina di generazione.'); ?>
+    <!-- NEWS — 3.35.84.4: dynamic from readme.txt; auto-hidden if user already dismissed for this version -->
+    <?php
+    $seo_aeo_news_entry = class_exists('SEO_AEO_Whats_New') ? SEO_AEO_Whats_New::current_entry() : null;
+    $seo_aeo_news_dismissed = class_exists('SEO_AEO_Whats_New') ? SEO_AEO_Whats_New::is_dismissed_for_current_user() : false;
+    if (!$seo_aeo_news_dismissed):
+    ?>
+    <section class="orch-wiz-section orch-wiz-news-section">
+        <h2 class="orch-wiz-section-title">
+            <?php echo esc_html(SEO_AEO_T::t('✨ Cosa c\'è di nuovo in v')); ?><?php echo esc_html($seo_aeo_plugin_version); ?>
+        </h2>
+        <?php if ($seo_aeo_news_entry && !empty($seo_aeo_news_entry['bullets'])): ?>
+            <div class="orch-wiz-news">
+                <?php foreach ($seo_aeo_news_entry['bullets'] as $seo_aeo_bullet):
+                    // Bullet may already start with an emoji; if not, fall back to a generic icon.
+                    $seo_aeo_first_char = mb_substr($seo_aeo_bullet, 0, 1, 'UTF-8');
+                    $seo_aeo_has_emoji  = preg_match('/[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]/u', $seo_aeo_first_char);
+                    $seo_aeo_icon       = $seo_aeo_has_emoji ? $seo_aeo_first_char : '✨';
+                    $seo_aeo_text       = $seo_aeo_has_emoji ? trim(mb_substr($seo_aeo_bullet, 1, null, 'UTF-8')) : $seo_aeo_bullet;
+                ?>
+                <div class="orch-wiz-news-item">
+                    <div class="orch-wiz-news-icon"><?php echo esc_html($seo_aeo_icon); ?></div>
+                    <div><?php echo wp_kses(
+                        $seo_aeo_text,
+                        array('strong' => array(), 'em' => array(), 'code' => array(), 'a' => array('href' => array()))
+                    ); ?></div>
                 </div>
+                <?php endforeach; ?>
             </div>
-            <div class="orch-wiz-news-item">
-                <div class="orch-wiz-news-icon">🖼️</div>
-                <div>
-                    <strong><?php SEO_AEO_T::e('Auto-image dal contenuto'); ?></strong> — <?php SEO_AEO_T::e('l\'immagine dell\'articolo viene generata in base ai temi visivi estratti dal testo, non dal solo titolo.'); ?>
-                </div>
-            </div>
-            <div class="orch-wiz-news-item">
-                <div class="orch-wiz-news-icon">🪄</div>
-                <div>
-                    <strong><?php SEO_AEO_T::e('Wizard di onboarding'); ?></strong> — <?php SEO_AEO_T::e('questa pagina. Per orientarti tra le 11 sezioni e iniziare nel modo giusto.'); ?>
-                </div>
-            </div>
-            <div class="orch-wiz-news-item">
-                <div class="orch-wiz-news-icon">🚀</div>
-                <div>
-                    <strong><?php SEO_AEO_T::e('Stack Native completo'); ?></strong> (v3.20) — <?php SEO_AEO_T::e('sitemap, llms.txt, schema dinamico, redirect manager, AI 404 suggester. Sostituto totale di Yoast.'); ?>
-                </div>
-            </div>
-        </div>
+            <p class="orch-wiz-news-actions" style="margin-top:14px;font-size:12px;color:#64748b;">
+                <a href="<?php echo esc_url(SEO_AEO_Whats_New::dismiss_url()); ?>" style="color:#64748b;">
+                    <?php SEO_AEO_T::e('Ho capito, non mostrare più'); ?>
+                </a>
+                &nbsp;·&nbsp;
+                <a href="<?php echo esc_url(admin_url('plugin-install.php?tab=plugin-information&plugin=seo-aeo-orchestra&TB_iframe=true&width=772&height=600')); ?>" class="thickbox" style="color:#0055FF;">
+                    <?php SEO_AEO_T::e('Changelog completo →'); ?>
+                </a>
+            </p>
+        <?php else: ?>
+            <p class="orch-wiz-news-fallback" style="color:#64748b;">
+                <?php SEO_AEO_T::e('Aggiornamento minor — vedi il changelog completo per i dettagli.'); ?>
+                <a href="<?php echo esc_url(admin_url('plugin-install.php?tab=plugin-information&plugin=seo-aeo-orchestra&TB_iframe=true&width=772&height=600')); ?>" class="thickbox">
+                    <?php SEO_AEO_T::e('Changelog completo →'); ?>
+                </a>
+            </p>
+        <?php endif; ?>
     </section>
+    <?php endif; ?>
 
     <!-- GSC INSIGHTS (3.31.0: spostato sotto "Cosa c'è di nuovo") -->
     <section class="orch-wiz-section orch-wiz-gsc-section">
@@ -267,13 +424,11 @@ $seo_aeo_total_features = 5;
         ?>
     </section>
 
-    <!-- BING AI PERFORMANCE (3.31.0: spostato sotto GSC) -->
-    <section class="orch-wiz-section orch-wiz-bing-section">
-        <h2 class="orch-wiz-section-title"><?php SEO_AEO_T::e('🤖 AI Performance · Quanto le AI citano il tuo sito'); ?></h2>
-        <p class="orch-wiz-section-sub"><?php SEO_AEO_T::e('Tracciamento esclusivo delle citazioni in ChatGPT, Microsoft Copilot e Bing Chat tramite Bing Webmaster Tools. Nessun altro plugin SEO al mondo lo offre.'); ?></p>
+    <!-- 3.35.84.3: AI Performance — heading + sub-tagline NOW provided by ai-crawler-section.php partial (no double rendering) -->
+    <section class="orch-wiz-section">
         <?php
         $seo_aeo_bing_auto_load = true;
-        include __DIR__ . '/partials/ai-performance-section.php';
+        include __DIR__ . '/partials/ai-crawler-section.php';
         ?>
     </section>
 
@@ -328,7 +483,7 @@ $seo_aeo_total_features = 5;
     </section>
 </div>
 
-<style>
+<?php ob_start(); ?>
 .orch-wiz-page { max-width: 1280px; margin-right: 20px; }
 
 /* HERO */
@@ -401,4 +556,162 @@ $seo_aeo_total_features = 5;
 .orch-wiz-support-card h3 { margin: 0 0 4px; font-size: 17px; color: #0A0E27; }
 .orch-wiz-support-card p { margin: 0; font-size: 13.5px; color: #1e3a8a; line-height: 1.55; }
 .orch-wiz-support-card a { color: #0055FF; font-weight: 600; }
-</style>
+
+/* 3.35.83: Step ⭐ RICHIESTO visual treatment */
+.orch-wiz-step--required {
+    border: 2px solid #d97706;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    position: relative;
+}
+.orch-wiz-step-num--required {
+    background: #d97706 !important;
+    color: #fff !important;
+    font-size: 24px !important;
+}
+.orch-wiz-step-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    background: #d97706;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.orch-wiz-step-cta--required {
+    background: #d97706 !important;
+    color: #ffffff !important;
+}
+.orch-wiz-step-cta--required:hover {
+    background: #b45309 !important;
+}
+.orch-wiz-stat--clickable {
+    cursor: pointer;
+    text-decoration: none !important;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.orch-wiz-stat--clickable:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    text-decoration: none !important;
+}
+
+/* 3.35.83.1.2: Step ✓ DONE post-confirm */
+.orch-wiz-step--done {
+    border: 2px solid #16a34a;
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    position: relative;
+}
+.orch-wiz-step-num--done {
+    background: #16a34a !important;
+    color: #fff !important;
+    font-size: 24px !important;
+}
+.orch-wiz-step-badge--done {
+    background: #16a34a !important;
+    color: #fff !important;
+}
+.orch-wiz-step-cta--done {
+    background: #16a34a !important;
+    color: #fff !important;
+}
+.orch-wiz-step-cta--done:hover {
+    background: #15803d !important;
+}
+.orch-wiz-stat--confirmed .orch-wiz-stat-value {
+    color: #16a34a;
+}
+
+/* 3.35.84.2: card category color-coding (5 buckets — customer journey) */
+.orch-wiz-card { position: relative; transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s; }
+.orch-wiz-card--foundation { border-left: 4px solid #16a34a; }
+.orch-wiz-card--foundation .orch-wiz-card-icon { background: #dcfce7; }
+.orch-wiz-card--analisi { border-left: 4px solid #3b82f6; }
+.orch-wiz-card--analisi .orch-wiz-card-icon { background: #dbeafe; }
+.orch-wiz-card--creazione { border-left: 4px solid #9333ea; }
+.orch-wiz-card--creazione .orch-wiz-card-icon { background: #f3e8ff; }
+.orch-wiz-card--operations { border-left: 4px solid #d97706; }
+.orch-wiz-card--operations .orch-wiz-card-icon { background: #fef3c7; }
+.orch-wiz-card--account { border-left: 4px solid #64748b; }
+.orch-wiz-card--account .orch-wiz-card-icon { background: #f1f5f9; }
+
+/* Card icon: pill background for category color */
+.orch-wiz-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    font-size: 22px;
+    margin-bottom: 8px;
+}
+
+/* Badge top-right NEW / FOUNDATION */
+.orch-wiz-card-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f59e0b, #f97316);
+    color: #ffffff;
+    white-space: nowrap;
+}
+.orch-wiz-card[data-category="foundation"] .orch-wiz-card-badge {
+    background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+/* 3.35.84.3: section headers per category + card background tinted (combo Opzione C) */
+.orch-cards-categories { margin-top: 12px; }
+.orch-cards-section { margin: 0 0 18px; }
+.orch-cards-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1.5rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--orch-line, #e4e4e7);
+    font-size: 0.875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.orch-cards-section-icon { font-size: 1.25rem; }
+.orch-cards-section-label { font-weight: 700; }
+.orch-cards-section-count {
+    font-weight: 400;
+    color: var(--orch-faint, #94a3b8);
+    margin-left: auto;
+    font-size: 0.75rem;
+    text-transform: none;
+    letter-spacing: 0.02em;
+}
+
+/* 3.35.84.3.1: card backgrounds saturation upgrade (96-98% → 92-94% medium) */
+.orch-card--foundation { background: #dcfce7; }
+.orch-card--analisi    { background: #dbeafe; }
+.orch-card--creazione  { background: #ede9fe; }
+.orch-card--operations { background: #fef3c7; }
+.orch-card--account    { background: #e2e8f0; }
+
+/* Icon backgrounds: +1 shade saturato */
+.orch-wiz-card.orch-card--foundation .orch-wiz-card-icon { background: #86efac; }
+.orch-wiz-card.orch-card--analisi    .orch-wiz-card-icon { background: #93c5fd; }
+.orch-wiz-card.orch-card--creazione  .orch-wiz-card-icon { background: #c4b5fd; }
+.orch-wiz-card.orch-card--operations .orch-wiz-card-icon { background: #fcd34d; }
+.orch-wiz-card.orch-card--account    .orch-wiz-card-icon { background: #cbd5e1; }
+
+/* Hover: -3% lightness per categoria (visual feedback più intenso) */
+.orch-card--foundation:hover { background: #bbf7d0; }
+.orch-card--analisi:hover    { background: #bfdbfe; }
+.orch-card--creazione:hover  { background: #ddd6fe; }
+.orch-card--operations:hover { background: #fde68a; }
+.orch-card--account:hover    { background: #cbd5e1; }
+<?php SEO_AEO_Inline_Assets::add_inline_style(ob_get_clean()); ?>

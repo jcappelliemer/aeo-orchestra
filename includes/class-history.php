@@ -55,7 +55,11 @@ class SEO_AEO_Orchestra_History {
         $section = sanitize_text_field(wp_unslash($_POST['section']));
         $type = sanitize_text_field(wp_unslash($_POST['type']));
         $title = sanitize_text_field(wp_unslash($_POST['title']));
-        $raw_data = isset($_POST['data']) ? wp_unslash($_POST['data']) : '';
+        // 3.35.85.0 (WP.org Issue 4): the history `data` field is free-form
+        // multi-line text from the AI generation flow. Use sanitize_textarea_field
+        // (preserves newlines, strips invalid UTF-8 + control chars + tags) rather
+        // than passing raw $_POST through to the option store.
+        $raw_data = isset($_POST['data']) ? sanitize_textarea_field(wp_unslash($_POST['data'])) : '';
         if (strlen($raw_data) > self::MAX_DATA_BYTES) {
             $raw_data = substr($raw_data, 0, self::MAX_DATA_BYTES);
         }
@@ -63,10 +67,16 @@ class SEO_AEO_Orchestra_History {
 
         $restore_payload = '';
         if (isset($_POST['restore_payload'])) {
-            $rp = wp_unslash($_POST['restore_payload']);
-            if (is_string($rp) && strlen($rp) <= self::MAX_RESTORE_BYTES) {
-                $decoded = json_decode($rp, true);
-                if (is_array($decoded)) $restore_payload = $rp;
+            // restore_payload is JSON; sanitize the raw string before json_decode,
+            // then recursively sanitize the decoded leaves before re-encoding.
+            $rp_raw = sanitize_textarea_field(wp_unslash($_POST['restore_payload']));
+            if (is_string($rp_raw) && strlen($rp_raw) <= self::MAX_RESTORE_BYTES) {
+                $decoded = json_decode($rp_raw, true);
+                if (is_array($decoded)) {
+                    $clean = $this->sanitize_recursive($decoded);
+                    $restore_payload = wp_json_encode($clean);
+                    if (!is_string($restore_payload)) $restore_payload = '';
+                }
             }
         }
 
@@ -146,6 +156,25 @@ class SEO_AEO_Orchestra_History {
             }
         }
         wp_send_json(array('error' => 'item non trovato'));
+    }
+
+    /**
+     * 3.35.85.0 — recursively sanitize a decoded JSON tree.
+     * Strings → sanitize_text_field; ints/floats/bools/null pass through; arrays
+     * recurse; anything else (objects, resources) becomes an empty string.
+     */
+    private function sanitize_recursive($value) {
+        if (is_array($value)) {
+            $out = array();
+            foreach ($value as $k => $v) {
+                $clean_key = is_string($k) ? sanitize_key($k) : (int) $k;
+                $out[$clean_key] = $this->sanitize_recursive($v);
+            }
+            return $out;
+        }
+        if (is_string($value)) return sanitize_text_field($value);
+        if (is_int($value) || is_float($value) || is_bool($value) || is_null($value)) return $value;
+        return '';
     }
 
     public function get_history_array() {

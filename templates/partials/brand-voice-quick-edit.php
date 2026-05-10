@@ -108,7 +108,7 @@ $seo_aeo_bv_url = admin_url('admin.php?page=seo-aeo-brand-voice');
 </div>
 <?php endif; ?>
 
-<style>
+<?php ob_start(); ?>
 .orch-bvq-bar { margin: 14px 0 18px; }
 .orch-bvq-pill { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 12px; border: 1px solid; }
 .orch-bvq-pill-active { background: linear-gradient(90deg, #fdf4ff, #fce7f3); border-color: #e9d5ff; }
@@ -148,10 +148,10 @@ $seo_aeo_bv_url = admin_url('admin.php?page=seo-aeo-brand-voice');
 .orch-bvq-drawer-status .ok { padding: 8px 12px; background: #d1fae5; color: #065f46; border-radius: 6px; font-size: 12px; }
 .orch-bvq-drawer-status .err { padding: 8px 12px; background: #fee2e2; color: #991b1b; border-radius: 6px; font-size: 12px; }
 .orch-bvq-drawer-status .info { padding: 8px 12px; background: #dbeafe; color: #1e40af; border-radius: 6px; font-size: 12px; }
-</style>
+<?php SEO_AEO_Inline_Assets::add_inline_style(ob_get_clean()); ?>
 
 <?php if ($seo_aeo_bv_active): ?>
-<script>
+<?php ob_start(); ?>
 jQuery(function($) {
     var ajaxurl = window.ajaxurl || '<?php echo esc_js(admin_url('admin-ajax.php')); ?>';
     var nonce = (window.seoAeoOrchestra && window.seoAeoOrchestra.nonce) || '<?php echo esc_js(wp_create_nonce('seo_aeo_orchestra_nonce')); ?>';
@@ -198,5 +198,5 @@ jQuery(function($) {
         });
     });
 });
-</script>
+<?php SEO_AEO_Inline_Assets::add_inline_script(ob_get_clean()); ?>
 <?php endif; ?>

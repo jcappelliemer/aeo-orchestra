@@ -72,6 +72,18 @@ class SEO_AEO_Sitemap {
      * Rewrite rules: cattura /seo-aeo-sitemap.xml e /seo-aeo-sitemap-{type}.xml.
      */
     public function register_rewrites() {
+        // Canonical paths (3.35.52 — what users expect at the standard URL)
+        add_rewrite_rule(
+            '^sitemap\.xml$',
+            'index.php?' . self::QUERY_VAR . '=index',
+            'top'
+        );
+        add_rewrite_rule(
+            '^sitemap-([a-z0-9_-]+)\.xml$',
+            'index.php?' . self::QUERY_VAR . '=$matches[1]',
+            'top'
+        );
+        // Legacy paths (preserved since 3.13.0 for backwards compat — same handler)
         add_rewrite_rule(
             '^seo-aeo-sitemap\.xml$',
             'index.php?' . self::QUERY_VAR . '=index',
@@ -110,6 +122,12 @@ class SEO_AEO_Sitemap {
         $path = wp_parse_url($uri, PHP_URL_PATH);
         if (!$path) return null;
         $path = trim($path, '/');
+        // Canonical paths
+        if ($path === 'sitemap.xml') return 'index';
+        if (preg_match('#^sitemap-([a-z0-9_-]+)\.xml$#i', $path, $m)) {
+            return sanitize_key($m[1]);
+        }
+        // Legacy paths (3.13.0 — kept for backwards compat)
         if ($path === 'seo-aeo-sitemap.xml') return 'index';
         if (preg_match('#^seo-aeo-sitemap-([a-z0-9_-]+)\.xml$#i', $path, $m)) {
             return sanitize_key($m[1]);
@@ -191,6 +209,7 @@ class SEO_AEO_Sitemap {
             header('Cache-Control: max-age=3600, public');
             if ($cached) header('X-SEO-AEO-Sitemap-Cache: HIT');
             else header('X-SEO-AEO-Sitemap-Cache: MISS');
+            header('X-SEO-AEO-Sitemap-Generator: dynamic-orchestra/' . (defined('SEO_AEO_VERSION') ? SEO_AEO_VERSION : '?'));
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         }
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -211,7 +230,7 @@ class SEO_AEO_Sitemap {
         $xml .= '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
 
         foreach ($sub_sitemaps as $type => $info) {
-            $loc = $base . 'seo-aeo-sitemap-' . $type . '.xml';
+            $loc = $base . 'sitemap-' . $type . '.xml';
             $xml .= "  <sitemap>\n";
             $xml .= '    <loc>' . esc_url($loc) . "</loc>\n";
             if (!empty($info['lastmod'])) {
@@ -232,8 +251,17 @@ class SEO_AEO_Sitemap {
     private function get_available_sub_sitemaps() {
         $list = array();
 
-        // Public post types
-        $post_types = get_post_types(array('public' => true), 'names');
+        // Public post types — Stage 1.5 Addendum 2: respect Sitemap.xml accordion whitelist
+        // (default null = ALL public, user can configure via admin UI).
+        if (class_exists('SEO_AEO_Global_Filters')) {
+            $allowed = SEO_AEO_Global_Filters::get_sitemap_post_types();
+            $post_types = array();
+            foreach ($allowed as $pt) {
+                $post_types[$pt] = $pt;
+            }
+        } else {
+            $post_types = get_post_types(array('public' => true), 'names');
+        }
         unset($post_types['attachment']); // niente sitemap di allegati per ora
         foreach ($post_types as $pt) {
             $count = wp_count_posts($pt);
@@ -285,6 +313,16 @@ class SEO_AEO_Sitemap {
      * Ritorna XML string o null se il tipo non è valido.
      */
     private function generate_sub_sitemap($type) {
+        // 3.35.52: respect Sitemap.xml whitelist — return null if requested CPT excluded.
+        if (class_exists('SEO_AEO_Global_Filters') && $type !== 'category' && $type !== 'post_tag' && $type !== 'author') {
+            $allowed = SEO_AEO_Global_Filters::get_sitemap_post_types();
+            $taxonomies = get_taxonomies(array('public' => true), 'names');
+            $is_taxonomy = isset($taxonomies[$type]);
+            if (!$is_taxonomy && !in_array($type, $allowed, true)) {
+                return null;
+            }
+        }
+
         $type = sanitize_key($type);
 
         // Author archives speciali
@@ -327,8 +365,42 @@ class SEO_AEO_Sitemap {
             $url = get_permalink($p);
             if (!$url) continue;
             $lastmod = mysql2date('c', $p->post_modified_gmt, false);
-            $priority = ($post_type === 'page') ? '0.7' : '0.6';
-            $changefreq = ($post_type === 'page') ? 'monthly' : 'weekly';
+            // 3.35.55: priority + changefreq dinamici per role (Stage 2.5). Fallback al default.
+            $priority = null;
+            $changefreq = null;
+            if (class_exists('SEO_AEO_Page_Roles')) {
+                $role = SEO_AEO_Page_Roles::get_role($p->ID);
+                if ($role) {
+                    $priority = SEO_AEO_Page_Roles::role_to_sitemap_priority($role);
+                    $cf_map = array(
+                        'homepage'      => 'daily',
+                        'blog_index'    => 'daily',
+                        'blog_post'     => 'weekly',
+                        'faq'           => 'monthly',
+                        'contact'       => 'yearly',
+                        'legal_privacy' => 'yearly',
+                        'legal_terms'   => 'yearly',
+                    );
+                    $changefreq = isset($cf_map[$role]) ? $cf_map[$role] : (($post_type === 'page') ? 'monthly' : 'weekly');
+
+                    // 3.35.74: per-role overrides via WP options
+                    $prio_overrides = get_option('seo_aeo_sitemap_priority_overrides', array());
+                    if (is_array($prio_overrides) && isset($prio_overrides[$role]) && $prio_overrides[$role] !== '') {
+                        $priority = (string) $prio_overrides[$role];
+                    }
+                    $cf_overrides = get_option('seo_aeo_sitemap_changefreq_overrides', array());
+                    if (is_array($cf_overrides) && isset($cf_overrides[$role]) && $cf_overrides[$role] !== '') {
+                        $changefreq = (string) $cf_overrides[$role];
+                    }
+                    // Noindex override: skip URL entirely if true
+                    $noindex_overrides = get_option('seo_aeo_sitemap_noindex_overrides', array());
+                    if (is_array($noindex_overrides) && !empty($noindex_overrides[$role])) {
+                        continue; // skip this URL from sitemap
+                    }
+                }
+            }
+            if ($priority === null) $priority = ($post_type === 'page') ? '0.7' : '0.6';
+            if ($changefreq === null) $changefreq = ($post_type === 'page') ? 'monthly' : 'weekly';
             $xml .= $this->url_entry($url, $lastmod, $changefreq, $priority);
         }
 
@@ -457,4 +529,201 @@ class SEO_AEO_Sitemap {
             delete_option('rewrite_rules');
         }
     }
+
+
+    // ============================================================
+    // Force Regenerate (3.35.52 — Stage 1.5 hot fix)
+    // Mirror of SEO_AEO_LLMs_Txt::force_regenerate. Purges static legacy files
+    // (e.g. /sitemap.xml placed manually at root), all transients, WP Rocket,
+    // W3TC, WPSC. Optionally fetches a sample for the admin UI report.
+    // ============================================================
+
+    public static function force_regenerate($opts = array()) {
+        $defaults = array(
+            'enable_toggle'  => true,   // auto-enable seo_aeo_native_sitemap_enabled if OFF
+            'purge_external' => true,   // WP Rocket / W3TC / WPSC
+            'fetch_sample'   => true,   // internal wp_remote_get
+        );
+        $opts = array_merge($defaults, is_array($opts) ? $opts : array());
+
+        $report = array(
+            'timestamp'              => current_time('mysql'),
+            'static_files_removed'   => array(),
+            'static_files_skipped'   => array(),
+            'transients_flushed'     => array(),
+            'rewrite_flushed'        => false,
+            'toggle_state_before'    => self::is_enabled() ? 'on' : 'off',
+            'toggle_state_after'     => null,
+            'rocket_purged'          => false,
+            'w3tc_purged'            => false,
+            'wpsc_purged'            => false,
+            'object_cache_flushed'   => false,
+            'sample'                 => null,
+            'sample_url'             => null,
+            'sample_status'          => null,
+            'sample_generator'       => null,
+            'errors'                 => array(),
+        );
+
+        // ---- Static file detection + rename ----
+        $candidates = self::candidate_static_paths();
+        $stamp = time();
+        foreach ($candidates as $path) {
+            if (!is_string($path) || $path === '') continue;
+            if (!file_exists($path)) {
+                $report['static_files_skipped'][] = $path;
+                continue;
+            }
+            if (strpos($path, '.bak-pre-orchestra-') !== false) continue;
+            $backup = $path . '.bak-pre-orchestra-' . $stamp;
+            if (@rename($path, $backup)) {
+                $report['static_files_removed'][] = array('path' => $path, 'backup' => $backup);
+            } else {
+                $err = error_get_last();
+                $report['errors'][] = 'Could not rename static file ' . $path . ': ' . (is_array($err) && isset($err['message']) ? $err['message'] : 'unknown');
+            }
+        }
+
+        // ---- Toggle ----
+        if ($opts['enable_toggle'] && !self::is_enabled()) {
+            update_option(self::OPTION_ENABLED, '1');
+        }
+        $report['toggle_state_after'] = self::is_enabled() ? 'on' : 'off';
+
+        // ---- Transients ----
+        // Sitemap cache transients use CACHE_PREFIX. Loop over candidates explicitly.
+        $known_transients = array('index', 'post', 'page', 'category', 'post_tag', 'author');
+        foreach ($known_transients as $t) {
+            delete_transient(self::CACHE_PREFIX . sanitize_key($t));
+            $report['transients_flushed'][] = self::CACHE_PREFIX . $t;
+        }
+        // Plus any registered public CPT
+        $custom_types = get_post_types(array('public' => true), 'names');
+        foreach ($custom_types as $pt) {
+            delete_transient(self::CACHE_PREFIX . sanitize_key($pt));
+            $report['transients_flushed'][] = self::CACHE_PREFIX . $pt;
+        }
+
+        // ---- Rewrite rules ----
+        if (function_exists('flush_rewrite_rules')) {
+            flush_rewrite_rules(false);
+            $report['rewrite_flushed'] = true;
+        }
+
+        // ---- Object cache ----
+        if (function_exists('wp_cache_flush')) {
+            @wp_cache_flush();
+            $report['object_cache_flushed'] = true;
+        }
+
+        // ---- External page caches (defensive) ----
+        if ($opts['purge_external']) {
+            $urls = array(
+                home_url('/sitemap.xml'),
+                home_url('/seo-aeo-sitemap.xml'),
+                // Also nuke common sub-sitemap URLs
+                home_url('/sitemap-post.xml'),
+                home_url('/sitemap-page.xml'),
+            );
+
+            try {
+                if (function_exists('rocket_clean_files')) {
+                    @rocket_clean_files($urls);
+                    $report['rocket_purged'] = true;
+                } elseif (function_exists('rocket_clean_domain')) {
+                    @rocket_clean_domain();
+                    $report['rocket_purged'] = true;
+                }
+                if (function_exists('flush_rocket_htaccess_rules')) {
+                    @flush_rocket_htaccess_rules();
+                }
+            } catch (Throwable $e) {
+                $report['errors'][] = 'Rocket purge: ' . $e->getMessage();
+            }
+
+            try {
+                if (function_exists('w3tc_pgcache_flush')) {
+                    @w3tc_pgcache_flush();
+                    $report['w3tc_purged'] = true;
+                } elseif (function_exists('w3tc_flush_url')) {
+                    foreach ($urls as $u) { @w3tc_flush_url($u); }
+                    $report['w3tc_purged'] = true;
+                }
+            } catch (Throwable $e) {
+                $report['errors'][] = 'W3TC purge: ' . $e->getMessage();
+            }
+
+            try {
+                if (function_exists('wpsc_delete_url_cache')) {
+                    foreach ($urls as $u) { @wpsc_delete_url_cache($u); }
+                    $report['wpsc_purged'] = true;
+                } elseif (function_exists('wp_cache_clean_cache')) {
+                    @wp_cache_clean_cache('');
+                    $report['wpsc_purged'] = true;
+                }
+            } catch (Throwable $e) {
+                $report['errors'][] = 'WPSC purge: ' . $e->getMessage();
+            }
+        }
+
+        // ---- Internal sample fetch ----
+        if ($opts['fetch_sample']) {
+            $bust_url = home_url('/sitemap.xml') . '?_orch_bust=' . $stamp;
+            $report['sample_url'] = $bust_url;
+            try {
+                $resp = wp_remote_get($bust_url, array(
+                    'timeout'     => 10,
+                    'redirection' => 0,
+                    'sslverify'   => false,
+                    'headers'     => array('Cache-Control' => 'no-cache'),
+                ));
+                if (is_wp_error($resp)) {
+                    $report['errors'][] = 'Sample fetch: ' . $resp->get_error_message();
+                } else {
+                    $body = wp_remote_retrieve_body($resp);
+                    $headers = wp_remote_retrieve_headers($resp);
+                    $report['sample']          = mb_substr((string) $body, 0, 500);
+                    $report['sample_status']   = (int) wp_remote_retrieve_response_code($resp);
+                    $report['sample_generator'] = is_object($headers) && method_exists($headers, 'offsetGet')
+                        ? (string) $headers->offsetGet('x-seo-aeo-sitemap-generator')
+                        : (isset($headers['x-seo-aeo-sitemap-generator']) ? (string) $headers['x-seo-aeo-sitemap-generator'] : '');
+                }
+            } catch (Throwable $e) {
+                $report['errors'][] = 'Sample fetch exception: ' . $e->getMessage();
+            }
+        }
+
+        return $report;
+    }
+
+    /**
+     * Build the list of candidate filesystem paths where a stale static sitemap.xml
+     * (or sub-sitemap files) might live and shadow our PHP handler.
+     */
+    private static function candidate_static_paths() {
+        $paths = array();
+        $names = array('sitemap.xml', 'sitemap_index.xml', 'seo-aeo-sitemap.xml');
+
+        $bases = array();
+        if (defined('ABSPATH')) {
+            $bases[] = rtrim(ABSPATH, '/\\');
+            $bases[] = rtrim(dirname(ABSPATH), '/\\');
+        }
+        if (!empty($_SERVER['DOCUMENT_ROOT'])) {
+            $bases[] = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\');
+        }
+
+        $seen = array();
+        foreach ($bases as $b) {
+            if (!is_string($b) || $b === '' || $b === '/') continue;
+            $b = str_replace('\\', '/', $b);
+            if (isset($seen[$b])) continue;
+            $seen[$b] = true;
+            foreach ($names as $n) {
+                $paths[] = $b . '/' . $n;
+            }
+        }
+        return $paths;
+    }
+
 }

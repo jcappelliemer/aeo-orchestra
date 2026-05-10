@@ -55,8 +55,8 @@ $seo_aeo_plugin_name_label = $seo_aeo_is_other_seo_active && isset($seo_aeo_labe
     // 3.20.5 — Fallback nonce/ajaxurl se admin.js non viene enqueueato sulla submenu page
     $seo_aeo_nonce_fallback = wp_create_nonce('seo_aeo_orchestra_nonce');
     ?>
-    <script>
-        // Fallback: garantisce window.ajaxurl e window.seoAeoOrchestra anche se admin.js non parte
+    <?php ob_start(); ?>
+// Fallback: garantisce window.ajaxurl e window.seoAeoOrchestra anche se admin.js non parte
         if (typeof window.ajaxurl === 'undefined') {
             window.ajaxurl = '<?php echo esc_js(admin_url('admin-ajax.php')); ?>';
         }
@@ -69,7 +69,7 @@ $seo_aeo_plugin_name_label = $seo_aeo_is_other_seo_active && isset($seo_aeo_labe
             };
         }
         console.log('[SEO_AEO Native] init: nonce=' + (window.seoAeoOrchestra.nonce ? 'OK' : 'MISSING') + ', ajaxurl=' + window.ajaxurl);
-    </script>
+<?php SEO_AEO_Inline_Assets::add_inline_script(ob_get_clean()); ?>
 
 
     <!-- ═══ Native SEO Output (v3.12.0) — sostituto di Yoast/RankMath/AIOSEO ═══ -->
@@ -100,7 +100,7 @@ $seo_aeo_plugin_name_label = $seo_aeo_is_other_seo_active && isset($seo_aeo_labe
 
 </div>
 
-<style>
+<?php ob_start(); ?>
 .orch-native-page { max-width: 1100px; }
 .orch-native-hero { display: flex; gap: 22px; align-items: center; padding: 28px 30px; margin: 16px 0 24px; background: linear-gradient(135deg, #0A0E27 0%, #0055FF 50%, #00E5FF 100%); border-radius: 12px; color: #ffffff; box-shadow: 0 4px 24px rgba(0,85,255,0.18); }
 .orch-native-hero-icon { width: 72px; height: 72px; flex-shrink: 0; background: rgba(255,255,255,0.18); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 38px; }
@@ -364,12 +364,10 @@ $seo_aeo_plugin_name_label = $seo_aeo_is_other_seo_active && isset($seo_aeo_labe
     border-radius: 3px;
     font-size: 11px;
 }
+<?php SEO_AEO_Inline_Assets::add_inline_style(ob_get_clean()); ?>
 
-
-</style>
-
-<script>
-    /* ═════════════════════════════════════════════════════════
+<?php ob_start(); ?>
+/* ═════════════════════════════════════════════════════════
        3.12.0 — Native SEO Output (sostituto di Yoast/RankMath/AIOSEO)
        ═════════════════════════════════════════════════════════ */
     jQuery(function($) {
@@ -1124,4 +1122,4 @@ $seo_aeo_plugin_name_label = $seo_aeo_is_other_seo_active && isset($seo_aeo_labe
             return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
         }
     });
-</script>
+<?php SEO_AEO_Inline_Assets::add_inline_script(ob_get_clean()); ?>

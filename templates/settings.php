@@ -240,8 +240,8 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
         </div>
     </div>
 
-    <script>
-    jQuery(function($) {
+    <?php ob_start(); ?>
+jQuery(function($) {
         var ajaxUrl = (window.seoAeoOrchestra && window.seoAeoOrchestra.ajaxUrl) || ajaxurl;
         var nonce = (window.seoAeoOrchestra && window.seoAeoOrchestra.nonce) || '';
         var data = null;
@@ -364,7 +364,7 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
 
         load();
     });
-    </script>
+<?php SEO_AEO_Inline_Assets::add_inline_script(ob_get_clean()); ?>
 
     <!-- 3.7.0 — Storico crediti (audit cliente) -->
     <div class="orchestra-tool-card" style="margin-top:24px;">
@@ -378,7 +378,7 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
     </div>
 </div>
 
-<script>
+<?php ob_start(); ?>
 jQuery(document).ready(function($) {
     $('#orch-load-transactions').on('click', function() {
         var $btn = $(this);
@@ -456,9 +456,9 @@ jQuery(document).ready(function($) {
         });
     });
 });
-</script>
+<?php SEO_AEO_Inline_Assets::add_inline_script(ob_get_clean()); ?>
 
-<script>
+<?php ob_start(); ?>
 jQuery(document).ready(function($) {
     $('#validate-license').on('click', function() {
         var licenseKey = $('#license_key').val();
@@ -529,4 +529,4 @@ jQuery(document).ready(function($) {
         });
     });
 });
-</script>
+<?php SEO_AEO_Inline_Assets::add_inline_script(ob_get_clean()); ?>

@@ -113,6 +113,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
 
             // Credit Balance & First Use
             add_action('wp_ajax_seo_aeo_orchestra_get_credits', array($this, 'ajax_get_credits'));
+            // 3.35.82: Verify-Live pre-verify preview panel data
+            add_action('wp_ajax_seo_aeo_verify_live_preview', array($this, 'ajax_verify_live_preview'));
             add_action('wp_ajax_seo_aeo_orchestra_dismiss_first_use', array($this, 'ajax_dismiss_first_use'));
             add_action('wp_ajax_seo_aeo_orchestra_rerun_history', array($this, 'ajax_rerun_history'));
             // Propose / Review / Apply (v3.0.0)
@@ -136,6 +138,16 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             // Native output toggle (3.12.0): abilita/disabilita output SEO nativo (sostituto Yoast)
             add_action('wp_ajax_seo_aeo_orchestra_toggle_native_output', array($this, 'ajax_toggle_native_output'));
             add_action('wp_ajax_seo_aeo_orchestra_native_output_status', array($this, 'ajax_native_output_status'));
+            // 3.35.68 D.5: live preview <head>
+            add_action('wp_ajax_orch_head_preview', array($this, 'ajax_head_preview'));
+            add_action('wp_ajax_orch_hreflang_status', array($this, 'ajax_hreflang_status'));
+            add_action('wp_ajax_orch_sitemap_role_settings_save', array($this, 'ajax_sitemap_role_settings_save'));
+            add_action('wp_ajax_orch_sitemap_role_settings_get', array($this, 'ajax_sitemap_role_settings_get'));
+            add_action('wp_ajax_orch_llms_featured_auto_suggest', array($this, 'ajax_llms_featured_auto_suggest'));
+            add_action('wp_ajax_orch_llms_featured_apply_suggested', array($this, 'ajax_llms_featured_apply_suggested'));
+            // 3.35.78: Brand Voice About generation (backend-centralized)
+            add_action('wp_ajax_orch_brand_voice_about_generate', array($this, 'ajax_brand_voice_about_generate'));
+            add_action('wp_ajax_orch_hreflang_toggle', array($this, 'ajax_hreflang_toggle'));
             // Native sitemap toggle (3.13.0): abilita/disabilita sitemap.xml nativa
             add_action('wp_ajax_seo_aeo_orchestra_toggle_native_sitemap', array($this, 'ajax_toggle_native_sitemap'));
             add_action('wp_ajax_seo_aeo_orchestra_native_sitemap_status', array($this, 'ajax_native_sitemap_status'));
@@ -185,6 +197,11 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             add_action('wp_ajax_seo_aeo_orchestra_migration_migrate_meta', array($this, 'ajax_migration_migrate_meta'));
             add_action('wp_ajax_seo_aeo_orchestra_migration_import_redirects', array($this, 'ajax_migration_import_redirects'));
             add_action('wp_ajax_seo_aeo_orchestra_migration_activate_stack', array($this, 'ajax_migration_activate_stack'));
+            // 3.35.66: H feature — Migration Importer (Yoast/RankMath/AIOSEO meta keys per-post)
+            add_action('wp_ajax_orch_migration_importer_detect', array($this, 'ajax_migration_importer_detect'));
+            add_action('wp_ajax_orch_migration_importer_batch', array($this, 'ajax_migration_importer_batch'));
+            add_action('wp_ajax_orch_migration_importer_rollback', array($this, 'ajax_migration_importer_rollback'));
+            add_action('wp_ajax_orch_migration_importer_list_backups', array($this, 'ajax_migration_importer_list_backups'));
             // GSC integration (v3.10.0)
             add_action('wp_ajax_seo_aeo_orchestra_gsc_status', array($this, 'ajax_gsc_status'));
             add_action('wp_ajax_seo_aeo_orchestra_gsc_connect_url', array($this, 'ajax_gsc_connect_url'));
@@ -248,6 +265,27 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             add_action('wp_ajax_seo_aeo_orchestra_image_seo_bulk_preview_get',    array($this, 'ajax_image_seo_bulk_preview_get'));
             add_action('wp_ajax_seo_aeo_orchestra_image_seo_bulk_preview_apply',  array($this, 'ajax_image_seo_bulk_preview_apply'));
             add_action('wp_ajax_seo_aeo_orchestra_image_seo_bulk_preview_clear',  array($this, 'ajax_image_seo_bulk_preview_clear'));
+            // Identity Profile (Onboarding 2.0 Stage 1)
+            add_action('wp_ajax_seo_aeo_orchestra_identity_get',     array($this, 'ajax_identity_get'));
+            add_action('wp_ajax_seo_aeo_orchestra_identity_save',    array($this, 'ajax_identity_save'));
+            add_action('wp_ajax_seo_aeo_orchestra_identity_preview', array($this, 'ajax_identity_preview'));
+            add_action('wp_ajax_seo_aeo_orchestra_regenerate_llms',  array($this, 'ajax_regenerate_llms'));
+            add_action('wp_ajax_seo_aeo_orchestra_llms_settings_get', array($this, 'ajax_llms_settings_get'));
+            add_action('wp_ajax_seo_aeo_orchestra_config_get',        array($this, 'ajax_config_get'));
+            add_action('wp_ajax_seo_aeo_orchestra_search_posts',      array($this, 'ajax_search_posts'));
+            add_action('wp_ajax_seo_aeo_orchestra_preview_head',      array($this, 'ajax_preview_head'));
+            add_action('wp_ajax_seo_aeo_orchestra_preview_sitemap',   array($this, 'ajax_preview_sitemap'));
+            add_action('wp_ajax_seo_aeo_orchestra_preview_llms',      array($this, 'ajax_preview_llms'));
+            add_action('wp_ajax_seo_aeo_orchestra_preview_llms_full', array($this, 'ajax_preview_llms_full'));
+            add_action('wp_ajax_seo_aeo_orchestra_preview_schema',    array($this, 'ajax_preview_schema'));
+            add_action('wp_ajax_seo_aeo_orchestra_identity_scan',     array($this, 'ajax_identity_scan'));
+            add_action('wp_ajax_seo_aeo_orchestra_get_page_roles',         array($this, 'ajax_get_page_roles'));
+            add_action('wp_ajax_seo_aeo_orchestra_set_role',               array($this, 'ajax_set_role'));
+            add_action('wp_ajax_seo_aeo_orchestra_apply_featured_from_roles', array($this, 'ajax_apply_featured_from_roles'));
+            add_action('wp_ajax_seo_aeo_orchestra_pro_onboarding_seen',    array($this, 'ajax_pro_onboarding_seen'));
+            add_action('wp_ajax_seo_aeo_orchestra_run_heuristic_classify', array($this, 'ajax_run_heuristic_classify'));
+            add_action('wp_ajax_seo_aeo_orchestra_industry_examples', array($this, 'ajax_industry_examples'));
+
         } catch (Throwable $e) {
         }
     }
@@ -1425,8 +1463,9 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
         check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
         if (!current_user_can('edit_posts')) { wp_send_json(array('error' => 'forbidden')); return; }
         $type = sanitize_text_field(wp_unslash($_POST['rerun_type']));
-        $data_raw = isset($_POST['rerun_data']) ? wp_unslash($_POST['rerun_data']) : '';
-        $data = json_decode($data_raw, true);
+        // 3.35.85.0 (WP.org Issue 4): JSON input goes through the central sanitizer
+        // (each decoded string leaf is sanitize_text_field-cleaned).
+        $data = SEO_AEO_Input_Sanitizer::decode_json_post('rerun_data');
         if (!is_array($data)) { $data = array(); }
 
         // Estrai url + keyword con fallback su nomi alternativi (storia legacy)
@@ -2293,10 +2332,44 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 wp_send_json(array('error' => 'Permessi insufficienti.'));
                 return;
             }
+            // 3.35.74: extend response with featured_pages_count + about_length + mode
+            $featured_count = 0;
+            if (class_exists('SEO_AEO_LLMs_Txt') && method_exists('SEO_AEO_LLMs_Txt', 'get_featured_pages')) {
+                $featured = SEO_AEO_LLMs_Txt::get_featured_pages();
+                if (is_array($featured)) $featured_count = count($featured);
+            }
+            // About length: read from transient cache (same source as /llms.txt frontend)
+            // 3.35.79 fix: was reading from non-existent WP option; identity is fetched
+            // from backend and cached as transient by class-llms-txt::fetch_identity_profile().
+            $about_length = 0;
+            $profile = get_transient('seo_aeo_identity_profile');
+            if ($profile === false || !is_array($profile)) {
+                // Cache miss → trigger fresh fetch via API client
+                if (class_exists('SEO_AEO_API_Client')) {
+                    try {
+                        $api = new SEO_AEO_API_Client();
+                        $resp = $api->get_identity_profile();
+                        if (is_array($resp) && empty($resp['error'])) {
+                            $profile = $resp;
+                            set_transient('seo_aeo_identity_profile', $profile, HOUR_IN_SECONDS);
+                        }
+                    } catch (Throwable $e) { /* ignore */ }
+                }
+            }
+            // 3.35.79.3: hard-replace — read ONLY about_strategic (Section 5 of identity form,
+            // the actual ~200-500 char About content for /llms.txt). NOT business_description
+            // (Section 1, 1-line tagline ~108 chars). If about_strategic empty → 0.
+            if (is_array($profile) && !empty($profile['about_strategic'])) {
+                $about_length = mb_strlen((string) $profile['about_strategic']);
+            }
+            $mode = (string) get_option('seo_aeo_orchestra_llms_strategy_mode', 'curated');
             wp_send_json(array(
                 'enabled' => SEO_AEO_LLMs_Txt::is_enabled(),
                 'index_url' => home_url('/llms.txt'),
                 'full_url' => home_url('/llms-full.txt'),
+                'featured_pages_count' => $featured_count,
+                'about_length' => $about_length,
+                'mode' => $mode,
             ));
         } catch (Throwable $e) {
             wp_send_json(array('error' => 'Errore interno: ' . $e->getMessage()));
@@ -2963,7 +3036,10 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
             if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'Solo amministratori.')); return; }
             $name        = isset($_POST['name'])        ? sanitize_text_field(wp_unslash($_POST['name']))      : '';
-            $kw_raw      = isset($_POST['keywords'])    ? wp_unslash($_POST['keywords'])                       : '';
+            // 3.35.85.0 (WP.org Issue 4): keywords arrives as JSON; pre-decode via
+            // the central sanitizer so every string leaf is sanitize_text_field'd.
+            $kw_decoded  = SEO_AEO_Input_Sanitizer::decode_json_post('keywords');
+            $kw_raw      = is_array($kw_decoded) ? wp_json_encode($kw_decoded) : '';
             $freq        = isset($_POST['frequency_days']) ? intval(wp_unslash($_POST['frequency_days']))                  : 7;
             $post_status = isset($_POST['post_status']) ? sanitize_text_field(wp_unslash($_POST['post_status'])) : 'draft';
             $include_image = !empty($_POST['include_image']) ? 1 : 0;
@@ -3049,9 +3125,10 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
             if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'Solo amministratori.')); return; }
             $id = intval($_POST['id'] ?? 0);
-            // Ignora rate limit: il run_now è esplicito dell'utente, può consumare crediti subito
-            // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
-            @set_time_limit(120);
+            // 3.35.85.0 (WP.org Issue 8): rely on the host's max_execution_time
+            // for this AJAX handler. The Autopilot::run_now() generates an AI
+            // article (text + image + meta), so the host should be configured
+            // with a reasonable PHP timeout. Plugin no longer overrides.
             $r = SEO_AEO_Autopilot::run_now($id);
             wp_send_json($r);
         } catch (Throwable $e) { wp_send_json(array('error' => $e->getMessage())); }
@@ -3697,12 +3774,9 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'Solo amministratori.')); return; }
             $slot_id = isset($_POST['slot_id']) ? sanitize_text_field(wp_unslash($_POST['slot_id'])) : '';
             if (empty($slot_id)) { wp_send_json(array('error' => 'slot_id mancante')); return; }
-            // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
-            @set_time_limit(300);
-            // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
-            @ini_set('max_execution_time', '300');
-            // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
-            @ini_set('memory_limit', '256M');
+            // 3.35.85.0 (WP.org Issue 8): plugin no longer overrides PHP runtime
+            // limits. The host's max_execution_time + memory_limit apply. AI
+            // preview generation may need a tuned host config.
             $t0 = microtime(true);
             $r = SEO_AEO_Calendar::generate_preview_for_slot($slot_id);
             $dt = round(microtime(true) - $t0, 2);
@@ -3721,8 +3795,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'Solo amministratori.')); return; }
             $slot_id = isset($_POST['slot_id']) ? sanitize_text_field(wp_unslash($_POST['slot_id'])) : '';
             if (empty($slot_id)) { wp_send_json(array('error' => 'slot_id mancante')); return; }
-            // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged
-            @set_time_limit(120);
+            // 3.35.85.0 (WP.org Issue 8): commit-phase only saves a transient
+            // into a post and notifies the backend; no runtime override needed.
             $r = SEO_AEO_Calendar::commit_preview_for_slot($slot_id);
             wp_send_json($r);
         } catch (Throwable $e) {
@@ -4286,11 +4360,16 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
         try {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
             if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
-            $ids_raw = isset($_POST['attach_ids']) ? $_POST['attach_ids'] : array();
+            // 3.35.85.0 (WP.org Issue 4): attach_ids may arrive as JSON or CSV;
+            // either way the decoded values are immediately cast to int below,
+            // so non-numeric leaves are silently dropped.
+            $ids_raw = isset($_POST['attach_ids']) ? wp_unslash($_POST['attach_ids']) : array();
             if (is_string($ids_raw)) {
-                // Allow CSV or JSON
-                $decoded = json_decode(wp_unslash($ids_raw), true);
-                $ids_raw = is_array($decoded) ? $decoded : explode(',', $ids_raw);
+                $decoded = json_decode($ids_raw, true);
+                if (!is_array($decoded)) {
+                    $decoded = explode(',', sanitize_text_field($ids_raw));
+                }
+                $ids_raw = $decoded;
             }
             $ids = array_values(array_unique(array_filter(array_map('intval', (array) $ids_raw))));
             if (empty($ids)) { wp_send_json(array('error' => 'Nessuna immagine selezionata')); return; }
@@ -4639,10 +4718,9 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
             if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
             $uid = get_current_user_id();
-            $items_raw = isset($_POST['items']) ? $_POST['items'] : '';
-            if (is_string($items_raw)) {
-                $items_raw = json_decode(wp_unslash($items_raw), true);
-            }
+            // 3.35.85.0 (WP.org Issue 4): items arrives as JSON; sanitize all
+            // decoded leaves via the central helper before we trust them.
+            $items_raw = SEO_AEO_Input_Sanitizer::decode_json_post('items');
             if (!is_array($items_raw) || empty($items_raw)) {
                 wp_send_json(array('error' => 'Nessun item da applicare'));
                 return;
@@ -4904,5 +4982,1734 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
     /**
      * 3.35.2 — Bulk delete slot calendar pianificati. Solo status=planned eliminabili.
      */
+
+
+
+    // ============================================================
+    // Identity Profile (Onboarding 2.0 Stage 1)
+    // ============================================================
+
+    public function ajax_identity_get() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            $api = $this->require_api();
+            if (!$api) return;
+            $result = $api->get_identity_profile();
+            wp_send_json(array('success' => true, 'profile' => is_array($result) ? $result : array()));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_identity_save() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            $api = $this->require_api();
+            if (!$api) return;
+
+            $payload_raw = isset($_POST['payload']) ? wp_unslash($_POST['payload']) : '';
+            $payload = is_string($payload_raw) ? json_decode($payload_raw, true) : array();
+            if (!is_array($payload)) $payload = array();
+
+            // Stage 1.5 nested payload shape:
+            //   { identity: {...}, global_filters: {...}, llms_settings: {exclude_patterns, featured_pages} }
+            // Backwards-compat: if `identity` key is missing, treat the whole payload
+            // as the identity block (3.35.47 flat shape).
+            $identity_in = isset($payload['identity']) && is_array($payload['identity']) ? $payload['identity'] : null;
+            if ($identity_in === null) {
+                $identity_in = $payload;
+            }
+
+            // ===== Identity profile sanitize + remote save =====
+            $clean = array();
+            $string_fields = array('business_name', 'business_description', 'industry', 'about_strategic');
+            foreach ($string_fields as $f) {
+                if (isset($identity_in[$f])) $clean[$f] = sanitize_textarea_field((string) $identity_in[$f]);
+            }
+            if (isset($identity_in['territories']) && is_array($identity_in['territories'])) {
+                $clean['territories'] = array_values(array_filter(array_map(function ($t) {
+                    return sanitize_text_field((string) $t);
+                }, $identity_in['territories']), function ($t) { return $t !== ''; }));
+            }
+            $td_fields = array('differentiators', 'use_cases');
+            foreach ($td_fields as $f) {
+                if (isset($identity_in[$f]) && is_array($identity_in[$f])) {
+                    $clean[$f] = array();
+                    foreach ($identity_in[$f] as $item) {
+                        if (!is_array($item)) continue;
+                        $clean[$f][] = array(
+                            'title'       => isset($item['title']) ? sanitize_text_field((string) $item['title']) : '',
+                            'description' => isset($item['description']) ? sanitize_textarea_field((string) $item['description']) : '',
+                        );
+                    }
+                }
+            }
+            // Paid fields — pass-through con sanitize. Backend rifiuta 403 se Free.
+            if (isset($identity_in['audiences']) && is_array($identity_in['audiences'])) {
+                $clean['audiences'] = array();
+                foreach ($identity_in['audiences'] as $a) {
+                    if (!is_array($a)) continue;
+                    $clean['audiences'][] = array(
+                        'role'        => isset($a['role']) ? sanitize_text_field((string) $a['role']) : '',
+                        'need'        => isset($a['need']) ? sanitize_textarea_field((string) $a['need']) : '',
+                        'looking_for' => isset($a['looking_for']) ? sanitize_textarea_field((string) $a['looking_for']) : '',
+                    );
+                }
+            }
+            if (isset($identity_in['certifications']) && is_array($identity_in['certifications'])) {
+                $clean['certifications'] = array();
+                foreach ($identity_in['certifications'] as $c) {
+                    if (!is_array($c)) continue;
+                    $clean['certifications'][] = array(
+                        'name'     => isset($c['name']) ? sanitize_text_field((string) $c['name']) : '',
+                        'category' => isset($c['category']) ? sanitize_text_field((string) $c['category']) : '',
+                        'note'     => isset($c['note']) ? sanitize_textarea_field((string) $c['note']) : '',
+                    );
+                }
+            }
+            if (isset($identity_in['testimonials']) && is_array($identity_in['testimonials'])) {
+                $clean['testimonials'] = array();
+                foreach ($identity_in['testimonials'] as $t) {
+                    if (!is_array($t)) continue;
+                    $clean['testimonials'][] = array(
+                        'client_ref' => isset($t['client_ref']) ? sanitize_text_field((string) $t['client_ref']) : '',
+                        'project'    => isset($t['project']) ? sanitize_textarea_field((string) $t['project']) : '',
+                        'result'     => isset($t['result']) ? sanitize_text_field((string) $t['result']) : '',
+                    );
+                }
+            }
+            if (isset($identity_in['faqs']) && is_array($identity_in['faqs'])) {
+                $clean['faqs'] = array();
+                foreach ($identity_in['faqs'] as $f) {
+                    if (!is_array($f)) continue;
+                    $clean['faqs'][] = array(
+                        'question' => isset($f['question']) ? sanitize_text_field((string) $f['question']) : '',
+                        'answer'   => isset($f['answer']) ? sanitize_textarea_field((string) $f['answer']) : '',
+                    );
+                }
+            }
+
+            $result = $api->save_identity_profile($clean);
+
+            // ===== Per-output settings (Stage 1.5 Addendum 2) =====
+            if (class_exists('SEO_AEO_Global_Filters')) {
+                // Sitemap.xml
+                if (isset($payload['sitemap_settings']) && is_array($payload['sitemap_settings'])) {
+                    $saved = SEO_AEO_Global_Filters::update_sitemap_settings($payload['sitemap_settings']);
+                    if (is_array($result)) $result['sitemap_settings'] = $saved;
+                }
+                // /llms-full.txt
+                if (isset($payload['llms_full_settings']) && is_array($payload['llms_full_settings'])) {
+                    $saved = SEO_AEO_Global_Filters::update_llms_full_settings($payload['llms_full_settings']);
+                    if (is_array($result)) $result['llms_full_settings'] = $saved;
+                }
+                // 3.35.59: Output <head> settings persistence
+                if (isset($payload['head_settings']) && is_array($payload['head_settings']) && class_exists('SEO_AEO_Output_Renderer')) {
+                    $hs = $payload['head_settings'];
+                    if (isset($hs['canonical'])) SEO_AEO_Output_Renderer::update_canonical_settings($hs['canonical']);
+                    if (isset($hs['title']))     SEO_AEO_Output_Renderer::update_title_formats($hs['title']);
+                    if (isset($hs['meta_desc'])) SEO_AEO_Output_Renderer::update_meta_desc_settings($hs['meta_desc']);
+                    if (isset($hs['og']))        SEO_AEO_Output_Renderer::update_og_settings($hs['og']);
+                    if (isset($hs['twitter']))   SEO_AEO_Output_Renderer::update_twitter_settings($hs['twitter']);
+                    if (isset($hs['robots']))    SEO_AEO_Output_Renderer::update_robots_settings($hs['robots']);
+                    if (is_array($result)) $result['head_settings_saved'] = true;
+                }
+                // Schema.org (mode)
+                if (isset($payload['schema_settings']) && is_array($payload['schema_settings'])) {
+                    $saved = SEO_AEO_Global_Filters::update_schema_settings($payload['schema_settings']);
+                    if (is_array($result)) $result['schema_settings'] = $saved;
+                    // 3.35.58: org defaults
+                    if (isset($payload['schema_settings']['org_defaults']) && class_exists('SEO_AEO_Schema')) {
+                        SEO_AEO_Schema::update_org_defaults($payload['schema_settings']['org_defaults']);
+                    }
+                    // 3.35.58: CPT overrides
+                    if (isset($payload['schema_settings']['cpt_overrides']) && class_exists('SEO_AEO_Schema')) {
+                        SEO_AEO_Schema::update_schema_cpt_overrides($payload['schema_settings']['cpt_overrides']);
+                    }
+                    // 3.35.58: breadcrumb toggle
+                    if (isset($payload['schema_settings']['breadcrumb']) && class_exists('SEO_AEO_Schema')) {
+                        SEO_AEO_Schema::update_breadcrumb_settings($payload['schema_settings']['breadcrumb']);
+                    }
+                }
+                // respect_noindex (footer-bar global)
+                if (array_key_exists('respect_noindex', $payload)) {
+                    $saved = SEO_AEO_Global_Filters::update_settings(array('respect_noindex' => (bool) $payload['respect_noindex']));
+                    if (is_array($result)) $result['global_filters'] = $saved;
+                }
+                // Backwards-compat: old `global_filters` block (3.35.49–3.35.50 payload)
+                if (isset($payload['global_filters']) && is_array($payload['global_filters'])) {
+                    $gf = $payload['global_filters'];
+                    $compat = array();
+                    if (array_key_exists('exclude_patterns', $gf)) $compat['exclude_patterns'] = $gf['exclude_patterns'];
+                    if (array_key_exists('respect_noindex',  $gf)) $compat['respect_noindex']  = $gf['respect_noindex'];
+                    if (!empty($compat)) {
+                        SEO_AEO_Global_Filters::update_settings($compat);
+                    }
+                    // post_types in the old shape → route to sitemap (preserve backwards compat per migration spec)
+                    if (array_key_exists('post_types', $gf)) {
+                        SEO_AEO_Global_Filters::update_sitemap_settings(array('post_types' => $gf['post_types']));
+                    }
+                }
+            }
+
+            // ===== llms-only settings (override patterns + featured_pages) =====
+            if (isset($payload['llms_settings']) && is_array($payload['llms_settings'])) {
+                $ls = $payload['llms_settings'];
+                if (array_key_exists('exclude_patterns', $ls)) {
+                    $raw = (string) $ls['exclude_patterns'];
+                    $raw = wp_check_invalid_utf8($raw);
+                    $raw = wp_strip_all_tags($raw);
+                    $raw = preg_replace('/\r\n|\r/', "\n", $raw);
+                    update_option('seo_aeo_llms_only_exclude_patterns', $raw);
+                }
+                if (array_key_exists('featured_pages', $ls) && is_array($ls['featured_pages']) && class_exists('SEO_AEO_LLMs_Txt')) {
+                    $saved_featured = SEO_AEO_LLMs_Txt::set_featured_pages($ls['featured_pages']);
+                    if (is_array($result)) {
+                        $result['featured_pages'] = $saved_featured;
+                    }
+                }
+            }
+
+            // After successful identity save, force a full regeneration: purge static
+            // legacy files + WP Rocket / W3TC / WPSC + transients + object cache. Silent
+            // variant (no internal sample fetch — UI shows that on demand).
+            if (is_array($result) && empty($result['error'])) {
+                if (class_exists('SEO_AEO_LLMs_Txt')) {
+                    $regen_report = SEO_AEO_LLMs_Txt::force_regenerate(array(
+                        'enable_toggle'  => true,
+                        'purge_external' => true,
+                        'fetch_sample'   => false,
+                    ));
+                    $result['regen'] = $regen_report;
+                }
+                // 3.35.52: also regen sitemap (silent, no sample) so user sees changes immediately
+                if (class_exists('SEO_AEO_Sitemap')) {
+                    $regen_sitemap = SEO_AEO_Sitemap::force_regenerate(array(
+                        'enable_toggle'  => true,
+                        'purge_external' => true,
+                        'fetch_sample'   => false,
+                    ));
+                    $result['regen_sitemap'] = $regen_sitemap;
+                }
+                delete_transient('seo_aeo_identity_profile');
+            }
+
+            wp_send_json($result);
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore salvataggio: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_identity_preview() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            $api = $this->require_api();
+            if (!$api) return;
+
+            $payload_raw = isset($_POST['payload']) ? wp_unslash($_POST['payload']) : '';
+            $payload = is_string($payload_raw) ? json_decode($payload_raw, true) : array();
+            if (!is_array($payload)) $payload = array();
+
+            $result = $api->preview_llms($payload);
+            wp_send_json($result);
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore preview: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+    /**
+     * Force regenerate /llms.txt — purges static legacy files, WP Rocket / W3TC / WPSC,
+     * transients, object cache; auto-enables the dynamic toggle; fetches a sample to verify.
+     * Wired to the "Rigenera /llms.txt" button in the SEO Output Nativo > Configurazione contenuti tab.
+     */
+    public function ajax_regenerate_llms() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_LLMs_Txt')) {
+                wp_send_json(array('error' => true, 'message' => 'Modulo llms.txt non caricato.'));
+                wp_die();
+                return;
+            }
+            $report = SEO_AEO_LLMs_Txt::force_regenerate(array(
+                'enable_toggle'  => true,
+                'purge_external' => true,
+                'fetch_sample'   => true,
+            ));
+            // 3.35.52: also regenerate sitemap on the same flow
+            $sitemap_report = null;
+            if (class_exists('SEO_AEO_Sitemap')) {
+                $sitemap_report = SEO_AEO_Sitemap::force_regenerate(array(
+                    'enable_toggle'  => true,
+                    'purge_external' => true,
+                    'fetch_sample'   => true,
+                ));
+            }
+            wp_send_json(array(
+                'success' => true,
+                'report' => $report,
+                'sitemap_report' => $sitemap_report,
+            ));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore rigenerazione: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+    /**
+     * Read current /llms.txt filter settings + the list of public post types
+     * detected on this site. Used by the "Filtri" fieldset in the admin UI.
+     */
+    /**
+     * Legacy alias preserved for backwards compatibility — delegates to config_get.
+     */
+    public function ajax_llms_settings_get() {
+        $this->ajax_config_get();
+    }
+
+    /**
+     * Returns BOTH global_filters and llms_settings blocks for the new
+     * Stage 1.5 admin UI (Section 1 + Section 2 llms accordion).
+     */
+    public function ajax_config_get() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+
+            // Lazy migrate (idempotent) — also bumps v1→v2
+            if (class_exists('SEO_AEO_Global_Filters')) {
+                SEO_AEO_Global_Filters::maybe_migrate();
+            }
+
+            $detected = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::detected_post_types() : array();
+            $detected_slugs = array_map(function ($d) { return $d['slug']; }, $detected);
+
+            // Sitemap.xml: default null = ALL detected
+            $sitemap_settings = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::get_sitemap_settings() : array('post_types' => null);
+            $sitemap_pt_user_set = is_array($sitemap_settings['post_types']);
+            $sitemap_pt = $sitemap_pt_user_set
+                ? array_values(array_filter($sitemap_settings['post_types'], 'is_string'))
+                : $detected_slugs; // UI shows all checked when null
+
+            // /llms-full.txt: default null = ['post', 'page']
+            $llms_full_settings = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::get_llms_full_settings() : array('post_types' => null);
+            $llms_full_pt_user_set = is_array($llms_full_settings['post_types']);
+            $llms_full_pt = $llms_full_pt_user_set
+                ? array_values(array_filter($llms_full_settings['post_types'], 'is_string'))
+                : array_values(array_intersect(SEO_AEO_Global_Filters::LLMS_FULL_DEFAULT_POST_TYPES, $detected_slugs));
+
+            // Schema.org: detection + mode
+            $schema_settings = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::get_schema_settings() : array('mode' => 'auto');
+            $schema_detection = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::detect_schema_providers() : array();
+            $schema_recommended = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::recommend_schema_mode() : 'replace';
+            $schema_resolved   = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::resolve_schema_mode() : 'replace';
+
+            // llms-only override patterns + featured pages
+            $llms_only_patterns = (string) get_option('seo_aeo_llms_only_exclude_patterns', '');
+
+            $featured_ids = class_exists('SEO_AEO_LLMs_Txt') ? SEO_AEO_LLMs_Txt::get_featured_pages() : array();
+            $featured_rich = array();
+            foreach ($featured_ids as $pid) {
+                $p = get_post($pid);
+                if (!$p) continue;
+                $featured_rich[] = array(
+                    'id'    => (int) $p->ID,
+                    'title' => get_the_title($p),
+                    'url'   => (string) get_permalink($p),
+                    'type'  => $p->post_type,
+                );
+            }
+
+            $global = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::get_settings() : array();
+
+            wp_send_json(array(
+                'success' => true,
+                'detected_types' => $detected,
+                'sitemap' => array(
+                    'post_types'          => $sitemap_pt,
+                    'post_types_user_set' => $sitemap_pt_user_set,
+                    'detected_providers'  => SEO_AEO_Global_Filters::detect_sitemap_providers(),
+                    'takeover_competitors' => SEO_AEO_Global_Filters::get_sitemap_takeover(),
+                    'takeover_recommended' => SEO_AEO_Global_Filters::recommend_sitemap_takeover(),
+                ),
+                'llms_full' => array(
+                    'post_types'          => $llms_full_pt,
+                    'post_types_user_set' => $llms_full_pt_user_set,
+                ),
+                'head_settings' => array(
+                    'canonical'   => class_exists('SEO_AEO_Output_Renderer') ? SEO_AEO_Output_Renderer::get_canonical_settings()  : array(),
+                    'title'       => class_exists('SEO_AEO_Output_Renderer') ? SEO_AEO_Output_Renderer::get_title_formats()       : array(),
+                    'meta_desc'   => class_exists('SEO_AEO_Output_Renderer') ? SEO_AEO_Output_Renderer::get_meta_desc_settings()  : array(),
+                    'og'          => class_exists('SEO_AEO_Output_Renderer') ? SEO_AEO_Output_Renderer::get_og_settings()         : array(),
+                    'twitter'     => class_exists('SEO_AEO_Output_Renderer') ? SEO_AEO_Output_Renderer::get_twitter_settings()    : array(),
+                    'robots'      => class_exists('SEO_AEO_Output_Renderer') ? SEO_AEO_Output_Renderer::get_robots_settings()     : array(),
+                ),
+                'schema' => array(
+                    'mode'                  => isset($schema_settings['mode']) ? (string) $schema_settings['mode'] : 'auto',
+                    'detected_providers'    => $schema_detection,
+                    'recommended_mode'      => $schema_recommended,
+                    'resolved_mode'         => $schema_resolved,
+                    'available_modes'       => SEO_AEO_Global_Filters::SCHEMA_MODES,
+                    // 3.35.58 (Stage 2.5 A.1+A.2+A.3): expanded schema controls
+                    'org_defaults'          => class_exists('SEO_AEO_Schema') ? SEO_AEO_Schema::get_org_defaults() : array(),
+                    'cpt_overrides'         => class_exists('SEO_AEO_Schema') ? SEO_AEO_Schema::get_schema_cpt_overrides() : array(),
+                    'detected_cpts'         => array_values(array_map(function ($pt) {
+                        $obj = get_post_type_object($pt);
+                        return array('slug' => $pt, 'label' => isset($obj->labels->name) ? $obj->labels->name : $pt);
+                    }, get_post_types(array('public' => true), 'names'))),
+                    'available_types'       => class_exists('SEO_AEO_Schema') ? SEO_AEO_Schema::valid_schema_types() : array('WebPage','Article','Product','Service'),
+                    'breadcrumb'            => class_exists('SEO_AEO_Schema') ? SEO_AEO_Schema::get_breadcrumb_settings() : array('enabled' => true, 'separator' => 'auto'),
+                ),
+                'llms_only' => array(
+                    'exclude_patterns' => $llms_only_patterns,
+                    'featured_pages'   => $featured_rich,
+                    'featured_max'     => class_exists('SEO_AEO_LLMs_Txt') ? SEO_AEO_LLMs_Txt::FEATURED_PAGES_MAX : 10,
+                ),
+                'respect_noindex' => !empty($global['respect_noindex']),
+            ));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    /**
+     * Posts autocomplete for the featured_pages selector.
+     * GET-style query params are accepted via $_POST too (admin-ajax POSTs).
+     *   q      string   search query (min 2 char)
+     *   limit  int      max results, default 15, capped at 30
+     */
+    public function ajax_search_posts() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+
+            $q = isset($_POST['q']) ? sanitize_text_field(wp_unslash($_POST['q'])) : '';
+            $q = trim($q);
+            if (mb_strlen($q) < 2) {
+                wp_send_json(array('success' => true, 'results' => array()));
+                wp_die();
+                return;
+            }
+            $limit = isset($_POST['limit']) ? max(1, min(30, (int) $_POST['limit'])) : 15;
+
+            $allowed = class_exists('SEO_AEO_Global_Filters')
+                ? SEO_AEO_Global_Filters::get_allowed_post_types()
+                : array('page', 'post');
+            // Featured pages don't require allowed-types check (user explicit choice),
+            // but autocomplete defaults to allowed types to avoid surfacing junk CPTs.
+            if (empty($allowed)) $allowed = array('page', 'post');
+
+            // 3.35.55: also match by _orch_role meta — typing 'home' / 'contact' / 'faq' finds the role
+            $role_matches = array();
+            if (class_exists('SEO_AEO_Page_Roles')) {
+                $q_lc = strtolower($q);
+                $role_alias_map = array(
+                    'home' => 'homepage', 'homepage' => 'homepage',
+                    'about' => 'about', 'chi siamo' => 'about', 'chi-siamo' => 'about', 'azienda' => 'about',
+                    'contact' => 'contact', 'contatti' => 'contact', 'contatto' => 'contact',
+                    'faq' => 'faq', 'domande' => 'faq',
+                    'quote' => 'quote_request', 'preventivo' => 'quote_request',
+                    'guide' => 'knowledge_guide', 'guida' => 'knowledge_guide', 'tutorial' => 'knowledge_guide',
+                    'product' => 'product_page', 'prodotto' => 'product_page',
+                    'service' => 'service_page', 'servizio' => 'service_page', 'servizi' => 'service_page',
+                    'blog' => 'blog_post', 'articolo' => 'blog_post', 'post' => 'blog_post',
+                    'privacy' => 'legal_privacy', 'cookie' => 'legal_privacy',
+                    'termini' => 'legal_terms', 'terms' => 'legal_terms', 'tos' => 'legal_terms',
+                );
+                $hit_role = null;
+                foreach ($role_alias_map as $alias => $role) {
+                    if ($q_lc === $alias || strpos($alias, $q_lc) === 0) {
+                        $hit_role = $role;
+                        break;
+                    }
+                }
+                if ($hit_role) {
+                    $role_matches = SEO_AEO_Page_Roles::find_by_role($hit_role, $limit);
+                }
+            }
+
+            // Standard text search via WP_Query
+            $found = get_posts(array(
+                'post_type'        => $allowed,
+                'post_status'      => 'publish',
+                's'                => $q,
+                'posts_per_page'   => $limit,
+                'orderby'          => 'relevance',
+                'order'            => 'DESC',
+                'no_found_rows'    => true,
+                'suppress_filters' => true,
+            ));
+
+            // Merge role matches at the front (highest priority), dedup by ID
+            if (!empty($role_matches)) {
+                $merged = array();
+                $seen = array();
+                foreach ($role_matches as $p) {
+                    if (isset($seen[$p->ID])) continue;
+                    $seen[$p->ID] = true;
+                    $merged[] = $p;
+                }
+                foreach ($found as $p) {
+                    if (isset($seen[$p->ID])) continue;
+                    $seen[$p->ID] = true;
+                    $merged[] = $p;
+                }
+                $found = array_slice($merged, 0, $limit);
+            }
+
+            $results = array();
+            foreach ($found as $p) {
+                if (class_exists('SEO_AEO_Global_Filters') && SEO_AEO_Global_Filters::is_post_globally_excluded($p)) continue;
+                $results[] = array(
+                    'id'    => (int) $p->ID,
+                    'title' => get_the_title($p),
+                    'url'   => (string) get_permalink($p),
+                    'type'  => $p->post_type,
+                );
+            }
+
+            wp_send_json(array('success' => true, 'results' => $results));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore search: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+
+    // ============================================================
+    // Stage 1.5 final (3.35.53-beta) — Preview multi-output endpoints.
+    //
+    // All preview methods are READ-ONLY: they fetch the current public output of
+    // each native module and return rendered + parsed content for the admin UI.
+    //
+    // Caching: each result is stored in a 60-second transient. POST `bust=1`
+    // forces a refresh (deletes the transient before fetching).
+    // ============================================================
+
+    private function _preview_cache_get($key) {
+        $cached = get_transient($key);
+        if ($cached !== false && is_array($cached)) return $cached;
+        return null;
+    }
+
+    private function _preview_cache_set($key, $data) {
+        set_transient($key, $data, 60);
+    }
+
+    private function _preview_should_bust() {
+        return !empty($_POST['bust']) && $_POST['bust'] !== '0';
+    }
+
+    private function _preview_check() {
+        check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json(array('error' => 'forbidden'));
+            wp_die();
+            return false;
+        }
+        return true;
+    }
+
+    private function _preview_internal_fetch($url, $timeout = 10) {
+        $resp = wp_remote_get($url, array(
+            'timeout'     => $timeout,
+            'redirection' => 0,
+            'sslverify'   => false,
+            'headers'     => array('Cache-Control' => 'no-cache'),
+        ));
+        if (is_wp_error($resp)) {
+            return array('error' => $resp->get_error_message(), 'body' => '', 'status' => 0, 'headers' => null);
+        }
+        return array(
+            'body'    => (string) wp_remote_retrieve_body($resp),
+            'status'  => (int) wp_remote_retrieve_response_code($resp),
+            'headers' => wp_remote_retrieve_headers($resp),
+            'error'   => null,
+        );
+    }
+
+    private function _preview_header($headers, $name) {
+        if (is_object($headers) && method_exists($headers, 'offsetGet')) {
+            return (string) $headers->offsetGet($name);
+        }
+        if (is_array($headers) && isset($headers[$name])) {
+            return (string) $headers[$name];
+        }
+        return '';
+    }
+
+    // ---- 1. Output <head> preview ----
+    public function ajax_preview_head() {
+        try {
+            if (!$this->_preview_check()) return;
+            $cache_key = 'seo_aeo_preview_head';
+            if ($this->_preview_should_bust()) delete_transient($cache_key);
+            $cached = $this->_preview_cache_get($cache_key);
+            if ($cached !== null) { wp_send_json($cached); wp_die(); return; }
+
+            $sample_url = isset($_POST['sample_url']) ? esc_url_raw(wp_unslash($_POST['sample_url'])) : home_url('/');
+            $f = $this->_preview_internal_fetch($sample_url);
+
+            $head_html = '';
+            if (!empty($f['body']) && preg_match('#<head[^>]*>(.*?)</head>#is', $f['body'], $m)) {
+                $head_html = $m[1];
+            }
+
+            $parsed = array(
+                'title'            => '',
+                'meta_description' => '',
+                'og'               => array(),
+                'twitter'          => array(),
+                'canonical'        => '',
+                'robots'           => '',
+            );
+            if ($head_html !== '') {
+                if (preg_match('#<title[^>]*>(.*?)</title>#is', $head_html, $m)) {
+                    $parsed['title'] = trim(wp_strip_all_tags($m[1]));
+                }
+                if (preg_match('#<meta\s+[^>]*name=["\']description["\'][^>]*content=["\']([^"\']*)["\']#i', $head_html, $m)) {
+                    $parsed['meta_description'] = $m[1];
+                }
+                if (preg_match_all('#<meta\s+[^>]*property=["\'](og:[^"\']+)["\'][^>]*content=["\']([^"\']*)["\']#i', $head_html, $mm, PREG_SET_ORDER)) {
+                    foreach ($mm as $row) $parsed['og'][$row[1]] = $row[2];
+                }
+                if (preg_match_all('#<meta\s+[^>]*name=["\'](twitter:[^"\']+)["\'][^>]*content=["\']([^"\']*)["\']#i', $head_html, $mm, PREG_SET_ORDER)) {
+                    foreach ($mm as $row) $parsed['twitter'][$row[1]] = $row[2];
+                }
+                if (preg_match('#<link\s+[^>]*rel=["\']canonical["\'][^>]*href=["\']([^"\']*)["\']#i', $head_html, $m)) {
+                    $parsed['canonical'] = $m[1];
+                }
+                if (preg_match('#<meta\s+[^>]*name=["\']robots["\'][^>]*content=["\']([^"\']*)["\']#i', $head_html, $m)) {
+                    $parsed['robots'] = $m[1];
+                }
+            }
+
+            $result = array(
+                'success'    => true,
+                'sample_url' => $sample_url,
+                'public_url' => $sample_url,
+                'html'       => $head_html,
+                'size'       => strlen($head_html),
+                'parsed'     => $parsed,
+                'fetch_status' => isset($f['status']) ? (int) $f['status'] : 0,
+                'fetch_error'  => isset($f['error']) ? $f['error'] : null,
+            );
+            $this->_preview_cache_set($cache_key, $result);
+            wp_send_json($result);
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'preview_head: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    // ---- 2. Sitemap.xml preview ----
+    public function ajax_preview_sitemap() {
+        try {
+            if (!$this->_preview_check()) return;
+            $cache_key = 'seo_aeo_preview_sitemap';
+            if ($this->_preview_should_bust()) delete_transient($cache_key);
+            $cached = $this->_preview_cache_get($cache_key);
+            if ($cached !== null) { wp_send_json($cached); wp_die(); return; }
+
+            $url = home_url('/sitemap.xml');
+            $f = $this->_preview_internal_fetch($url);
+
+            // First 20 <sitemap>...</sitemap> blocks for the index
+            $first20 = '';
+            $body = isset($f['body']) ? $f['body'] : '';
+            if ($body !== '' && preg_match_all('#<sitemap>.*?</sitemap>#is', $body, $blocks)) {
+                $head = '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+                $first_blocks = array_slice($blocks[0], 0, 20);
+                $first20 = $head . '  ' . implode("\n  ", $first_blocks) . "\n</sitemapindex>";
+            } else {
+                $first20 = $body;
+            }
+
+            // Sub-sitemap counts (per allowed CPT)
+            $sub_sitemaps = array();
+            $total_urls = 0;
+            if (class_exists('SEO_AEO_Global_Filters')) {
+                $allowed = SEO_AEO_Global_Filters::get_sitemap_post_types();
+                foreach ($allowed as $pt) {
+                    $count_obj = wp_count_posts($pt);
+                    $count = is_object($count_obj) && isset($count_obj->publish) ? (int) $count_obj->publish : 0;
+                    if ($count <= 0) continue;
+                    $sub_sitemaps[] = array(
+                        'type'  => $pt,
+                        'url'   => home_url('/sitemap-' . $pt . '.xml'),
+                        'count' => $count,
+                    );
+                    $total_urls += $count;
+                }
+            }
+
+            $result = array(
+                'success'      => true,
+                'public_url'   => $url,
+                'xml_first_20' => $first20,
+                'total_urls'   => $total_urls,
+                'total_size'   => strlen($body),
+                'sub_sitemaps' => $sub_sitemaps,
+                'generator'    => $this->_preview_header($f['headers'], 'x-seo-aeo-sitemap-generator'),
+                'fetch_status' => isset($f['status']) ? (int) $f['status'] : 0,
+                'fetch_error'  => isset($f['error']) ? $f['error'] : null,
+            );
+            $this->_preview_cache_set($cache_key, $result);
+            wp_send_json($result);
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'preview_sitemap: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    // ---- 3. /llms.txt preview (slim full file) ----
+    public function ajax_preview_llms() {
+        try {
+            if (!$this->_preview_check()) return;
+            $cache_key = 'seo_aeo_preview_llms';
+            if ($this->_preview_should_bust()) delete_transient($cache_key);
+            $cached = $this->_preview_cache_get($cache_key);
+            if ($cached !== null) { wp_send_json($cached); wp_die(); return; }
+
+            $url = home_url('/llms.txt');
+            $f = $this->_preview_internal_fetch($url);
+            $body = isset($f['body']) ? $f['body'] : '';
+
+            $sections = $this->_preview_parse_md_sections($body);
+            $featured_count = 0;
+            if (class_exists('SEO_AEO_LLMs_Txt')) {
+                $featured_count = count(SEO_AEO_LLMs_Txt::get_featured_pages());
+            }
+
+            $result = array(
+                'success'              => true,
+                'public_url'           => $url,
+                'markdown'             => $body,
+                'size'                 => strlen($body),
+                'sections'             => $sections,
+                'section_count'        => count($sections),
+                'featured_pages_count' => $featured_count,
+                'generator'            => $this->_preview_header($f['headers'], 'x-seo-aeo-llms-generator'),
+                'fetch_status'         => isset($f['status']) ? (int) $f['status'] : 0,
+                'fetch_error'          => isset($f['error']) ? $f['error'] : null,
+            );
+            $this->_preview_cache_set($cache_key, $result);
+            wp_send_json($result);
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'preview_llms: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    // ---- 4. /llms-full.txt preview ----
+    public function ajax_preview_llms_full() {
+        try {
+            if (!$this->_preview_check()) return;
+            $cache_key = 'seo_aeo_preview_llms_full';
+            if ($this->_preview_should_bust()) delete_transient($cache_key);
+            $cached = $this->_preview_cache_get($cache_key);
+            if ($cached !== null) { wp_send_json($cached); wp_die(); return; }
+
+            $url = home_url('/llms-full.txt');
+            $f = $this->_preview_internal_fetch($url);
+            $body = isset($f['body']) ? $f['body'] : '';
+
+            $sections = $this->_preview_parse_md_sections($body);
+            $first1500 = mb_substr($body, 0, 1500);
+
+            $result = array(
+                'success'             => true,
+                'public_url'          => $url,
+                'markdown_first_1500' => $first1500,
+                'total_size'          => strlen($body),
+                'section_count'       => count($sections),
+                'sections'            => $sections,
+                'generator'           => $this->_preview_header($f['headers'], 'x-seo-aeo-llms-generator'),
+                'fetch_status'        => isset($f['status']) ? (int) $f['status'] : 0,
+                'fetch_error'         => isset($f['error']) ? $f['error'] : null,
+            );
+            $this->_preview_cache_set($cache_key, $result);
+            wp_send_json($result);
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'preview_llms_full: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    private function _preview_parse_md_sections($md) {
+        $out = array();
+        if (!is_string($md) || $md === '') return $out;
+        if (!preg_match_all('/^(#{2,6})\s+(.+)$/m', $md, $matches, PREG_SET_ORDER)) return $out;
+        // Build per-section link counts by walking line-by-line
+        $current = null;
+        foreach (preg_split('/\r\n|\r|\n/', $md) as $line) {
+            if (preg_match('/^(#{2,6})\s+(.+)$/', $line, $m)) {
+                if ($current) $out[] = $current;
+                $current = array(
+                    'name'       => trim($m[2]),
+                    'level'      => strlen($m[1]),
+                    'link_count' => 0,
+                );
+            } elseif ($current && preg_match_all('#\[([^\]]+)\]\(#', $line, $lm)) {
+                $current['link_count'] += count($lm[1]);
+            }
+        }
+        if ($current) $out[] = $current;
+        return $out;
+    }
+
+    // ---- 5. Schema.org preview ----
+    public function ajax_preview_schema() {
+        try {
+            if (!$this->_preview_check()) return;
+            $cache_key = 'seo_aeo_preview_schema';
+            if ($this->_preview_should_bust()) delete_transient($cache_key);
+            $cached = $this->_preview_cache_get($cache_key);
+            if ($cached !== null) { wp_send_json($cached); wp_die(); return; }
+
+            $sample_url = isset($_POST['sample_url']) ? esc_url_raw(wp_unslash($_POST['sample_url'])) : home_url('/');
+            $f = $this->_preview_internal_fetch($sample_url);
+            $body = isset($f['body']) ? $f['body'] : '';
+
+            // Extract all <script type="application/ld+json"> blocks
+            $blocks = array();
+            if (preg_match_all('#<script[^>]*type=["\']application/ld\+json["\'][^>]*>(.*?)</script>#is', $body, $mm)) {
+                foreach ($mm[1] as $b) {
+                    $b = trim($b);
+                    if ($b === '') continue;
+                    $blocks[] = $b;
+                }
+            }
+
+            // Merge into a single @graph for rendering
+            $merged = array('@context' => 'https://schema.org', '@graph' => array());
+            foreach ($blocks as $b) {
+                $decoded = json_decode($b, true);
+                if (!is_array($decoded)) continue;
+                if (isset($decoded['@graph']) && is_array($decoded['@graph'])) {
+                    foreach ($decoded['@graph'] as $node) $merged['@graph'][] = $node;
+                } else {
+                    // A flat object — wrap as graph node
+                    $merged['@graph'][] = $decoded;
+                }
+            }
+
+            $types = array();
+            foreach ($merged['@graph'] as $node) {
+                if (isset($node['@type'])) {
+                    if (is_array($node['@type'])) {
+                        foreach ($node['@type'] as $t) $types[] = (string) $t;
+                    } else {
+                        $types[] = (string) $node['@type'];
+                    }
+                }
+            }
+            $types = array_values(array_unique($types));
+
+            $pretty = wp_json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if ($pretty === false) $pretty = '';
+
+            $detection = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::detect_schema_providers() : array();
+            $resolved  = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::resolve_schema_mode() : 'replace';
+            $settings  = class_exists('SEO_AEO_Global_Filters') ? SEO_AEO_Global_Filters::get_schema_settings() : array('mode' => 'auto');
+
+            $result = array(
+                'success'             => true,
+                'public_url'          => $sample_url,
+                'jsonld'              => $pretty,
+                'parsed'              => array(
+                    'types'       => $types,
+                    'context'     => 'https://schema.org',
+                    'graph_count' => count($merged['@graph']),
+                ),
+                'mode'                => isset($settings['mode']) ? (string) $settings['mode'] : 'auto',
+                'detected_providers'  => $detection,
+                'active_strategy'     => $resolved,
+                'fetch_status'        => isset($f['status']) ? (int) $f['status'] : 0,
+                'fetch_error'         => isset($f['error']) ? $f['error'] : null,
+            );
+            $this->_preview_cache_set($cache_key, $result);
+            wp_send_json($result);
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'preview_schema: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+    /**
+     * Identity Auto-Scan (Stage 2 — 3.35.54-beta).
+     * Paid only at backend → returns 403 wrapped in JSON for Free callers.
+     * Allow `force=1` to bypass 24h cache.
+     */
+    public function ajax_identity_scan() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            $api = $this->require_api();
+            if (!$api) return;
+
+            $mode = isset($_POST['mode']) ? sanitize_text_field(wp_unslash($_POST['mode'])) : 'top10';
+            $force = !empty($_POST['force']) && $_POST['force'] !== '0';
+
+            $pages_in = array();
+            if (!empty($_POST['pages'])) {
+                $raw = wp_unslash($_POST['pages']);
+                if (is_string($raw)) {
+                    $decoded = json_decode($raw, true);
+                    if (is_array($decoded)) $pages_in = array_map('intval', $decoded);
+                } elseif (is_array($raw)) {
+                    $pages_in = array_map('intval', $raw);
+                }
+                $pages_in = array_values(array_filter($pages_in, function ($v) { return $v > 0; }));
+            }
+
+            // Stage 2.5: build page_role_candidates locally — pages with low heuristic confidence
+            // become input for the backend's LLM augment step.
+            $candidates = array();
+            if (class_exists('SEO_AEO_Page_Roles')) {
+                $sample_ids = array();
+                if (!empty($pages_in)) {
+                    $sample_ids = $pages_in;
+                } else {
+                    // For mode=full, send the top-30 by ranking score (cap LLM cost)
+                    $sample_ids = SEO_AEO_Page_Roles::heuristic_rank_top10(50);
+                }
+                foreach ($sample_ids as $pid) {
+                    $p = get_post($pid);
+                    if (!$p) continue;
+                    $desc = SEO_AEO_Page_Roles::get_role_descriptor($pid);
+                    $heuristic_role = $desc && isset($desc['role']) ? $desc['role'] : null;
+                    $heuristic_conf = $desc && isset($desc['confidence']) ? (float) $desc['confidence'] : 0.0;
+                    // Only send pages where heuristic is uncertain (LLM augment target)
+                    if ($heuristic_conf >= 0.6) continue;
+                    $candidates[] = array(
+                        'id'                    => (int) $p->ID,
+                        'url'                   => (string) get_permalink($p),
+                        'title'                 => (string) get_the_title($p),
+                        'slug'                  => (string) $p->post_name,
+                        'heuristic_role'        => $heuristic_role,
+                        'heuristic_confidence'  => $heuristic_conf,
+                        'content_snippet'       => mb_substr(wp_strip_all_tags(strip_shortcodes((string) $p->post_content)), 0, 500),
+                    );
+                }
+            }
+
+            $result = $api->scan_site($mode, $pages_in, $force, $candidates);
+
+            // Apply LLM-suggested page role overrides if present
+            if (is_array($result) && !empty($result['page_role_overrides']) && class_exists('SEO_AEO_Page_Roles')) {
+                $bulk = array();
+                foreach ($result['page_role_overrides'] as $row) {
+                    if (!is_array($row)) continue;
+                    $pid = isset($row['id']) ? (int) $row['id'] : 0;
+                    if ($pid <= 0) continue;
+                    $bulk[$pid] = array(
+                        'role'       => $row['role'] ?? '',
+                        'confidence' => $row['confidence'] ?? 0.7,
+                    );
+                }
+                $applied = SEO_AEO_Page_Roles::bulk_set($bulk, 'llm');
+                $result['llm_overrides_applied'] = $applied;
+            }
+
+            // 3.35.56 (Stage 2.5 B): expose classification breakdown for status pill
+            if (class_exists('SEO_AEO_Page_Roles')) {
+                $map = SEO_AEO_Page_Roles::get_pages_with_role();
+                $heur = 0; $llm = 0; $manual = 0;
+                foreach ($map as $desc) {
+                    if (!is_array($desc) || !isset($desc['source'])) continue;
+                    if ($desc['source'] === 'heuristic') $heur++;
+                    elseif ($desc['source'] === 'llm') $llm++;
+                    elseif ($desc['source'] === 'manual') $manual++;
+                }
+                if (is_array($result)) {
+                    $result['pages_classified_total'] = count($map);
+                    $result['pages_classified_heuristic'] = $heur;
+                    $result['pages_classified_llm_augment'] = $llm;
+                    $result['pages_classified_manual'] = $manual;
+                    $result['pages_identity_analyzed'] = is_array($result['pages_scanned'] ?? null) ? count($result['pages_scanned']) : 0;
+                }
+            }
+
+            wp_send_json($result);
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore scan: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    /**
+     * Industry examples library (Stage 2 — 3.35.54-beta). Free for Paid + Free builds.
+     */
+    public function ajax_industry_examples() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            $api = $this->require_api();
+            if (!$api) return;
+            $industry = isset($_POST['industry']) ? sanitize_text_field(wp_unslash($_POST['industry'])) : '';
+            $result = $api->industry_examples($industry);
+            wp_send_json($result);
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore industry-examples: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+    // ============================================================
+    // Stage 2.5 (3.35.55) — Page Roles AJAX endpoints
+    // ============================================================
+
+    public function ajax_get_page_roles() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_Page_Roles')) {
+                wp_send_json(array('error' => true, 'message' => 'Page Roles class non disponibile.'));
+                wp_die();
+                return;
+            }
+
+            $map = SEO_AEO_Page_Roles::get_pages_with_role();
+            $top10 = SEO_AEO_Page_Roles::heuristic_rank_top10(10);
+
+            // Hydrate map with post titles for UI
+            $rows = array();
+            $seen_ids = array();
+            foreach ($map as $pid => $desc) {
+                $pid = (int) $pid;
+                if ($pid <= 0 || isset($seen_ids[$pid])) continue;
+                $seen_ids[$pid] = true;
+                $p = get_post($pid);
+                if (!$p) continue;
+                $rows[] = array(
+                    'id'         => $pid,
+                    'title'      => get_the_title($p),
+                    'url'        => (string) get_permalink($p),
+                    'slug'       => (string) $p->post_name,
+                    'post_type'  => (string) $p->post_type,
+                    'role'       => isset($desc['role']) ? $desc['role'] : 'custom',
+                    'confidence' => isset($desc['confidence']) ? (float) $desc['confidence'] : 0.0,
+                    'source'     => isset($desc['source']) ? $desc['source'] : 'heuristic',
+                    'updated_at' => isset($desc['updated_at']) ? $desc['updated_at'] : '',
+                );
+            }
+
+            // Top-10 hydrated
+            $top10_rich = array();
+            foreach ($top10 as $pid) {
+                $p = get_post($pid);
+                if (!$p) continue;
+                $desc = SEO_AEO_Page_Roles::get_role_descriptor($pid);
+                $top10_rich[] = array(
+                    'id'         => $pid,
+                    'title'      => get_the_title($p),
+                    'url'        => (string) get_permalink($p),
+                    'slug'       => (string) $p->post_name,
+                    'post_type'  => (string) $p->post_type,
+                    'role'       => $desc && isset($desc['role']) ? $desc['role'] : 'custom',
+                    'confidence' => $desc && isset($desc['confidence']) ? (float) $desc['confidence'] : 0.0,
+                );
+            }
+
+            // Pro onboarding flag
+            $pro_onboarding_seen = (bool) get_option('seo_aeo_pro_onboarding_seen', 0);
+
+            wp_send_json(array(
+                'success' => true,
+                'roles_map' => $rows,
+                'top10' => $top10_rich,
+                'roles_enum' => SEO_AEO_Page_Roles::ROLES,
+                'pro_onboarding_seen' => $pro_onboarding_seen,
+                'total_classified' => count($rows),
+            ));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore page roles: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_set_role() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_Page_Roles')) {
+                wp_send_json(array('error' => true, 'message' => 'Page Roles class non disponibile.'));
+                wp_die();
+                return;
+            }
+
+            $post_id = isset($_POST['post_id']) ? (int) $_POST['post_id'] : 0;
+            $role = isset($_POST['role']) ? sanitize_key(wp_unslash($_POST['role'])) : '';
+
+            if ($post_id <= 0) {
+                wp_send_json(array('error' => true, 'message' => 'post_id non valido'));
+                wp_die();
+                return;
+            }
+            if (!in_array($role, SEO_AEO_Page_Roles::ROLES, true)) {
+                wp_send_json(array('error' => true, 'message' => 'role non valido'));
+                wp_die();
+                return;
+            }
+
+            $ok = SEO_AEO_Page_Roles::set_role($post_id, $role, 'manual', 1.0);
+            wp_send_json(array('success' => (bool) $ok, 'post_id' => $post_id, 'role' => $role));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore set_role: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    /**
+     * Auto-suggest 5 featured pages from heuristic-classified roles
+     * (homepage, about, contact, faq, quote_request).
+     */
+    public function ajax_apply_featured_from_roles() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_Page_Roles')) {
+                wp_send_json(array('error' => true, 'message' => 'Page Roles class non disponibile.'));
+                wp_die();
+                return;
+            }
+
+            $LIMIT = 10;
+            $picked = array();
+            $exclude = array();
+
+            // 5 universal core roles + strategic cascade (3.35.56)
+            $core_roles = array('homepage', 'about', 'contact', 'faq', 'quote_request');
+            foreach ($core_roles as $role) {
+                if (count($picked) >= $LIMIT) break;
+                $found = SEO_AEO_Page_Roles::find_by_role($role, 1);
+                foreach ($found as $p) {
+                    if (in_array($p->ID, $exclude, true)) continue;
+                    $exclude[] = (int) $p->ID;
+                    $picked[] = array(
+                        'id'     => (int) $p->ID,
+                        'title'  => get_the_title($p),
+                        'url'    => (string) get_permalink($p),
+                        'type'   => $p->post_type,
+                        'role'   => $role,
+                        'reason' => 'core',
+                    );
+                    if (count($picked) >= $LIMIT) break 2;
+                }
+            }
+
+            // Strategic cascade: category_landing × 2 + product × 1 + knowledge_guide × 1 + service × 1
+            $strategic = array(
+                array('role' => 'category_landing',  'count' => 2),
+                array('role' => 'product_page',      'count' => 1),
+                array('role' => 'knowledge_guide',   'count' => 1),
+                array('role' => 'service_page',      'count' => 1),
+            );
+            foreach ($strategic as $cfg) {
+                if (count($picked) >= $LIMIT) break;
+                $found = SEO_AEO_Page_Roles::find_by_role_ranked($cfg['role'], $cfg['count'], $exclude);
+                foreach ($found as $p) {
+                    if (count($picked) >= $LIMIT) break;
+                    if (in_array((int) $p->ID, $exclude, true)) continue;
+                    $exclude[] = (int) $p->ID;
+                    $picked[] = array(
+                        'id'     => (int) $p->ID,
+                        'title'  => get_the_title($p),
+                        'url'    => (string) get_permalink($p),
+                        'type'   => $p->post_type,
+                        'role'   => $cfg['role'],
+                        'reason' => 'strategic',
+                    );
+                }
+            }
+
+            // Final fallback: heuristic top-10 minus already picked
+            if (count($picked) < $LIMIT) {
+                $top = SEO_AEO_Page_Roles::heuristic_rank_top10(20);
+                foreach ($top as $pid) {
+                    if (count($picked) >= $LIMIT) break;
+                    if (in_array((int) $pid, $exclude, true)) continue;
+                    $p = get_post($pid);
+                    if (!$p) continue;
+                    $desc = SEO_AEO_Page_Roles::get_role_descriptor($pid);
+                    $exclude[] = (int) $pid;
+                    $picked[] = array(
+                        'id'     => (int) $pid,
+                        'title'  => get_the_title($p),
+                        'url'    => (string) get_permalink($p),
+                        'type'   => $p->post_type,
+                        'role'   => $desc && isset($desc['role']) ? $desc['role'] : 'custom',
+                        'reason' => 'fallback',
+                    );
+                }
+            }
+
+            // Persist as featured_pages option
+            if (!empty($picked) && class_exists('SEO_AEO_LLMs_Txt')) {
+                $ids_only = array_map(function ($x) { return $x['id']; }, $picked);
+                SEO_AEO_LLMs_Txt::set_featured_pages($ids_only);
+            }
+
+            wp_send_json(array(
+                'success' => true,
+                'picked' => $picked,
+                'limit' => $LIMIT,
+                'count' => count($picked),
+            ));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore apply featured: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_pro_onboarding_seen() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            update_option('seo_aeo_pro_onboarding_seen', 1, false);
+            wp_send_json(array('success' => true));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_run_heuristic_classify() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_Page_Roles')) {
+                wp_send_json(array('error' => true, 'message' => 'Page Roles class non disponibile.'));
+                wp_die();
+                return;
+            }
+            $report = SEO_AEO_Page_Roles::heuristic_classify_all();
+            wp_send_json(array('success' => true, 'report' => $report));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore heuristic: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+    /* ───────── 3.35.66 H feature: Migration Importer ───────── */
+
+    public function ajax_migration_importer_detect() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_Migration_Importer')) {
+                wp_send_json(array('error' => true, 'message' => 'Migration Importer class non disponibile.'));
+                wp_die();
+                return;
+            }
+            $detected = SEO_AEO_Migration_Importer::detect_plugins();
+            $multilingual = SEO_AEO_Migration_Importer::detect_multilingual();
+            $backups = SEO_AEO_Migration_Importer::list_backups();
+            wp_send_json(array(
+                'success'      => true,
+                'detected'     => $detected,
+                'multilingual' => $multilingual,
+                'backups'      => $backups,
+            ));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore detect: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_migration_importer_batch() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_Migration_Importer')) {
+                wp_send_json(array('error' => true, 'message' => 'Migration Importer class non disponibile.'));
+                wp_die();
+                return;
+            }
+            $plugin = isset($_POST['plugin']) ? sanitize_key($_POST['plugin']) : '';
+            $offset = isset($_POST['offset']) ? max(0, (int) $_POST['offset']) : 0;
+            $limit  = isset($_POST['limit']) ? max(1, min(100, (int) $_POST['limit'])) : 50;
+
+            $opts = array(
+                'override_existing' => !empty($_POST['override_existing']),
+            );
+            if (isset($_POST['skip_keys'])) {
+                $skip = is_array($_POST['skip_keys']) ? $_POST['skip_keys'] : array();
+                $opts['skip_keys'] = array_map('sanitize_text_field', $skip);
+            }
+
+            // Create backup on the FIRST batch (offset=0) when no backup_id provided
+            $backup_id = isset($_POST['backup_id']) ? sanitize_text_field($_POST['backup_id']) : '';
+            if ($offset === 0 && $backup_id === '' && !empty($_POST['create_backup'])) {
+                $backup_id = (string) SEO_AEO_Migration_Importer::create_backup($plugin);
+            }
+
+            $result = SEO_AEO_Migration_Importer::import_batch($plugin, $offset, $limit, $opts);
+            $result['backup_id'] = $backup_id;
+            wp_send_json(array('success' => true, 'result' => $result));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore import_batch: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_migration_importer_rollback() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_Migration_Importer')) {
+                wp_send_json(array('error' => true, 'message' => 'Migration Importer class non disponibile.'));
+                wp_die();
+                return;
+            }
+            $plugin = isset($_POST['plugin']) ? sanitize_key($_POST['plugin']) : '';
+            $backup_id = isset($_POST['backup_id']) ? sanitize_text_field($_POST['backup_id']) : '';
+            if (!$plugin || !$backup_id) {
+                wp_send_json(array('error' => true, 'message' => 'plugin + backup_id richiesti.'));
+                wp_die();
+                return;
+            }
+            $result = SEO_AEO_Migration_Importer::rollback($plugin, $backup_id);
+            wp_send_json(array('success' => empty($result['error']), 'result' => $result));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore rollback: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_migration_importer_list_backups() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_Migration_Importer')) {
+                wp_send_json(array('error' => true, 'message' => 'Migration Importer class non disponibile.'));
+                wp_die();
+                return;
+            }
+            $backups = SEO_AEO_Migration_Importer::list_backups();
+            wp_send_json(array('success' => true, 'backups' => $backups));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore list_backups: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+    /* ───────── 3.35.68 D.5: live preview <head> ───────── */
+
+    public function ajax_head_preview() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+
+            $url = isset($_POST['url']) ? esc_url_raw(wp_unslash($_POST['url'])) : home_url('/');
+            $url = filter_var($url, FILTER_VALIDATE_URL) ? $url : home_url('/');
+
+            // Fetch the page (server-side, bypasses caches that might affect logged-in user view)
+            $resp = wp_remote_get($url, array(
+                'timeout' => 8,
+                'sslverify' => false,
+                'redirection' => 3,
+                'user-agent' => 'AEO-Orchestra-Preview/3.35.68',
+            ));
+            if (is_wp_error($resp)) {
+                wp_send_json(array('error' => true, 'message' => 'Fetch error: ' . $resp->get_error_message()));
+                return;
+            }
+            $code = wp_remote_retrieve_response_code($resp);
+            $body = wp_remote_retrieve_body($resp);
+
+            $head_html = '';
+            if (preg_match('#<head[^>]*>(.*?)</head>#si', $body, $m)) {
+                $head_html = $m[1];
+            }
+
+            // 3.35.72/3.35.74: Extract Orchestra-only block + Schema.org JSON-LD block + filter
+            // (third-party plugins like WP Rocket inject prefetch tags inside our head range)
+            $orch_only = '';
+            if (preg_match('#<!--\s*AEO Orchestra · Native Output.*?-->(.*?)<!--\s*/AEO Orchestra · Native Output\s*-->#si', $head_html, $m)) {
+                $orch_only = trim($m[1]);
+            } elseif (preg_match('#<!--\s*AEO Orchestra.*?-->(.*?)(?=<!--\s*/AEO Orchestra|$)#si', $head_html, $m)) {
+                $orch_only = trim($m[1]);
+            }
+            // 3.35.74: also append Schema.org block (JSON-LD) — Orchestra emits as separate block
+            if (preg_match('#<!--\s*AEO Orchestra · Schema\.org.*?-->(.*?)<!--\s*/AEO Orchestra · Schema\.org\s*-->#si', $head_html, $sm)) {
+                $orch_only .= "\n" . trim($sm[1]);
+            }
+            if ($orch_only === '') {
+                // Fallback: pick all meta/link/title/script JSON-LD tags in the head
+                preg_match_all('#<(?:title|meta|link|script)[^>]*(?:>(?:.*?)</(?:title|script)>|/?>)#si', $head_html, $tags);
+                $orch_only = isset($tags[0]) ? implode("\n", $tags[0]) : '';
+            }
+            // 3.35.72 D.5 filter: keep ONLY tags Orchestra is known to emit (whitelist)
+            if ($orch_only !== '') {
+                $keepers = array(
+                    '/<title[\s>]/i',
+                    '/<meta\s+name=["\']description["\']/i',
+                    '/<meta\s+name=["\']robots["\']/i',
+                    '/<meta\s+name=["\']generator["\']/i',
+                    '/<meta\s+name=["\']author["\']/i',
+                    '/<meta\s+name=["\']twitter:/i',
+                    '/<meta\s+property=["\']og:/i',
+                    '/<meta\s+property=["\']article:/i',
+                    '/<link\s+rel=["\']canonical["\']/i',
+                    '/<link\s+rel=["\']alternate["\']/i',
+                    '/<link\s+rel=["\']prev["\']/i',
+                    '/<link\s+rel=["\']next["\']/i',
+                    '/<script\s+type=["\']application\/ld\+json["\']/i',
+                );
+                // Split by tag boundary while preserving multi-line scripts
+                preg_match_all('#<(?:title|meta|link|script)[^>]*?(?:>[\s\S]*?</(?:title|script)>|/?>)#i', $orch_only, $matches);
+                $kept = array();
+                if (!empty($matches[0])) {
+                    foreach ($matches[0] as $tag) {
+                        foreach ($keepers as $pat) {
+                            if (preg_match($pat, $tag)) {
+                                $kept[] = trim($tag);
+                                break;
+                            }
+                        }
+                    }
+                }
+                $orch_only = implode("\n", $kept);
+            }
+
+            wp_send_json(array(
+                'success'        => true,
+                'url'            => $url,
+                'http_code'      => $code,
+                'fetched_at'     => current_time('mysql'),
+                'head_full'      => $head_html,
+                'head_orch_only' => $orch_only,
+                'head_size'      => strlen($head_html),
+                'tags_count'     => substr_count($head_html, '<meta') + substr_count($head_html, '<link') + substr_count($head_html, '<title'),
+            ));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => 'Errore preview: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+    /* ───────── 3.35.70: Hreflang status + toggle ───────── */
+
+    public function ajax_hreflang_status() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_Hreflang')) { wp_send_json(array('error' => true, 'message' => 'class missing')); return; }
+            $post_id = isset($_POST['post_id']) ? (int) $_POST['post_id'] : 0;
+            $preview = SEO_AEO_Hreflang::render_preview($post_id);
+            wp_send_json(array(
+                'success'  => true,
+                'plugin'   => SEO_AEO_Hreflang::detect_plugin(),
+                'enabled'  => SEO_AEO_Hreflang::is_enabled(),
+                'preview'  => $preview,
+            ));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_hreflang_toggle() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            $enable = !empty($_POST['enable']) ? '1' : '0';
+            update_option('seo_aeo_hreflang_enabled', $enable);
+            wp_send_json(array('success' => true, 'enabled' => SEO_AEO_Hreflang::is_enabled()));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+    /* ───────── 3.35.74: Sitemap role overrides save/get ───────── */
+
+    public function ajax_sitemap_role_settings_get() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            wp_send_json(array(
+                'success' => true,
+                'priority'   => get_option('seo_aeo_sitemap_priority_overrides', array()),
+                'changefreq' => get_option('seo_aeo_sitemap_changefreq_overrides', array()),
+                'noindex'    => get_option('seo_aeo_sitemap_noindex_overrides', array()),
+                'defaults' => array(
+                    'priority' => array(
+                        'homepage'=>'1.0','about'=>'0.9','blog_index'=>'0.9','service_page'=>'0.8','product_page'=>'0.8','category_landing'=>'0.8',
+                        'contact'=>'0.7','faq'=>'0.7','quote_request'=>'0.7','knowledge_guide'=>'0.6','blog_post'=>'0.5','custom'=>'0.5',
+                        'legal_privacy'=>'0.3','legal_terms'=>'0.3','ignore'=>'0.0',
+                    ),
+                    'changefreq' => array(
+                        'homepage'=>'daily','blog_index'=>'daily','blog_post'=>'weekly','faq'=>'monthly',
+                        'contact'=>'yearly','legal_privacy'=>'yearly','legal_terms'=>'yearly',
+                    ),
+                ),
+            ));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_sitemap_role_settings_save() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            $valid_roles = array('homepage','blog_index','about','contact','faq','quote_request','knowledge_guide','category_landing','service_page','product_page','blog_post','legal_privacy','legal_terms','custom','ignore');
+            $valid_cf = array('always','hourly','daily','weekly','monthly','yearly','never');
+
+            $kind = isset($_POST['kind']) ? sanitize_key($_POST['kind']) : '';
+            $role = isset($_POST['role']) ? sanitize_key($_POST['role']) : '';
+            $value = isset($_POST['value']) ? sanitize_text_field(wp_unslash($_POST['value'])) : '';
+            if (!in_array($role, $valid_roles, true) && $role !== '__all__') {
+                wp_send_json(array('error' => true, 'message' => 'invalid role'));
+                wp_die(); return;
+            }
+
+            $option_key = '';
+            if ($kind === 'priority')   $option_key = 'seo_aeo_sitemap_priority_overrides';
+            elseif ($kind === 'changefreq') $option_key = 'seo_aeo_sitemap_changefreq_overrides';
+            elseif ($kind === 'noindex') $option_key = 'seo_aeo_sitemap_noindex_overrides';
+            else { wp_send_json(array('error' => true, 'message' => 'invalid kind')); wp_die(); return; }
+
+            $overrides = get_option($option_key, array());
+            if (!is_array($overrides)) $overrides = array();
+
+            if ($role === '__all__' && $value === '__reset__') {
+                delete_option($option_key);
+                wp_send_json(array('success' => true, 'reset' => true));
+                wp_die(); return;
+            }
+
+            if ($value === '' || $value === '__default__') {
+                unset($overrides[$role]);
+            } else {
+                if ($kind === 'priority') {
+                    $f = (float) $value;
+                    if ($f < 0 || $f > 1) { wp_send_json(array('error' => true, 'message' => 'priority out of range')); wp_die(); return; }
+                    $overrides[$role] = number_format($f, 1);
+                } elseif ($kind === 'changefreq') {
+                    if (!in_array($value, $valid_cf, true)) { wp_send_json(array('error' => true, 'message' => 'invalid changefreq')); wp_die(); return; }
+                    $overrides[$role] = $value;
+                } elseif ($kind === 'noindex') {
+                    $overrides[$role] = $value === '1' ? 1 : 0;
+                    if ($overrides[$role] === 0) unset($overrides[$role]);
+                }
+            }
+            update_option($option_key, $overrides, false);
+
+            // Bust sitemap cache so next /sitemap.xml reflects override immediately
+            if (class_exists('SEO_AEO_Sitemap') && method_exists('SEO_AEO_Sitemap', 'flush_all_cache')) {
+                SEO_AEO_Sitemap::flush_all_cache();
+            }
+            wp_send_json(array('success' => true, 'overrides' => $overrides));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+    /* ───────── 3.35.75: Featured pages auto-suggest ───────── */
+
+    public function ajax_llms_featured_auto_suggest() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_LLMs_Txt') || !method_exists('SEO_AEO_LLMs_Txt', 'get_auto_suggested_pages')) {
+                wp_send_json(array('error' => true, 'message' => 'auto-suggest method non disponibile'));
+                wp_die(); return;
+            }
+            $limit = isset($_POST['limit']) ? max(1, min(30, (int) $_POST['limit'])) : 10;
+            $suggested = SEO_AEO_LLMs_Txt::get_auto_suggested_pages($limit);
+            $current_featured = SEO_AEO_LLMs_Txt::get_featured_pages();
+            wp_send_json(array(
+                'success' => true,
+                'suggested' => $suggested,
+                'current_featured_ids' => $current_featured,
+                'count' => count($suggested),
+            ));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    public function ajax_llms_featured_apply_suggested() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_LLMs_Txt')) { wp_send_json(array('error' => true)); return; }
+            $ids = isset($_POST['ids']) && is_array($_POST['ids']) ? array_map('intval', $_POST['ids']) : array();
+            $merge_with_current = !empty($_POST['merge']) ? true : false;
+
+            if ($merge_with_current) {
+                $existing = SEO_AEO_LLMs_Txt::get_featured_pages();
+                $merged = array_values(array_unique(array_merge($existing, $ids)));
+                $saved = SEO_AEO_LLMs_Txt::set_featured_pages($merged);
+            } else {
+                $saved = SEO_AEO_LLMs_Txt::set_featured_pages($ids);
+            }
+            wp_send_json(array('success' => true, 'saved' => $saved, 'count' => count($saved)));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+
+    /* ───────── 3.35.76: AI Provider Router AJAX handlers ───────── */
+
+    public function ajax_brand_voice_about_generate() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
+            if (!class_exists('SEO_AEO_AI_Provider_Router')) { wp_send_json(array('error' => true, 'message' => 'router missing')); return; }
+
+            $tier = isset($_POST['tier']) ? sanitize_key($_POST['tier']) : 'standard';
+            if (!in_array($tier, array('standard', 'premium_plus', 'premium_plus_plus'), true)) $tier = 'standard';
+
+            // Build context for prompt
+            $profile = get_option('seo_aeo_orchestra_identity_profile', array());
+            $brand_voice = '';
+            if (class_exists('SEO_AEO_Brand_Voice') && method_exists('SEO_AEO_Brand_Voice', 'build_system_prompt_addition')) {
+                $brand_voice = SEO_AEO_Brand_Voice::build_system_prompt_addition();
+            }
+            $industry = !empty($profile['industry']) ? (string) $profile['industry'] : '';
+            $business_name = !empty($profile['business_name']) ? (string) $profile['business_name'] : get_bloginfo('name');
+            $business_desc = !empty($profile['business_description']) ? (string) $profile['business_description'] : '';
+
+            // Gather top 5 featured page titles for context
+            $featured_titles = array();
+            if (class_exists('SEO_AEO_LLMs_Txt') && method_exists('SEO_AEO_LLMs_Txt', 'get_featured_pages')) {
+                $featured_ids = SEO_AEO_LLMs_Txt::get_featured_pages();
+                $sample = array_slice($featured_ids, 0, 5);
+                foreach ($sample as $pid) {
+                    $t = get_the_title($pid);
+                    if ($t) $featured_titles[] = $t;
+                }
+            }
+
+            $system = "Sei un copywriter strategico. Scrivi un About per llms.txt che presenti questa azienda agli AI assistants (ChatGPT, Claude, Perplexity). 200-500 caratteri ciascuna. Italiano. Includi: cosa fa, per chi, dove, da quando se nota, differenziatori chiave. Output JSON: {\"variants\": [{\"tone\": \"formal\", \"text\": \"...\"}, {\"tone\": \"conversational\", \"text\": \"...\"}, {\"tone\": \"authoritative\", \"text\": \"...\"}]}. NESSUN testo fuori dal JSON.";
+            if ($brand_voice) {
+                $system .= "\n\nBrand voice context:\n" . $brand_voice;
+            }
+
+            $user_msg = "Azienda: " . $business_name;
+            if ($industry) $user_msg .= "\nIndustry: " . $industry;
+            if ($business_desc) $user_msg .= "\nDescrizione corrente (riferimento): " . $business_desc;
+            if (!empty($featured_titles)) $user_msg .= "\nPagine top: " . implode(' · ', $featured_titles);
+            $user_msg .= "\n\nGenera 3 varianti differenti per tono: formal / conversational / authoritative. Output: solo JSON valido.";
+
+            $payload = array(
+                'system'      => $system,
+                'messages'    => array(array('role' => 'user', 'content' => $user_msg)),
+                'max_tokens'  => 2500,
+                'temperature' => 0.7,
+            );
+
+            $result = SEO_AEO_AI_Provider_Router::call_for_task('brand-voice-about', $payload, array(
+                'tier'    => $tier,
+                'user_id' => get_current_user_id(),
+            ));
+
+            if (empty($result['ok'])) {
+                wp_send_json(array(
+                    'error'        => true,
+                    'message'      => isset($result['error']) ? $result['error'] : 'unknown',
+                    'user_message' => isset($result['user_message']) ? $result['user_message'] : '⚠ Premium+ temporaneamente non disponibile. Riprova fra qualche minuto.',
+                    'result'       => $result,
+                ));
+                wp_die(); return;
+            }
+
+            // Parse JSON variants from response.text
+            $text = isset($result['response']['text']) ? (string) $result['response']['text'] : '';
+            $text = trim($text);
+            // Strip code fences if model wrapped in ```json ... ```
+            $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
+            $text = preg_replace('/\s*```\s*$/', '', $text);
+            $variants = array();
+            $parsed = json_decode($text, true);
+            if (is_array($parsed) && isset($parsed['variants']) && is_array($parsed['variants'])) {
+                foreach ($parsed['variants'] as $v) {
+                    if (is_array($v) && isset($v['text'])) {
+                        $variants[] = array(
+                            'tone' => isset($v['tone']) ? (string) $v['tone'] : '',
+                            'text' => trim((string) $v['text']),
+                        );
+                    }
+                }
+            }
+
+            wp_send_json(array(
+                'success'        => true,
+                'variants'       => $variants,
+                'tier_used'      => $tier,
+                'provider_used'  => $result['provider'],
+                'model_used'     => $result['model'],
+                'credits_cost'   => $result['credits_cost'],
+                'raw_text'       => $text,
+            ));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => true, 'message' => $e->getMessage()));
+        }
+        wp_die();
+    }
+
+
+    /**
+     * 3.35.82: AJAX handler for Verify-Live pre-verify preview panel.
+     * Returns identity_profile + brand_voice + homepage_context + stats.
+     * Honor force=1 to bypass homepage cache.
+     */
+    public function ajax_verify_live_preview() {
+        check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'forbidden'), 403);
+        }
+        if (!class_exists('SEO_AEO_Verify_Live')) {
+            wp_send_json_error(array('message' => 'verify_live_class_missing'), 500);
+        }
+        $force = !empty($_POST['force']) ? true : false;
+        $url = isset($_POST['url']) ? esc_url_raw((string) wp_unslash($_POST['url'])) : home_url('/');
+        if (!filter_var($url, FILTER_VALIDATE_URL)) $url = home_url('/');
+
+        try {
+            $payload = SEO_AEO_Verify_Live::get_preview_payload($url, $force);
+            wp_send_json_success($payload);
+        } catch (Throwable $e) {
+            wp_send_json_error(array('message' => $e->getMessage()), 500);
+        }
+    }
 
 }

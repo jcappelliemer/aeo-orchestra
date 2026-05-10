@@ -58,25 +58,30 @@ class SEO_AEO_Orchestra_Widget {
                 $current_post_id = intval(get_option('page_on_front'));
             }
 
+            $show_branding = $this->should_show_branding();
             wp_localize_script('seo-aeo-widget', 'seoAeoWidget', array(
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('seo_aeo_widget_nonce'),
                 'pageUrl' => is_singular() ? get_permalink() : home_url(add_query_arg(array(), false)),
                 'postId' => $current_post_id,
-                'showBranding' => $this->should_show_branding(),
-                'brandingUrl' => 'https://aeo-orchestra.com',
-                'brandingText' => 'Powered by AEO Orchestra'
+                'showBranding' => $show_branding,
+                // Branding URL/text are only emitted when the admin has opted in;
+                // otherwise the JS receives empty strings and nothing renders.
+                'brandingUrl' => $show_branding ? 'https://aeo-orchestra.com' : '',
+                'brandingText' => $show_branding ? 'Powered by AEO Orchestra' : '',
             ));
         } catch (Throwable $e) {
         }
     }
 
     private function should_show_branding() {
-        $branding = get_option('seo_aeo_orchestra_widget_branding', 'auto');
-        if ($branding === 'always') return true;
-        if ($branding === 'never') return false;
-        $license_type = ($this->main && isset($this->main->license_type)) ? $this->main->license_type : get_option('seo_aeo_orchestra_license_type', 'starter');
-        return !in_array($license_type, array('professional', 'team', 'b2b_custom'));
+        // 3.35.85.0 (WP.org Guideline 10 compliance): user-facing attribution
+        // ("Powered by AEO Orchestra") is opt-in only. Default OFF. The site
+        // admin must explicitly enable the toggle in Settings before any
+        // branding renders on the public site. Legacy 'auto' / 'always' modes
+        // are no longer honored on the public-facing widget — only an explicit
+        // opt-in via `seo_aeo_orchestra_show_branding` (bool) shows the link.
+        return (bool) get_option('seo_aeo_orchestra_show_branding', false);
     }
 
     public function ajax_widget_score() {

@@ -19,6 +19,8 @@ class SEO_AEO_Orchestra_Admin_UI {
         try {
             $this->main = $main;
             add_action('admin_menu', array($this, 'add_admin_menu'));
+            add_action('admin_menu', array($this, 'inject_menu_separators'), 999);
+            add_action('admin_head', array($this, 'output_menu_styles'));
             add_action('admin_init', array($this, 'register_settings'));
             add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
             add_action('add_meta_boxes', array($this, 'add_seo_meta_box'));
@@ -29,9 +31,7 @@ class SEO_AEO_Orchestra_Admin_UI {
     }
 
     public function add_admin_menu() {
-        // Parent menu: callback = Wizard (3.22.0). Evita doppio render dovuto al fatto
-        // che add_menu_page e il primo add_submenu_page con stesso slug registrano
-        // ENTRAMBI un callback sull'hook della pagina.
+        // 3.35.65: Riorganizzazione menu in 5 macro-aree con $position per ordering esplicito.
         add_menu_page(
             'AEO Orchestra',
             'AEO Orchestra',
@@ -42,40 +42,179 @@ class SEO_AEO_Orchestra_Admin_UI {
             30
         );
 
-        // i18n labels (3.25.0): SEO_AEO_T::t() ritorna IT di default, EN se locale=en
         $tt = function($s) { return class_exists('SEO_AEO_T') ? SEO_AEO_T::t($s) : $s; };
 
-        // Dashboard (era "Wizard" in 3.22.x → rinominato "Dashboard" in 3.25.9): primo submenu, stesso slug parent
-        add_submenu_page('seo-aeo-orchestra', $tt('Dashboard'), $tt('📊 Dashboard'), 'manage_options', 'seo-aeo-orchestra', array($this, 'render_wizard_page'));
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Orchestratore'), $tt('🎯 Orchestratore'), 'manage_options', 'seo-aeo-orchestratore', array($this, 'render_admin_page')); }
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Analisi SEO'), $tt('🔍 Analisi SEO'), 'manage_options', 'seo-aeo-analyze', array($this, 'render_analyze_page')); }
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Meta Tags'), $tt('🏷️ Meta Tags'), 'manage_options', 'seo-aeo-meta', array($this, 'render_meta_page')); }
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Contenuti AI'), $tt('✨ Contenuti AI'), 'manage_options', 'seo-aeo-content', array($this, 'render_content_page')); }
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Local SEO'), $tt('📍 Local SEO'), 'manage_options', 'seo-aeo-local', array($this, 'render_local_page')); }
-        // Cannibalizzazione SEO (3.28.0): pagina dedicata estratta dall'Orchestratore
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Cannibalizzazione SEO'), $tt('🌳 Cannibalizzazione SEO'), 'manage_options', 'seo-aeo-cannibalization', array($this, 'render_cannibalization_page')); }
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Analisi AEO'), $tt('🧠 Analisi AEO'), 'manage_options', 'seo-aeo-aeo-analysis', array($this, 'render_aeo_analysis_page')); }
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Contenuti AEO'), $tt('💬 Contenuti AEO'), 'manage_options', 'seo-aeo-aeo-content', array($this, 'render_aeo_content_page')); }
-        // Native SEO Output (3.17.0): submenu dedicato per le feature "Switch da Yoast"
-        add_submenu_page('seo-aeo-orchestra', $tt('SEO Output Nativo'), $tt('⚡ SEO Output Nativo'), 'manage_options', 'seo-aeo-native-output', array($this, 'render_native_output_page'));
-        add_submenu_page('seo-aeo-orchestra', $tt('Redirect Manager'), $tt('🔀 Redirect Manager'), 'manage_options', 'seo-aeo-redirect', array($this, 'render_redirect_page'));
-        // Brand Voice Learning (3.21.0): roadmap Soro Killer
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Brand Voice'), $tt('🎙️ Brand Voice'), 'manage_options', 'seo-aeo-brand-voice', array($this, 'render_brand_voice_page')); }
-        // Keyword Research Autopilot (3.23.0): roadmap Soro Killer
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Keyword Research'), $tt('🎯 Keyword Research'), 'manage_options', 'seo-aeo-keyword-research', array($this, 'render_keyword_research_page')); }
-        // Auto-Pilot Scheduler (3.24.0): cron WP per articoli automatici
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Auto-Pilot'), $tt('🤖 Auto-Pilot'), 'manage_options', 'seo-aeo-autopilot', array($this, 'render_autopilot_page')); }
-        // Migration Wizard (3.19.0): wizard guidato per migrare da Yoast/RankMath/AIOSEO
-        add_submenu_page('seo-aeo-orchestra', $tt('Migrazione SEO'), $tt('🚀 Migrazione SEO'), 'manage_options', 'seo-aeo-migration-wizard', array($this, 'render_migration_wizard_page'));
-        if (SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Pro Features'), $tt('💎 Pro Features'), 'manage_options', 'seo-aeo-pro', array($this, 'render_pro_features_page')); }
-        // Content Calendar (3.33.0): pianifica articoli AI con auto-publish opzionale
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Calendario contenuti AI'), $tt('📅 Calendario'), 'manage_options', 'seo-aeo-orchestra-calendar', array($this, 'render_calendar_page')); }
-        // Image SEO Manager (3.34.0): audit + bulk fix metadata immagini con AI Vision
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Image SEO Manager'), $tt('🖼 Immagini SEO'), 'manage_options', 'seo-aeo-orchestra-images', array($this, 'render_images_page')); }
-        // Analytics (3.32.0): GSC insights + Orchestra KPI
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Analytics'), $tt('📈 Analytics'), 'manage_options', 'seo-aeo-orchestra-analytics', array($this, 'render_analytics_page')); }
-        if (!SEO_AEO_IS_FREE) { add_submenu_page('seo-aeo-orchestra', $tt('Consumo Crediti'), $tt('💳 Consumo Crediti'), 'manage_options', 'seo-aeo-usage', array($this, 'render_usage_page')); }
-        add_submenu_page('seo-aeo-orchestra', $tt('Impostazioni'), $tt('⚙️ Impostazioni'), 'manage_options', 'seo-aeo-settings', array($this, 'render_settings_page'));
+        // ─── Top of menu ───
+        add_submenu_page('seo-aeo-orchestra', $tt('Dashboard'),               $tt('📊 Dashboard'),               'manage_options', 'seo-aeo-orchestra',           array($this, 'render_wizard_page'),         10);
+        // 3.35.83: Business Profile — foundation feature (single source of context per tutti i tool AI)
+        add_submenu_page('seo-aeo-orchestra', $tt('Profilo Business'),       $tt('🏢 Profilo Business'),        'manage_options', 'seo-aeo-business-profile',    array('SEO_AEO_Business_Profile', 'render_page'), 15);
+        // SEO + AEO Output (3.35.65: rename da "SEO Output Nativo", slug invariato per backward compat)
+        add_submenu_page('seo-aeo-orchestra', $tt('SEO + AEO Output'),        $tt('⚡ SEO + AEO Output'),        'manage_options', 'seo-aeo-native-output',       array($this, 'render_native_output_page'),  20);
+
+        // 3.35.85.0 (WP.org compliance): every submenu registers unconditionally.
+        // Premium operations are gated server-side by license_key, not by hiding UI.
+        // The standalone "Pro Features" upsell submenu has been removed; the same
+        // CTA now lives inside Settings → Account & Plan (admin-facing per Guideline 11).
+
+        // ─── ANALISI ───
+        add_submenu_page('seo-aeo-orchestra', $tt('Analisi SEO'),             $tt('🔍 Analisi SEO'),             'manage_options', 'seo-aeo-analyze',             array($this, 'render_analyze_page'),         40);
+        add_submenu_page('seo-aeo-orchestra', $tt('Analisi AEO'),             $tt('🧠 Analisi AEO'),             'manage_options', 'seo-aeo-aeo-analysis',        array($this, 'render_aeo_analysis_page'),    50);
+        add_submenu_page('seo-aeo-orchestra', $tt('Cannibalizzazione SEO'),   $tt('🌳 Cannibalizzazione SEO'),   'manage_options', 'seo-aeo-cannibalization',     array($this, 'render_cannibalization_page'), 60);
+        add_submenu_page('seo-aeo-orchestra', $tt('Analytics'),               $tt('📈 Analytics'),               'manage_options', 'seo-aeo-orchestra-analytics', array($this, 'render_analytics_page'),       70);
+
+        // ─── CREAZIONE ───
+        add_submenu_page('seo-aeo-orchestra', $tt('Orchestratore'),           $tt('🎯 Orchestratore'),           'manage_options', 'seo-aeo-orchestratore',       array($this, 'render_admin_page'),           38);
+        add_submenu_page('seo-aeo-orchestra', $tt('Brand Voice'),             $tt('🎙️ Brand Voice'),             'manage_options', 'seo-aeo-brand-voice',         array($this, 'render_brand_voice_page'),     110);
+        add_submenu_page('seo-aeo-orchestra', $tt('Contenuti AEO'),           $tt('💬 Contenuti AEO'),           'manage_options', 'seo-aeo-aeo-content',         array($this, 'render_aeo_content_page'),     120);
+        add_submenu_page('seo-aeo-orchestra', $tt('Contenuti AI'),            $tt('✨ Contenuti AI'),            'manage_options', 'seo-aeo-content',             array($this, 'render_content_page'),         130);
+        add_submenu_page('seo-aeo-orchestra', $tt('Keyword Research'),        $tt('🎯 Keyword Research'),        'manage_options', 'seo-aeo-keyword-research',    array($this, 'render_keyword_research_page'),65);
+        add_submenu_page('seo-aeo-orchestra', $tt('Meta Tags'),               $tt('🏷️ Meta Tags'),               'manage_options', 'seo-aeo-meta',                array($this, 'render_meta_page'),            150);
+        add_submenu_page('seo-aeo-orchestra', $tt('Immagini SEO'),            $tt('🖼 Immagini SEO'),             'manage_options', 'seo-aeo-orchestra-images',    array($this, 'render_images_page'),          160);
+        add_submenu_page('seo-aeo-orchestra', $tt('Local SEO'),               $tt('📍 Local SEO'),               'manage_options', 'seo-aeo-local',               array($this, 'render_local_page'),           170);
+        // 3.35.65: rename "Calendario contenuti AI" → "Pianificazione articoli" (slug invariato)
+        add_submenu_page('seo-aeo-orchestra', $tt('Pianificazione articoli'), $tt('📅 Pianificazione articoli'), 'manage_options', 'seo-aeo-orchestra-calendar',  array($this, 'render_calendar_page'),        180);
+        add_submenu_page('seo-aeo-orchestra', $tt('Auto-Pilot'),              $tt('🤖 Auto-Pilot'),              'manage_options', 'seo-aeo-autopilot',           array($this, 'render_autopilot_page'),       190);
+
+        // ─── OPERATIONS ───
+        add_submenu_page('seo-aeo-orchestra', $tt('Redirect Manager'),        $tt('🔀 Redirect Manager'),        'manage_options', 'seo-aeo-redirect',            array($this, 'render_redirect_page'),        200);
+        add_submenu_page('seo-aeo-orchestra', $tt('Migrazione SEO'),          $tt('🚀 Migrazione SEO'),          'manage_options', 'seo-aeo-migration-wizard',    array($this, 'render_migration_wizard_page'),210);
+
+        // 3.35.80: AI Crawlers (OPERATIONS macro-area)
+        add_submenu_page('seo-aeo-orchestra', $tt('AI Crawlers'),            $tt('🛡️ AI Crawlers'),            'manage_options', 'seo-aeo-ai-crawlers',         array($this, 'render_ai_crawlers_page'),     220);
+
+        // ─── ACCOUNT ───
+        add_submenu_page('seo-aeo-orchestra', $tt('Consumo Crediti'),         $tt('💳 Consumo Crediti'),         'manage_options', 'seo-aeo-usage',               array($this, 'render_usage_page'),           300);
+        add_submenu_page('seo-aeo-orchestra', $tt('Impostazioni'),            $tt('⚙️ Impostazioni'),            'manage_options', 'seo-aeo-settings',            array($this, 'render_settings_page'),        310);
+    }
+
+    /**
+     * 3.35.65: Inietta separator categoriali nel global $submenu.
+     * Eseguito a admin_menu priority 999 (dopo tutti gli add_submenu_page).
+     */
+    public function inject_menu_separators() {
+        global $submenu;
+        if (!isset($submenu['seo-aeo-orchestra']) || !is_array($submenu['seo-aeo-orchestra'])) return;
+
+        $tt = function($s) { return class_exists('SEO_AEO_T') ? SEO_AEO_T::t($s) : $s; };
+
+        // 3.35.67.1: sequence-based menu rebuild. WP $position parameter on add_submenu_page
+        // is unreliable across WP versions / themes, so instead we declare the explicit
+        // ORDER here and rebuild $submenu by walking this sequence. Slugs not present in
+        // the original $submenu (e.g. free-build SKUs) are simply skipped.
+        $sequence = array(
+            'seo-aeo-orchestra',              // Dashboard
+            'seo-aeo-native-output',          // SEO + AEO Output
+            '__SEP__:📊 ANALISI',
+            'seo-aeo-orchestratore',          // Orchestratore (was 100→38, now in ANALISI)
+            'seo-aeo-analyze',
+            'seo-aeo-aeo-analysis',
+            'seo-aeo-cannibalization',
+            'seo-aeo-keyword-research',       // Keyword Research (was 140→65, now in ANALISI)
+            'seo-aeo-orchestra-analytics',
+            '__SEP__:✨ CREAZIONE',
+            'seo-aeo-brand-voice',
+            'seo-aeo-aeo-content',
+            'seo-aeo-content',
+            'seo-aeo-meta',
+            'seo-aeo-orchestra-images',
+            'seo-aeo-local',
+            '__SEP__:🔧 OPERATIONS',
+            'seo-aeo-orchestra-calendar',     // Pianificazione articoli (now in OPERATIONS)
+            'seo-aeo-autopilot',
+            'seo-aeo-redirect',
+            'seo-aeo-migration-wizard',
+            'seo-aeo-ai-crawlers',
+            '__SEP__:⚙️ ACCOUNT',
+            'seo-aeo-pro',                    // Pro Features (free build only)
+            'seo-aeo-usage',
+            'seo-aeo-settings',
+        );
+
+        // Build slug -> item lookup from current $submenu
+        $by_slug = array();
+        foreach ($submenu['seo-aeo-orchestra'] as $item) {
+            if (isset($item[2])) $by_slug[(string) $item[2]] = $item;
+        }
+
+        $new = array();
+        foreach ($sequence as $slug) {
+            if (strpos($slug, '__SEP__:') === 0) {
+                $label = $tt('─── ' . substr($slug, 8) . ' ───');
+                $new[] = array(
+                    $label,
+                    'read',
+                    '#orch-sep-' . substr(md5($slug), 0, 8),
+                );
+                continue;
+            }
+            if (isset($by_slug[$slug])) {
+                $new[] = $by_slug[$slug];
+                unset($by_slug[$slug]);
+            }
+        }
+        // Append any remaining items (e.g. items added by other plugins or hooks)
+        // so we never silently drop registered submenus
+        foreach ($by_slug as $remaining_slug => $item) {
+            $new[] = $item;
+        }
+        $submenu['seo-aeo-orchestra'] = $new;
+    }
+
+    /**
+     * 3.35.65: Inline CSS+JS for menu separators + nowrap labels.
+     * Hooked on admin_head -- runs on every admin page.
+     */
+    public function output_menu_styles() {
+        ?>
+        <style id="orch-menu-styles">
+        /* Macro-area separators (non-clickable headers) */
+        #adminmenu .wp-submenu li a[href*="#orch-sep-"] {
+            pointer-events: none !important;
+            cursor: default !important;
+            opacity: 0.55;
+            font-size: 11px !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding-top: 12px !important;
+            padding-bottom: 4px !important;
+            color: #c3c4c7 !important;
+            font-weight: 600;
+        }
+        #adminmenu .wp-submenu li a[href*="#orch-sep-"]:hover {
+            color: #c3c4c7 !important;
+            background: transparent !important;
+        }
+        /* Nowrap labels su tutto il submenu Orchestra */
+        #adminmenu .toplevel_page_seo-aeo-orchestra .wp-submenu li a {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
+        </style>
+        <?php ob_start(); ?>
+// 3.35.65: prevent default navigation on separator clicks (defensive)
+        document.addEventListener("DOMContentLoaded", function() {
+            var seps = document.querySelectorAll('#adminmenu .wp-submenu li a[href*="#orch-sep-"]');
+            for (var i = 0; i < seps.length; i++) {
+                seps[i].addEventListener("click", function(e) { e.preventDefault(); return false; });
+                seps[i].setAttribute("tabindex", "-1");
+                seps[i].setAttribute("aria-hidden", "true");
+            }
+        });
+<?php SEO_AEO_Inline_Assets::add_inline_script(ob_get_clean()); ?>
+        <?php
+    }
+
+    /**
+     * 3.35.80: AI Crawlers section render — delegates to SEO_AEO_AI_Crawler_Admin.
+     */
+    public function render_ai_crawlers_page() {
+        if (class_exists('SEO_AEO_AI_Crawler_Admin')) {
+            SEO_AEO_AI_Crawler_Admin::render_page();
+        } else {
+            echo '<div class="wrap"><h1>AI Crawlers</h1><p>Class missing.</p></div>';
+        }
     }
 
     /**
@@ -239,6 +378,16 @@ class SEO_AEO_Orchestra_Admin_UI {
             $js_enqueued = false;
             if (file_exists($js_path)) {
                 wp_enqueue_script('seo-aeo-admin', $plugin_url . 'assets/js/admin.js', array('jquery'), $version, true);
+
+            // 3.35.81: Verify-Live UI streaming (only on SEO + AEO Output page)
+            if (isset($_GET['page']) && $_GET['page'] === 'seo-aeo-native-output') {
+                if (file_exists($plugin_dir . 'assets/css/verify-live.css')) {
+                    wp_enqueue_style('seo-aeo-verify-live', $plugin_url . 'assets/css/verify-live.css', array(), $version);
+                }
+                if (file_exists($plugin_dir . 'assets/js/verify-live-streaming.js')) {
+                    wp_enqueue_script('seo-aeo-verify-live', $plugin_url . 'assets/js/verify-live-streaming.js', array('jquery'), $version, true);
+                }
+            }
                 $js_enqueued = true;
             }
 
@@ -453,7 +602,7 @@ class SEO_AEO_Orchestra_Admin_UI {
 
             }
 
-            if (in_array($page, array('seo-aeo-orchestra', 'seo-aeo-content'))) {
+            if (in_array($page, array('seo-aeo-orchestra', 'seo-aeo-content', 'seo-aeo-native-output'))) {
                 wp_enqueue_media();
             }
 
@@ -503,7 +652,13 @@ class SEO_AEO_Orchestra_Admin_UI {
     }
 
     public function save_seo_meta($post_id) {
-        if (!isset($_POST['seo_aeo_orchestra_meta_nonce']) || !wp_verify_nonce($_POST['seo_aeo_orchestra_meta_nonce'], 'seo_aeo_orchestra_meta_box')) return;
+        if (
+            !isset($_POST['seo_aeo_orchestra_meta_nonce']) ||
+            !wp_verify_nonce(
+                sanitize_text_field(wp_unslash($_POST['seo_aeo_orchestra_meta_nonce'])),
+                'seo_aeo_orchestra_meta_box'
+            )
+        ) return;
         if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
         if (!current_user_can('edit_post', $post_id)) return;
 

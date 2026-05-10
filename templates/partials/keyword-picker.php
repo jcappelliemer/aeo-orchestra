@@ -69,7 +69,7 @@ $seo_aeo_kp_uid       = 'kp-' . substr(md5(serialize($seo_aeo_kp_targets) . micr
     </aside>
 </div>
 
-<style>
+<?php ob_start(); ?>
 .orch-kp-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0 16px; }
 .orch-kp-pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: linear-gradient(90deg, #ecfdf5, #d1fae5); border: 1px solid #6ee7b7; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600; color: #065f46; transition: all 0.15s; }
 .orch-kp-pill:hover { background: linear-gradient(90deg, #d1fae5, #a7f3d0); transform: translateY(-1px); }
@@ -133,9 +133,9 @@ $seo_aeo_kp_uid       = 'kp-' . substr(md5(serialize($seo_aeo_kp_targets) . micr
 .orch-kp-drawer-foot { padding: 14px 22px; border-top: 1px solid #e5e7eb; background: #fafafa; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .orch-kp-selection-status { font-size: 12px; color: #4b5563; }
 .orch-kp-drawer-actions { display: flex; gap: 8px; }
-</style>
+<?php SEO_AEO_Inline_Assets::add_inline_style(ob_get_clean()); ?>
 
-<script>
+<?php ob_start(); ?>
 (function() {
     if (typeof window.ajaxurl === 'undefined') {
         window.ajaxurl = '<?php echo esc_js(admin_url('admin-ajax.php')); ?>';
@@ -324,4 +324,4 @@ $seo_aeo_kp_uid       = 'kp-' . substr(md5(serialize($seo_aeo_kp_targets) . micr
         });
     });
 })();
-</script>
+<?php SEO_AEO_Inline_Assets::add_inline_script(ob_get_clean()); ?>

@@ -4,7 +4,7 @@
  * Plugin Name: AEO Orchestra
  * Plugin URI: https://aeo-orchestra.com
  * Description: Plugin SEO + AEO completo: specialisti AI perfettamente orchestrati per meta tags, content generation, schema, llms.txt, sitemap, redirect manager, brand voice e altro.
- * Version: 3.35.44
+ * Version: 3.35.85.1-beta
  * Requires at least: 5.8
  * Tested up to: 6.9
  * Requires PHP: 7.4
@@ -27,9 +27,9 @@
  */
 if (!defined('ABSPATH')) exit;
 
-define('SEO_AEO_VERSION', '3.35.44');
-define('SEO_AEO_AGENTS_COUNT', 12);  // mirrors backend/helpers/config.py AGENTS_COUNT — bump on every new agent
-define('SEO_AEO_TOOLS_COUNT', 18);   // mirrors backend/helpers/config.py TOOLS_COUNT — bump on every new tool
+define('SEO_AEO_VERSION', '3.35.85.1-beta');
+define('SEO_AEO_AGENTS_COUNT', 13);  // 3.35.84.2: +Verify-Live  // mirrors backend/helpers/config.py AGENTS_COUNT — bump on every new agent
+define('SEO_AEO_TOOLS_COUNT', 22);   // 3.35.84.2: +Verify-Live, Profilo Business, AI Performance, AI Crawlers   // mirrors backend/helpers/config.py TOOLS_COUNT — bump on every new tool
 define('SEO_AEO_DIR', plugin_dir_path(__FILE__));
 define('SEO_AEO_URL', plugin_dir_url(__FILE__));
 define('SEO_AEO_PLUGIN_DIR', SEO_AEO_DIR);
@@ -44,21 +44,58 @@ if (!defined('SEO_AEO_DISTRIBUTION_CHANNEL')) {
     define('SEO_AEO_DISTRIBUTION_CHANNEL', 'wporg');
 }
 
-// SEO_AEO_IS_FREE: true when distributed via WP.org (no AI features, no SaaS backend).
-// false (default) for direct distribution from aeo-orchestra.com — full Pro features.
-if (!defined('SEO_AEO_IS_FREE')) {
-    define('SEO_AEO_IS_FREE', SEO_AEO_DISTRIBUTION_CHANNEL === 'wporg');
-}
-
 /*
- * Pro+Free coexistence guard.
- * The WP.org Free build lives in /wp-content/plugins/aeo-orchestra/ while
- * the direct Pro build lives in /wp-content/plugins/seo-aeo-orchestra/.
- * They share option keys (seo_aeo_*) and DB tables, so running both
- * simultaneously emits duplicate <head> output. Only the Free build
- * needs to step aside; if Pro is present, Free auto-deactivates.
+ * 3.35.85.0 (WP.org review compliance): SEO_AEO_IS_FREE constant removed.
+ * The plugin codebase is now a single distribution. All features ship in
+ * every build; premium operations are gated server-side (serviceware) by
+ * the `SEO_AEO_API_URL` backend based on `seo_aeo_orchestra_license_key`.
+ * The only remaining channel-aware behavior is the custom updater, which
+ * only loads when SEO_AEO_DISTRIBUTION_CHANNEL !== 'wporg' (WP.org rules
+ * forbid plugins shipping their own updaters).
+ *
+ * Coexistence guard (Pro install + WP.org install on the same site):
+ * the WP.org channel auto-deactivates if it detects the direct Pro slug.
+ * Both builds share option keys (seo_aeo_*) and DB tables, so running
+ * both simultaneously emits duplicate <head> output. Only the WP.org
+ * channel needs to step aside.
  */
-if (SEO_AEO_IS_FREE) {
+// 3.35.55: Heuristic page roles classification on activation + weekly refresh.
+register_activation_hook(__FILE__, function () {
+    if (!wp_next_scheduled('seo_aeo_weekly_role_classify')) {
+        wp_schedule_event(time() + DAY_IN_SECONDS, 'weekly', 'seo_aeo_weekly_role_classify');
+    }
+    // Defer the first heuristic classification to a single-fire event so activation stays fast.
+    wp_schedule_single_event(time() + 30, 'seo_aeo_first_role_classify');
+});
+register_deactivation_hook(__FILE__, function () {
+    $ts = wp_next_scheduled('seo_aeo_weekly_role_classify');
+    if ($ts) wp_unschedule_event($ts, 'seo_aeo_weekly_role_classify');
+    $ts2 = wp_next_scheduled('seo_aeo_first_role_classify');
+    if ($ts2) wp_unschedule_event($ts2, 'seo_aeo_first_role_classify');
+});
+add_action('seo_aeo_first_role_classify', function () {
+    if (class_exists('SEO_AEO_Page_Roles')) {
+        SEO_AEO_Page_Roles::heuristic_classify_all();
+    }
+});
+
+// Self-healing: if the cron isn't scheduled (e.g. plugin upgraded without re-activation),
+// schedule it on the first admin_init.
+add_action('admin_init', function () {
+    if (!wp_next_scheduled('seo_aeo_weekly_role_classify')) {
+        wp_schedule_event(time() + DAY_IN_SECONDS, 'weekly', 'seo_aeo_weekly_role_classify');
+    }
+    // First-run safety: if option isn't populated yet, run heuristic now (sync — small sites only)
+    $map_raw = get_option('seo_aeo_page_role_map', '');
+    if ((!is_string($map_raw) || $map_raw === '' || $map_raw === '[]' || $map_raw === '{}') && class_exists('SEO_AEO_Page_Roles')) {
+        // Defer to a single event so admin page load isn't blocked
+        if (!wp_next_scheduled('seo_aeo_first_role_classify')) {
+            wp_schedule_single_event(time() + 5, 'seo_aeo_first_role_classify');
+        }
+    }
+});
+
+if (SEO_AEO_DISTRIBUTION_CHANNEL === 'wporg') {
     register_activation_hook(__FILE__, 'seo_aeo_free_block_if_pro_active');
     add_action('admin_init', 'seo_aeo_free_runtime_coexistence_check', 1);
 }
@@ -102,32 +139,72 @@ if (!function_exists('seo_aeo_free_pro_conflict_notice')) {
     }
 }
 
-// Include classes (safe load)
+// Include classes (safe load).
+// 3.35.85.0: every class loads unconditionally. Premium-only flows fail
+// gracefully via backend serviceware errors when the license_key is missing
+// or below tier — no client-side gating.
 try {
-    if (!SEO_AEO_IS_FREE) { require_once SEO_AEO_DIR . 'includes/class-api-client.php'; }
-    if (!SEO_AEO_IS_FREE) { require_once SEO_AEO_DIR . 'includes/class-ai-helpers.php'; } // 3.35.8: shared utilities (attach_featured_image, mark_ai_generated, build_inline_image_block)
+    require_once SEO_AEO_DIR . 'includes/class-api-client.php';
+    require_once SEO_AEO_DIR . 'includes/class-ai-helpers.php'; // 3.35.8: shared utilities (attach_featured_image, mark_ai_generated, build_inline_image_block)
+    // 3.35.84.4: centralized admin notices + dynamic "what's new" parser (load before any class that registers a notice).
+    require_once SEO_AEO_DIR . 'includes/class-admin-notices.php';
+    require_once SEO_AEO_DIR . 'includes/class-whats-new.php';
+    // 3.35.85.0: shared $_POST/$_GET JSON sanitizer (WP.org review compliance).
+    require_once SEO_AEO_DIR . 'includes/class-input-sanitizer.php';
+    // 3.35.85.0: inline-assets registrar — templates push <style>/<script>
+    // content via SEO_AEO_Inline_Assets::add_inline_{style,script}(), which
+    // wraps wp_add_inline_{style,script} on a deps-only registered handle.
+    require_once SEO_AEO_DIR . 'includes/class-inline-assets.php';
+    require_once SEO_AEO_DIR . 'includes/class-business-profile.php'; // 3.35.83: foundation feature
     require_once SEO_AEO_DIR . 'includes/class-admin-ui.php';
     require_once SEO_AEO_DIR . 'includes/class-ajax-handlers.php';
     require_once SEO_AEO_DIR . 'includes/class-widget.php';
     require_once SEO_AEO_DIR . 'includes/class-history.php';
-    if (!SEO_AEO_IS_FREE) { require_once SEO_AEO_DIR . 'includes/class-usage-tracker.php'; }
+    require_once SEO_AEO_DIR . 'includes/class-usage-tracker.php';
+    // The custom updater only ships in non-wporg channels; WP.org plugins must
+    // use the directory's update mechanism, not their own.
     if (SEO_AEO_DISTRIBUTION_CHANNEL !== 'wporg') {
         require_once SEO_AEO_DIR . 'includes/class-updater.php';
     }
+    // 3.35.67: PHP 8 compat polyfills (loaded VERY early so all classes can rely on them)
+    if (file_exists(SEO_AEO_DIR . 'includes/compat/php-polyfills.php')) {
+        require_once SEO_AEO_DIR . 'includes/compat/php-polyfills.php';
+    }
+    // 3.35.65: emergency disable + debug snapshot (loaded early to catch fatals)
+    require_once SEO_AEO_DIR . 'includes/class-emergency-disable.php';
+    require_once SEO_AEO_DIR . 'includes/class-debug-snapshot.php';
+    SEO_AEO_Debug_Snapshot::init();
+    if (is_admin()) { SEO_AEO_Emergency_Disable::init_admin_notice(); }
     require_once SEO_AEO_DIR . 'includes/class-snapshot-manager.php';
     require_once SEO_AEO_DIR . 'includes/class-seo-engine-bridge.php';
     require_once SEO_AEO_DIR . 'includes/class-output-renderer.php';
     require_once SEO_AEO_DIR . 'includes/class-sitemap.php';
+    require_once SEO_AEO_DIR . 'includes/class-global-filters.php';
+    require_once SEO_AEO_DIR . 'includes/class-page-roles.php';
+    require_once SEO_AEO_DIR . 'includes/class-edit-screen-metabox.php';
     require_once SEO_AEO_DIR . 'includes/class-llms-txt.php';
     require_once SEO_AEO_DIR . 'includes/class-schema.php';
     require_once SEO_AEO_DIR . 'includes/class-redirect-manager.php';
+    require_once SEO_AEO_DIR . 'includes/class-hreflang.php';
+    SEO_AEO_Hreflang::init();
+    // 3.35.78: AI provider router (backend-centralized, no local credentials)
+    require_once SEO_AEO_DIR . 'includes/class-ai-provider-router.php';
+    // 3.35.77: Verify-live SSE Phase 1
+    require_once SEO_AEO_DIR . 'includes/class-verify-live.php';
+    SEO_AEO_Verify_Live::init();
+    // 3.35.80: AI Crawler Allowlist + Logger
+    require_once SEO_AEO_DIR . 'includes/class-ai-crawler-detector.php';
+    require_once SEO_AEO_DIR . 'includes/class-ai-crawler-admin.php';
+    SEO_AEO_AI_Crawler_Detector::init();
+    SEO_AEO_AI_Crawler_Admin::init();
     require_once SEO_AEO_DIR . 'includes/class-migration-wizard.php';
-    if (!SEO_AEO_IS_FREE) { require_once SEO_AEO_DIR . 'includes/class-brand-voice.php'; }
-    if (!SEO_AEO_IS_FREE) { require_once SEO_AEO_DIR . 'includes/class-autopilot.php'; }
+    require_once SEO_AEO_DIR . 'includes/class-migration-importer.php';
+    require_once SEO_AEO_DIR . 'includes/class-brand-voice.php';
+    require_once SEO_AEO_DIR . 'includes/class-autopilot.php';
     require_once SEO_AEO_DIR . 'includes/class-translator.php';
-    if (!SEO_AEO_IS_FREE) { require_once SEO_AEO_DIR . 'includes/class-credits-bar.php'; }
-    if (!SEO_AEO_IS_FREE) { require_once SEO_AEO_DIR . 'includes/class-calendar.php'; }
-    if (!SEO_AEO_IS_FREE) { require_once SEO_AEO_DIR . 'includes/class-image-seo.php'; }
+    require_once SEO_AEO_DIR . 'includes/class-credits-bar.php';
+    require_once SEO_AEO_DIR . 'includes/class-calendar.php';
+    require_once SEO_AEO_DIR . 'includes/class-image-seo.php';
 } catch (Throwable $e) {
     return;
 }
@@ -356,3 +433,14 @@ if (class_exists('SEO_AEO_Snapshot_Manager')) {
     register_activation_hook(__FILE__, array('SEO_AEO_Snapshot_Manager', 'register_cron'));
     register_deactivation_hook(__FILE__, array('SEO_AEO_Snapshot_Manager', 'unregister_cron'));
 }
+
+// 3.35.61.1: PHP version check with admin_notice
+add_action('admin_init', 'seo_aeo_php_version_notice');
+function seo_aeo_php_version_notice() {
+    if (version_compare(PHP_VERSION, '7.4', '<')) {
+        add_action('admin_notices', function () {
+            echo '<div class="notice notice-warning"><p><strong>SEO AEO Orchestra:</strong> PHP ' . esc_html(PHP_VERSION) . ' rilevato. Il plugin richiede PHP 7.4+. Contatta il tuo hosting per aggiornare.</p></div>';
+        });
+    }
+}
+

@@ -122,7 +122,7 @@ class SEO_AEO_Brand_Voice {
         $tbl = $wpdb->prefix . self::TABLE;
         $now = current_time('mysql', true);
         $name = sanitize_text_field($name);
-        if (empty($name)) $name = 'Profilo ' . date('Y-m-d H:i');
+        if (empty($name)) $name = 'Profilo ' . gmdate('Y-m-d H:i');
 
         $insert = $wpdb->insert(
             $tbl,
@@ -224,7 +224,6 @@ class SEO_AEO_Brand_Voice {
             'orderby'          => 'modified',
             'order'            => 'DESC',
             'no_found_rows'    => true,
-            'suppress_filters' => true,
         ));
         $out = array();
         foreach ($posts as $p) {

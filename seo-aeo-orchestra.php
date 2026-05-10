@@ -4,7 +4,7 @@
  * Plugin Name: AEO Orchestra
  * Plugin URI: https://aeo-orchestra.com
  * Description: Plugin SEO + AEO completo: specialisti AI perfettamente orchestrati per meta tags, content generation, schema, llms.txt, sitemap, redirect manager, brand voice e altro.
- * Version: 3.35.85.1-beta
+ * Version: 3.36.0
  * Requires at least: 5.8
  * Tested up to: 6.9
  * Requires PHP: 7.4
@@ -27,7 +27,7 @@
  */
 if (!defined('ABSPATH')) exit;
 
-define('SEO_AEO_VERSION', '3.35.85.1-beta');
+define('SEO_AEO_VERSION', '3.36.0');
 define('SEO_AEO_AGENTS_COUNT', 13);  // 3.35.84.2: +Verify-Live  // mirrors backend/helpers/config.py AGENTS_COUNT — bump on every new agent
 define('SEO_AEO_TOOLS_COUNT', 22);   // 3.35.84.2: +Verify-Live, Profilo Business, AI Performance, AI Crawlers   // mirrors backend/helpers/config.py TOOLS_COUNT — bump on every new tool
 define('SEO_AEO_DIR', plugin_dir_path(__FILE__));
@@ -147,6 +147,7 @@ try {
     require_once SEO_AEO_DIR . 'includes/class-api-client.php';
     require_once SEO_AEO_DIR . 'includes/class-ai-helpers.php'; // 3.35.8: shared utilities (attach_featured_image, mark_ai_generated, build_inline_image_block)
     // 3.35.84.4: centralized admin notices + dynamic "what's new" parser (load before any class that registers a notice).
+    require_once SEO_AEO_DIR . 'includes/helper-debug-log.php'; // 3.36.0: WP_DEBUG-gated logger
     require_once SEO_AEO_DIR . 'includes/class-admin-notices.php';
     require_once SEO_AEO_DIR . 'includes/class-whats-new.php';
     // 3.35.85.0: shared $_POST/$_GET JSON sanitizer (WP.org review compliance).

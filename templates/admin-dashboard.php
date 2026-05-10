@@ -447,7 +447,7 @@ function seo_aeo_v250_sparkline($values, $width = 110, $height = 28, $color = '#
 
     <?php if (!$license_valid): ?>
     <div class="orchestra-notice warning">
-        <p><strong><?php echo esc_html(SEO_AEO_T::t('Licenza non attiva.')); ?></strong> <?php echo esc_html(SEO_AEO_T::t('Attiva la licenza nelle')); ?> <a href="<?php echo admin_url('admin.php?page=seo-aeo-settings'); ?>"><?php echo esc_html(SEO_AEO_T::t('Impostazioni')); ?></a>.</p>
+        <p><strong><?php echo esc_html(SEO_AEO_T::t('Licenza non attiva.')); ?></strong> <?php echo esc_html(SEO_AEO_T::t('Attiva la licenza nelle')); ?> <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-settings')); ?>"><?php echo esc_html(SEO_AEO_T::t('Impostazioni')); ?></a>.</p>
     </div>
     <?php endif; ?>
 

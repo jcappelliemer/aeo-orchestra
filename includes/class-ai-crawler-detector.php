@@ -297,7 +297,11 @@ class SEO_AEO_AI_Crawler_Detector {
         dbDelta($sql_stats);
 
         // Backfill url_path + response_status_class for existing rows
+        // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
         $wpdb->query("UPDATE $log_table SET url_path = SUBSTRING_INDEX(SUBSTRING_INDEX(request_uri, '?', 1), '#', 1) WHERE url_path = '' LIMIT 10000");
+        // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
         $wpdb->query("UPDATE $log_table SET response_status_class = FLOOR(response_code/100) WHERE response_code >= 100 LIMIT 10000");
 
         // Schedule daily aggregation cron (02:00 UTC)
@@ -330,7 +334,7 @@ class SEO_AEO_AI_Crawler_Detector {
             $backfilled += (int) $r1 + (int) $r2;
         }
         if ($backfilled > 0) {
-            error_log("[AEO Orchestra] DB v1.2 backfill: $backfilled rows canonicalized");
+            orch_debug_log("[AEO Orchestra] DB v1.2 backfill: $backfilled rows canonicalized");
         }
 
         update_option(self::DB_VERSION_OPT, self::DB_VERSION);
@@ -349,9 +353,11 @@ class SEO_AEO_AI_Crawler_Detector {
     public static function cleanup_old_logs() {
         global $wpdb;
         $table = $wpdb->prefix . self::TABLE_NAME;
+        // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
         $deleted = $wpdb->query("DELETE FROM $table WHERE visited_at < (NOW() - INTERVAL 30 DAY)");
         if ($deleted > 0) {
-            error_log("[AEO Orchestra] AI crawler log cleanup: deleted $deleted entries > 30d");
+            orch_debug_log("[AEO Orchestra] AI crawler log cleanup: deleted $deleted entries > 30d");
         }
     }
 
@@ -495,9 +501,13 @@ class SEO_AEO_AI_Crawler_Detector {
                 hit_count = VALUES(hit_count),
                 blocked_count = VALUES(blocked_count)";
         $rows = $wpdb->query($sql);
-        if ($rows !== false) error_log("[AEO Orchestra] Daily aggregate: $rows rows");
+        if ($rows !== false) orch_debug_log("[AEO Orchestra] Daily aggregate: $rows rows");
 
+        // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
         $wpdb->query("DELETE FROM $log_table WHERE visited_at < (NOW() - INTERVAL 30 DAY) LIMIT 10000");
+        // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
         $wpdb->query("DELETE FROM $stats_table WHERE stat_date < (CURDATE() - INTERVAL 90 DAY) LIMIT 10000");
 
         delete_transient('seo_aeo_aip_summary_28d');

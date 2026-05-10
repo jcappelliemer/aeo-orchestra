@@ -107,7 +107,7 @@ class SEO_AEO_Autopilot {
         $now = current_time('mysql', true);
 
         $name = isset($data['name']) ? sanitize_text_field($data['name']) : '';
-        if (empty($name)) $name = 'Auto-Pilot job ' . date('Y-m-d');
+        if (empty($name)) $name = 'Auto-Pilot job ' . gmdate('Y-m-d');
         $keywords = isset($data['keywords']) && is_array($data['keywords']) ? array_values($data['keywords']) : array();
         if (empty($keywords)) return array('success' => false, 'error' => 'Nessuna keyword nel job. Seleziona almeno 1 keyword da un set.');
 
@@ -232,7 +232,7 @@ class SEO_AEO_Autopilot {
             try {
                 self::process_one_keyword((int) $job['id']);
             } catch (Throwable $e) {
-                error_log('SEO_AEO Autopilot run_due_jobs error job=' . $job['id'] . ': ' . $e->getMessage());
+                orch_debug_log('SEO_AEO Autopilot run_due_jobs error job=' . $job['id'] . ': ' . $e->getMessage());
             }
         }
     }
@@ -350,7 +350,7 @@ class SEO_AEO_Autopilot {
                     }
                 }
             } catch (Throwable $e) {
-                error_log('SEO_AEO Autopilot attach image failed: ' . $e->getMessage());
+                orch_debug_log('SEO_AEO Autopilot attach image failed: ' . $e->getMessage());
             }
         }
 
@@ -365,7 +365,7 @@ class SEO_AEO_Autopilot {
                     ));
                 }
             } catch (Throwable $e) {
-                error_log('SEO_AEO Autopilot write_meta failed: ' . $e->getMessage());
+                orch_debug_log('SEO_AEO Autopilot write_meta failed: ' . $e->getMessage());
             }
         }
 

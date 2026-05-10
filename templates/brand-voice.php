@@ -160,7 +160,7 @@ $profiles = SEO_AEO_Brand_Voice::list_profiles();
                 <h3 class="orch-bv2-profile-name"><?php echo esc_html($p['name']); ?></h3>
                 <div class="orch-bv2-profile-meta">
                     <span>📚 <?php echo (int) $p['articles_count']; ?> <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('articoli')) : 'articoli'; ?></span>
-                    <span>🕒 <?php echo esc_html(date('d/m/Y', strtotime($p['updated_at']))); ?></span>
+                    <span>🕒 <?php echo esc_html(gmdate('d/m/Y', strtotime($p['updated_at']))); ?></span>
                 </div>
                 <div class="orch-bv2-profile-audience">
                     <strong><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Audience:')) : 'Audience:'; ?></strong> <?php echo esc_html($audience); ?>

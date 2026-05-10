@@ -311,7 +311,6 @@ class SEO_AEO_LLMs_Txt {
                 'orderby'          => 'modified',
                 'order'            => 'DESC',
                 'no_found_rows'    => true,
-                'suppress_filters' => true,
             ));
             $filtered = self::filter_and_cap($pages_raw, self::FULL_LIMIT);
             if (!empty($filtered['kept'])) {
@@ -335,7 +334,6 @@ class SEO_AEO_LLMs_Txt {
                 'orderby'          => 'modified',
                 'order'            => 'DESC',
                 'no_found_rows'    => true,
-                'suppress_filters' => true,
             ));
             $filtered = self::filter_and_cap($posts_raw, self::FULL_LIMIT);
             if (!empty($filtered['kept'])) {
@@ -363,7 +361,6 @@ class SEO_AEO_LLMs_Txt {
                 'orderby'          => 'modified',
                 'order'            => 'DESC',
                 'no_found_rows'    => true,
-                'suppress_filters' => true,
             ));
             $filtered = self::filter_and_cap($items_raw, self::FULL_LIMIT);
             if (empty($filtered['kept'])) continue;
@@ -388,7 +385,6 @@ class SEO_AEO_LLMs_Txt {
             'orderby'          => 'modified',
             'order'            => 'DESC',
             'no_found_rows'    => true,
-            'suppress_filters' => true,
         ));
         $filtered_full = self::filter_and_cap($items_raw, self::FULL_LIMIT);
         $items = $filtered_full['kept'];
@@ -589,7 +585,7 @@ class SEO_AEO_LLMs_Txt {
                 $profile = $resp;
             }
         } catch (Throwable $e) {
-            error_log('[SEO_AEO LLMs] identity fetch failed: ' . $e->getMessage());
+            orch_debug_log('[SEO_AEO LLMs] identity fetch failed: ' . $e->getMessage());
         }
 
         // Cache even an empty array so we don't hammer the backend on every request.
@@ -815,6 +811,10 @@ class SEO_AEO_LLMs_Txt {
             if (strpos($path, '.bak-pre-orchestra-') !== false) continue;
 
             $backup = $path . '.bak-pre-orchestra-' . $stamp;
+            // 3.36.0 (WP.org compliance): atomic same-filesystem rename of a static
+            // file at site root, inside admin-form submit (manage_options held).
+            // WP_Filesystem would require a credentials prompt that doesn't apply.
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
             if (@rename($path, $backup)) {
                 $report['static_files_removed'][] = array('path' => $path, 'backup' => $backup);
             } else {

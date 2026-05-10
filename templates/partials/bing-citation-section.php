@@ -37,13 +37,13 @@ if (function_exists('wp_script_is') && !wp_script_is('chartjs', 'enqueued') && !
 <div class="orchestra-v3">
 <div class="orch3-card orch-bing-card">
     <div class="orch-bing-head">
-        <h2 class="orch3-h2">🤖 <?php echo $T('AI Performance'); ?></h2>
-        <button type="button" class="orch3-btn orch3-btn-ghost orch-bing-toggle" aria-expanded="<?php echo $toggle_aria; ?>"><?php echo $toggle_label; ?></button>
+        <h2 class="orch3-h2">🤖 <?php echo esc_html($T('AI Performance')); ?></h2>
+        <button type="button" class="orch3-btn orch3-btn-ghost orch-bing-toggle" aria-expanded="<?php echo esc_attr($toggle_aria); ?>"><?php echo esc_html($toggle_label); ?></button>
     </div>
-    <p class="orch-bing-sub"><?php echo $T('Quanto le AI citano il tuo sito (ChatGPT, Microsoft Copilot, Bing Chat). Dati esclusivi da Bing Webmaster Tools — nessun altro plugin SEO li espone.'); ?></p>
-    <div class="orch-bing-body" <?php echo $body_style; ?>>
+    <p class="orch-bing-sub"><?php echo esc_html($T('Quanto le AI citano il tuo sito (ChatGPT, Microsoft Copilot, Bing Chat). Dati esclusivi da Bing Webmaster Tools — nessun altro plugin SEO li espone.')); ?></p>
+    <div class="orch-bing-body" <?php echo esc_html($body_style); ?>>
         <div id="orch-bing-status-loader" class="orch3-muted" style="padding:8px 0;">
-            <span class="rv-spinner"></span> <?php echo $T('Verifico stato connessione…'); ?>
+            <span class="rv-spinner"></span> <?php echo esc_html($T('Verifico stato connessione…')); ?>
         </div>
         <div id="orch-bing-content" style="display:none;"></div>
     </div>

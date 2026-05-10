@@ -66,7 +66,7 @@ $provider_labels = array(
 
         <div class="orch-acc-status-summary" style="margin:8px 0 18px;padding:10px 14px;background:#f0fdf4;border:1px solid #86efac;border-left:4px solid #10b981;border-radius:6px;">
             <strong style="color:#14532d;">✅ Configurazione attiva</strong><br>
-            <span style="font-size:13px;color:#14532d;"><strong id="orch-allowlist-enabled-count"><?php echo $enabled_count; ?></strong> bot permessi · <strong id="orch-allowlist-disabled-count"><?php echo $disabled_count; ?></strong> bot bloccati</span>
+            <span style="font-size:13px;color:#14532d;"><strong id="orch-allowlist-enabled-count"><?php echo esc_html($enabled_count); ?></strong> bot permessi · <strong id="orch-allowlist-disabled-count"><?php echo esc_html($disabled_count); ?></strong> bot bloccati</span>
         </div>
 
         <!-- Privacy toggle -->

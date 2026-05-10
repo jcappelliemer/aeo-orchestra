@@ -1,10 +1,10 @@
 === AEO Orchestra ===
 Contributors: jcappelli
-Tags: seo, aeo, llms-txt, schema, redirect-manager, sitemap, ai, chatgpt, perplexity, structured-data, json-ld, opengraph
+Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.35.44
+Stable tag: 3.36.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 

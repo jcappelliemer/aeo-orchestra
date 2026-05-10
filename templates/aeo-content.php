@@ -4,7 +4,7 @@ $license_valid = !empty($license_key);
 $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)) : esc_html($s); };
 ?>
 <div class="wrap orchestra-admin">
-    <h1 style="display:none;"><?php echo $T('Generatore Contenuti AEO'); ?></h1>
+    <h1 style="display:none;"><?php echo esc_html($T('Generatore Contenuti AEO')); ?></h1>
 
     <div class="orchestra-header aeo-header">
         <h2><?php SEO_AEO_T::e('Generatore Contenuti AEO'); ?></h2>
@@ -28,8 +28,8 @@ $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)
     ?>
 
     <div class="orchestra-tool-card">
-        <h2><span class="dashicons dashicons-format-chat" style="color:#EC4899"></span> <?php echo $T('Crea contenuti citabili dalle AI'); ?></h2>
-        <p><?php echo $T('Genera articoli con struttura domanda-risposta, Schema.org markup e formato ottimizzato per essere citati dai motori AI.'); ?></p>
+        <h2><span class="dashicons dashicons-format-chat" style="color:#EC4899"></span> <?php echo esc_html($T('Crea contenuti citabili dalle AI')); ?></h2>
+        <p><?php echo esc_html($T('Genera articoli con struttura domanda-risposta, Schema.org markup e formato ottimizzato per essere citati dai motori AI.')); ?></p>
 
         <table class="form-table">
             <tr>
@@ -69,13 +69,13 @@ $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)
 
         <p>
             <button type="button" class="button button-primary button-hero button-aeo" id="seo-aeo-aeo-content-btn" <?php if (!$license_valid) echo 'disabled'; ?>>
-                <span class="dashicons dashicons-format-chat"></span> <?php echo $T('Genera Contenuto AEO'); ?> - <span class="credit-cost" data-cost-key="aeo_content">12</span> <?php echo $T('crediti'); ?>
+                <span class="dashicons dashicons-format-chat"></span> <?php echo esc_html($T('Genera Contenuto AEO')); ?> - <span class="credit-cost" data-cost-key="aeo_content">12</span> <?php echo esc_html($T('crediti')); ?>
             </button>
         </p>
     </div>
 
     <div id="aeo-content-output" class="orchestra-output">
-        <p class="description"><?php echo $T('Il contenuto AEO generato apparira qui. Sara ottimizzato per essere citato dalle AI.'); ?></p>
+        <p class="description"><?php echo esc_html($T('Il contenuto AEO generato apparira qui. Sara ottimizzato per essere citato dalle AI.')); ?></p>
     </div>
     <div id="history-aeo-content" class="orchestra-history-container"></div>
 
@@ -83,17 +83,17 @@ $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)
 
     <!-- AEO Keyword Suggestions -->
     <div class="orchestra-tool-card" id="aeo-keyword-suggestions">
-        <h2><span class="dashicons dashicons-lightbulb" style="color:#EC4899"></span> <?php echo $T('Suggerimenti Argomenti AEO'); ?></h2>
-        <p><?php echo $T('Scopri gli argomenti con il maggiore potenziale di citazione AI per il tuo settore.'); ?></p>
+        <h2><span class="dashicons dashicons-lightbulb" style="color:#EC4899"></span> <?php echo esc_html($T('Suggerimenti Argomenti AEO')); ?></h2>
+        <p><?php echo esc_html($T('Scopri gli argomenti con il maggiore potenziale di citazione AI per il tuo settore.')); ?></p>
 
         <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:15px;">
             <div style="flex:1;">
-                <label style="font-weight:600;display:block;margin-bottom:5px;"><?php echo $T('Settore / Argomento principale'); ?></label>
+                <label style="font-weight:600;display:block;margin-bottom:5px;"><?php echo esc_html($T('Settore / Argomento principale')); ?></label>
                 <input type="text" id="suggest-aeo-context" class="large-text" placeholder="<?php echo esc_attr(SEO_AEO_T::t('es. Impianti fotovoltaici, risparmio energetico, bonus 110%')); ?>" />
             </div>
             <button type="button" class="button button-primary button-aeo" id="aeo-suggest-keywords-btn"
                 onclick="if(window.SeoAeoOrchestra)SeoAeoOrchestra.suggestKeywords('aeo_content','suggest-aeo-context','aeo-suggestions-list');" <?php if (!$license_valid) echo 'disabled'; ?>>
-                <span class="dashicons dashicons-lightbulb"></span> <?php echo $T('Suggerisci'); ?>
+                <span class="dashicons dashicons-lightbulb"></span> <?php echo esc_html($T('Suggerisci')); ?>
             </button>
         </div>
 

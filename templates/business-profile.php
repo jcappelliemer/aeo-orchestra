@@ -462,7 +462,7 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
 
                 <div class="orch-bp-field" data-field="founded_year">
                     <label class="orch-bp-field-label">Anno di fondazione <span class="orch-bp-field-icon">🌐</span></label>
-                    <input type="number" class="orch-bp-input" name="founded_year" min="1800" max="<?php echo (int) date('Y'); ?>" style="max-width: 160px;">
+                    <input type="number" class="orch-bp-input" name="founded_year" min="1800" max="<?php echo (int) gmdate('Y'); ?>" style="max-width: 160px;">
                 </div>
 
                 <details class="orch-bp-collapse" data-field="differentiators">

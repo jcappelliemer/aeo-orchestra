@@ -28,10 +28,10 @@ $aip_is_empty = ($aip_hits_total === 0);
 <div class="orch3-card aip-section" id="aip-section">
     <div class="aip-section-head">
         <div>
-            <h2 class="aip-section-title">🤖 <?php echo $T('AI Performance · Quanto le AI scansionano il tuo sito'); ?></h2>
+            <h2 class="aip-section-title">🤖 <?php echo esc_html($T('AI Performance · Quanto le AI scansionano il tuo sito')); ?></h2>
             <p class="aip-section-subtitle">
-                <?php echo $T('Tracking attività bot AI ultimi 28 giorni. Dati locali, GDPR-compliant.'); ?>
-                <span class="aip-phase2-hint"><?php echo $T('Phase 2 con citation count Bing API in arrivo in v3.35.85.'); ?></span>
+                <?php echo esc_html($T('Tracking attività bot AI ultimi 28 giorni. Dati locali, GDPR-compliant.')); ?>
+                <span class="aip-phase2-hint"><?php echo esc_html($T('Phase 2 con citation count Bing API in arrivo in v3.35.85.')); ?></span>
             </p>
         </div>
         <button type="button" class="orch3-btn orch3-btn-ghost aip-toggle" aria-expanded="true" title="<?php echo esc_attr($T('Espandi/comprimi sezione')); ?>">▼</button>

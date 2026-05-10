@@ -275,7 +275,6 @@ class SEO_AEO_Sitemap {
                 'order' => 'DESC',
                 'fields' => 'ids',
                 'no_found_rows' => true,
-                'suppress_filters' => true,
             ));
             $lastmod = '';
             if (!empty($latest)) {
@@ -351,7 +350,6 @@ class SEO_AEO_Sitemap {
             'orderby' => 'modified',
             'order' => 'DESC',
             'no_found_rows' => true,
-            'suppress_filters' => true,
         ));
 
         $xml = $this->urlset_open();
@@ -576,6 +574,10 @@ class SEO_AEO_Sitemap {
             }
             if (strpos($path, '.bak-pre-orchestra-') !== false) continue;
             $backup = $path . '.bak-pre-orchestra-' . $stamp;
+            // 3.36.0 (WP.org compliance): atomic same-filesystem rename of a static
+            // file at site root, inside admin-form submit (manage_options held).
+            // WP_Filesystem would require a credentials prompt that doesn't apply.
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
             if (@rename($path, $backup)) {
                 $report['static_files_removed'][] = array('path' => $path, 'backup' => $backup);
             } else {

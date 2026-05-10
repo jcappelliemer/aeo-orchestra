@@ -251,7 +251,7 @@ class SEO_AEO_Image_SEO {
             }
             update_option(self::QUEUE_OPT, $state);
         } catch (Throwable $e) {
-            error_log('[SEO_AEO Image SEO] tick FATAL: ' . $e->getMessage());
+            orch_debug_log('[SEO_AEO Image SEO] tick FATAL: ' . $e->getMessage());
         }
     }
 
@@ -332,7 +332,7 @@ class SEO_AEO_Image_SEO {
             $thumb_url = is_array($thumb) ? $thumb[0] : $url;
             self::append_preview($user_id, array(
                 'attach_id'  => intval($attach_id),
-                'filename'   => basename(parse_url($url, PHP_URL_PATH)),
+                'filename'   => basename(wp_parse_url($url, PHP_URL_PATH)),
                 'thumb_url'  => $thumb_url,
                 'url'        => $url,
                 'before'     => $before,
@@ -367,7 +367,7 @@ class SEO_AEO_Image_SEO {
             $thumb_url = is_array($thumb) ? $thumb[0] : $url;
             $changelog_entry = array(
                 'attach_id' => intval($attach_id),
-                'filename'  => basename(parse_url($url, PHP_URL_PATH)),
+                'filename'  => basename(wp_parse_url($url, PHP_URL_PATH)),
                 'thumb_url' => $thumb_url,
                 'before'    => $before,
                 'after'     => $after,

@@ -39,12 +39,12 @@ if (function_exists('wp_script_is') && !wp_script_is('chartjs', 'enqueued') && !
 <div class="orchestra-v3">
 <div class="orch3-card orch-gsc-card">
     <div class="orch-gsc-head">
-        <h2 class="orch3-h2">📊 <?php echo $T('Insights da Search Console'); ?></h2>
-        <button type="button" class="orch3-btn orch3-btn-ghost orch-gsc-toggle" aria-expanded="<?php echo $toggle_aria; ?>"><?php echo $toggle_label; ?></button>
+        <h2 class="orch3-h2">📊 <?php echo esc_html($T('Insights da Search Console')); ?></h2>
+        <button type="button" class="orch3-btn orch3-btn-ghost orch-gsc-toggle" aria-expanded="<?php echo esc_attr($toggle_aria); ?>"><?php echo esc_html($toggle_label); ?></button>
     </div>
-    <div class="orch-gsc-body" <?php echo $body_style; ?>>
+    <div class="orch-gsc-body" <?php echo esc_html($body_style); ?>>
         <div id="orch-gsc-status-loader" class="orch3-muted" style="padding:8px 0;">
-            <span class="rv-spinner"></span> <?php echo $T('Verifico stato connessione…'); ?>
+            <span class="rv-spinner"></span> <?php echo esc_html($T('Verifico stato connessione…')); ?>
         </div>
         <div id="orch-gsc-content" style="display:none;"></div>
     </div>

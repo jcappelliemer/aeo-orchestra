@@ -48,7 +48,7 @@ class SEO_AEO_Calendar {
         try {
             $api = isset($GLOBALS['seo_aeo_api']) ? $GLOBALS['seo_aeo_api'] : null;
             if (!$api) {
-                error_log('[SEO_AEO Calendar] cron skip: api client missing');
+                orch_debug_log('[SEO_AEO Calendar] cron skip: api client missing');
                 return;
             }
             $license_key = get_option('seo_aeo_orchestra_license_key', '');
@@ -56,7 +56,7 @@ class SEO_AEO_Calendar {
 
             $resp = $api->api_request('/calendar/cron/list-due-actions', array());
             if (!is_array($resp) || empty($resp['success'])) {
-                error_log('[SEO_AEO Calendar] cron list-due failed: ' . wp_json_encode($resp));
+                orch_debug_log('[SEO_AEO Calendar] cron list-due failed: ' . wp_json_encode($resp));
                 return;
             }
 
@@ -82,7 +82,7 @@ class SEO_AEO_Calendar {
             // Best-effort, non bloccante.
             try { self::cleanup_orphan_previews(); } catch (Throwable $e) {}
         } catch (Throwable $e) {
-            error_log('[SEO_AEO Calendar] process_due_actions FATAL: ' . $e->getMessage());
+            orch_debug_log('[SEO_AEO Calendar] process_due_actions FATAL: ' . $e->getMessage());
         }
     }
 
@@ -113,9 +113,9 @@ class SEO_AEO_Calendar {
         try {
             self::patch_slot_state($slot_id, array('status' => 'generating'));
         } catch (Throwable $e) {
-            error_log('[SEO_AEO Calendar] mark generating failed: ' . $e->getMessage());
+            orch_debug_log('[SEO_AEO Calendar] mark generating failed: ' . $e->getMessage());
         }
-        error_log('[SEO_AEO Calendar] generate_article_for_slot ENTRY slot_id=' . $slot_id . ' topic=' . substr($topic, 0, 80));
+        orch_debug_log('[SEO_AEO Calendar] generate_article_for_slot ENTRY slot_id=' . $slot_id . ' topic=' . substr($topic, 0, 80));
 
         // Generate via /ai/complete-article (Brand Voice + lingua auto-injected da api_request).
         // Override: se bv_override valorizzato, lo passiamo esplicito (l'api_request rispetta valori già presenti).
@@ -133,18 +133,18 @@ class SEO_AEO_Calendar {
         $resp = $api->api_request('/ai/complete-article', $payload);
         // 3.33.1: diagnostica esplicita per future debug "Genera ora non funziona"
         if (is_array($resp)) {
-            error_log('[SEO_AEO Calendar] complete-article response keys: ' . implode(',', array_keys($resp)));
+            orch_debug_log('[SEO_AEO Calendar] complete-article response keys: ' . implode(',', array_keys($resp)));
         } else {
-            error_log('[SEO_AEO Calendar] complete-article response NON-ARRAY: ' . substr((string) $resp, 0, 300));
+            orch_debug_log('[SEO_AEO Calendar] complete-article response NON-ARRAY: ' . substr((string) $resp, 0, 300));
         }
         if (!is_array($resp) || !empty($resp['error']) || empty($resp['content'])) {
             $err = (is_array($resp) && !empty($resp['message'])) ? $resp['message']
                 : (is_array($resp) && !empty($resp['detail']) ? $resp['detail'] : 'Backend error (response vuota o formato non valido)');
-            error_log('[SEO_AEO Calendar] complete-article FAIL slot=' . $slot_id . ' err=' . substr((string) $err, 0, 300) . ' raw=' . substr(wp_json_encode($resp), 0, 300));
+            orch_debug_log('[SEO_AEO Calendar] complete-article FAIL slot=' . $slot_id . ' err=' . substr((string) $err, 0, 300) . ' raw=' . substr(wp_json_encode($resp), 0, 300));
             self::patch_slot_state($slot_id, array('status' => 'error', 'error' => mb_substr($err, 0, 500)));
             return array('success' => false, 'error' => $err);
         }
-        error_log('[SEO_AEO Calendar] complete-article OK slot=' . $slot_id . ' content_bytes=' . strlen((string) $resp['content']) . ' has_image=' . (!empty($resp['image_base64']) ? '1' : '0'));
+        orch_debug_log('[SEO_AEO Calendar] complete-article OK slot=' . $slot_id . ' content_bytes=' . strlen((string) $resp['content']) . ' has_image=' . (!empty($resp['image_base64']) ? '1' : '0'));
 
         // Schedule post_date = scheduled_at_utc (locale conversion fatto da WP)
         $post_date_gmt = self::iso_to_mysql_utc($sched_iso);
@@ -178,11 +178,11 @@ class SEO_AEO_Calendar {
         }
         if (is_wp_error($post_id) || !$post_id) {
             $err = is_wp_error($post_id) ? $post_id->get_error_message() : 'wp_insert_post failed';
-            error_log('[SEO_AEO Calendar] wp_insert_post FAIL slot=' . $slot_id . ' err=' . $err);
+            orch_debug_log('[SEO_AEO Calendar] wp_insert_post FAIL slot=' . $slot_id . ' err=' . $err);
             self::patch_slot_state($slot_id, array('status' => 'error', 'error' => mb_substr($err, 0, 500)));
             return array('success' => false, 'error' => $err);
         }
-        error_log('[SEO_AEO Calendar] wp_insert_post OK slot=' . $slot_id . ' post_id=' . $post_id);
+        orch_debug_log('[SEO_AEO Calendar] wp_insert_post OK slot=' . $slot_id . ' post_id=' . $post_id);
 
         // Markers (3.35.8: helper unificato → 6 meta fields invece di 3)
         SEO_AEO_AI_Helpers::mark_ai_generated($post_id, 'calendar', 0);
@@ -199,10 +199,10 @@ class SEO_AEO_Calendar {
                     if ($img_url) {
                         $inline_block = SEO_AEO_AI_Helpers::build_inline_image_block($thumb_id, $img_url, $topic);
                         wp_update_post(array('ID' => $post_id, 'post_content' => $inline_block . $resp['content']));
-                        error_log('[SEO_AEO Calendar] inline image prepended slot=' . $slot_id . ' attach=' . $thumb_id);
+                        orch_debug_log('[SEO_AEO Calendar] inline image prepended slot=' . $slot_id . ' attach=' . $thumb_id);
                     }
                 }
-            } catch (Throwable $e) { error_log('[SEO_AEO Calendar] attach image: ' . $e->getMessage()); }
+            } catch (Throwable $e) { orch_debug_log('[SEO_AEO Calendar] attach image: ' . $e->getMessage()); }
         }
 
         // Meta tags via bridge
@@ -213,7 +213,7 @@ class SEO_AEO_Calendar {
                     'meta_description' => isset($resp['meta']['description']) ? $resp['meta']['description'] : '',
                     'focus_keyword'    => $kw,
                 ));
-            } catch (Throwable $e) { error_log('[SEO_AEO Calendar] write_meta: ' . $e->getMessage()); }
+            } catch (Throwable $e) { orch_debug_log('[SEO_AEO Calendar] write_meta: ' . $e->getMessage()); }
         }
 
         // Notify backend
@@ -289,7 +289,7 @@ class SEO_AEO_Calendar {
             'body'    => wp_json_encode($body),
         ));
         if (is_wp_error($resp)) {
-            error_log('[SEO_AEO Calendar] patch_slot_state error: ' . $resp->get_error_message());
+            orch_debug_log('[SEO_AEO Calendar] patch_slot_state error: ' . $resp->get_error_message());
             return false;
         }
         return true;
@@ -336,15 +336,15 @@ class SEO_AEO_Calendar {
      * Esegue subito generation per uno slot specifico (saltando il check del cron).
      */
     public static function generate_now_by_slot_id($slot_id) {
-        error_log('[SEO_AEO Calendar] generate_now_by_slot_id ENTRY slot_id=' . $slot_id);
+        orch_debug_log('[SEO_AEO Calendar] generate_now_by_slot_id ENTRY slot_id=' . $slot_id);
         $api = isset($GLOBALS['seo_aeo_api']) ? $GLOBALS['seo_aeo_api'] : null;
         if (!$api) {
-            error_log('[SEO_AEO Calendar] generate_now: API client missing');
+            orch_debug_log('[SEO_AEO Calendar] generate_now: API client missing');
             return array('success' => false, 'error' => 'API client missing');
         }
         $license_key = get_option('seo_aeo_orchestra_license_key', '');
         if (empty($license_key)) {
-            error_log('[SEO_AEO Calendar] generate_now: license_key empty');
+            orch_debug_log('[SEO_AEO Calendar] generate_now: license_key empty');
             return array('success' => false, 'error' => 'License key non configurata');
         }
         $api_url = defined('SEO_AEO_API_URL') ? SEO_AEO_API_URL : 'https://aeo-orchestra.com';
@@ -355,13 +355,13 @@ class SEO_AEO_Calendar {
              . '&from=' . $today . '&to=' . $year_ahead;
         $resp = wp_remote_get($url, array('timeout' => 20));
         if (is_wp_error($resp)) {
-            error_log('[SEO_AEO Calendar] generate_now: list slots wp_error=' . $resp->get_error_message());
+            orch_debug_log('[SEO_AEO Calendar] generate_now: list slots wp_error=' . $resp->get_error_message());
             return array('success' => false, 'error' => $resp->get_error_message());
         }
         $body = json_decode(wp_remote_retrieve_body($resp), true);
         if (!is_array($body) || empty($body['success'])) {
             $detail = is_array($body) && !empty($body['detail']) ? $body['detail'] : 'List slots failed';
-            error_log('[SEO_AEO Calendar] generate_now: list slots fail detail=' . $detail);
+            orch_debug_log('[SEO_AEO Calendar] generate_now: list slots fail detail=' . $detail);
             return array('success' => false, 'error' => $detail);
         }
         $slot = null;
@@ -372,14 +372,14 @@ class SEO_AEO_Calendar {
             $candidate_id = (string) ($s['slot_id'] ?? $s['id'] ?? '');
             if ($candidate_id === (string) $slot_id) { $slot = $s; break; }
         }
-        error_log('[SEO_AEO Calendar] generate_now: scanned ' . $count . ' slots, found=' . ($slot ? 'yes' : 'no'));
+        orch_debug_log('[SEO_AEO Calendar] generate_now: scanned ' . $count . ' slots, found=' . ($slot ? 'yes' : 'no'));
         if (!$slot) {
             return array('success' => false, 'error' => 'Slot non trovato (id=' . substr($slot_id, 0, 12) . '...). Aggiorna la pagina e riprova.');
         }
         // Bypass se status non planned (es. gia generato): logga ma non ri-genera
         $cur_status = (string) ($slot['status'] ?? 'planned');
         if ($cur_status !== 'planned') {
-            error_log('[SEO_AEO Calendar] generate_now: slot status=' . $cur_status . ' (skip re-gen, return current state)');
+            orch_debug_log('[SEO_AEO Calendar] generate_now: slot status=' . $cur_status . ' (skip re-gen, return current state)');
             return array('success' => false, 'error' => 'Lo slot e in stato "' . $cur_status . '", non rigenero. Elimina e ricrea se vuoi rigenerare.');
         }
         return self::generate_article_for_slot($slot);
@@ -403,7 +403,7 @@ class SEO_AEO_Calendar {
      * @return array {success, generation_id, preview, refundable_until} | {success:false, error}
      */
     public static function generate_preview_for_slot($slot_id) {
-        error_log('[SEO_AEO Calendar] generate_preview_for_slot ENTRY slot_id=' . $slot_id);
+        orch_debug_log('[SEO_AEO Calendar] generate_preview_for_slot ENTRY slot_id=' . $slot_id);
         $api = isset($GLOBALS['seo_aeo_api']) ? $GLOBALS['seo_aeo_api'] : null;
         if (!$api) return array('success' => false, 'error' => 'API client missing');
         $license_key = get_option('seo_aeo_orchestra_license_key', '');
@@ -412,7 +412,7 @@ class SEO_AEO_Calendar {
         // 1) Idempotenza: se transient esiste e generation_id ancora valido, ritorna quello
         $existing = get_transient(self::PREVIEW_TRANSIENT_PREFIX . $slot_id);
         if (is_array($existing) && !empty($existing['generation_id']) && !empty($existing['preview'])) {
-            error_log('[SEO_AEO Calendar] preview ALREADY EXISTS slot_id=' . $slot_id . ' gen=' . $existing['generation_id']);
+            orch_debug_log('[SEO_AEO Calendar] preview ALREADY EXISTS slot_id=' . $slot_id . ' gen=' . $existing['generation_id']);
             return array(
                 'success'          => true,
                 'cached'           => true,
@@ -509,7 +509,7 @@ class SEO_AEO_Calendar {
                 'error'         => '',
             ));
         } catch (Throwable $e) {
-            error_log('[SEO_AEO Calendar] preview patch state failed: ' . $e->getMessage());
+            orch_debug_log('[SEO_AEO Calendar] preview patch state failed: ' . $e->getMessage());
         }
 
         return array(

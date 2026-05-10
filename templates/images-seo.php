@@ -596,10 +596,10 @@ $tt = function ($s) { return class_exists('SEO_AEO_T') ? SEO_AEO_T::t($s) : $s; 
         }
         let html = '<table class="iseo-table"><thead><tr>';
         html += '<th style="width:40px;"><input type="checkbox" id="iseo-h-checkall"></th>';
-        html += '<th><?php echo esc_html__('Immagine'); ?></th>';
-        html += '<th><?php echo esc_html__('Metadata'); ?></th>';
-        html += '<th><?php echo esc_html__('Score'); ?></th>';
-        html += '<th><?php echo esc_html__('Azioni'); ?></th>';
+        html += '<th><?php echo esc_html__('Immagine', 'aeo-orchestra'); ?></th>';
+        html += '<th><?php echo esc_html__('Metadata', 'aeo-orchestra'); ?></th>';
+        html += '<th><?php echo esc_html__('Score', 'aeo-orchestra'); ?></th>';
+        html += '<th><?php echo esc_html__('Azioni', 'aeo-orchestra'); ?></th>';
         html += '</tr></thead><tbody>';
         state.items.forEach(it => {
             const cls = 'iseo-score-' + it.score;

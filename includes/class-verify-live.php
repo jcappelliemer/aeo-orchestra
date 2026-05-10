@@ -141,9 +141,23 @@ class SEO_AEO_Verify_Live {
 
     private static function emit_event($event, $data) {
         if (connection_aborted()) return;
-        $payload = wp_json_encode($data);
-        echo "event: " . $event . "\n";
-        echo "data: " . $payload . "\n\n";
+        // 3.36.0 (WP.org Issue A): SSE response is text/event-stream, not HTML.
+        // The event name is sanitized via sanitize_key — only alphanumerics +
+        // hyphen/underscore — so it can never carry HTML or break the SSE
+        // framing. The payload is wp_json_encode'd so any user-supplied string
+        // inside it is JSON-escaped (control chars and HTML chars become \uXXXX
+        // or \"). esc_html() would mangle the JSON for any consumer, so we
+        // intentionally skip it here. phpcs:disable hardens against the static
+        // analyzer that doesn't understand the SSE context.
+        $event_safe = sanitize_key($event);
+        $payload    = wp_json_encode($data);
+        if (!is_string($payload)) {
+            $payload = '{}';
+        }
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped
+        echo 'event: ' . $event_safe . "\n";
+        echo 'data: '  . $payload    . "\n\n";
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
         @flush();
     }
 
@@ -269,7 +283,7 @@ class SEO_AEO_Verify_Live {
                 $vl_status_reason = 'Parser returned 0 insights/warnings/score from non-empty payload';
                 $errors++;
                 $raw_snippet = substr((string) $ai_result['response']['text'], 0, 500);
-                error_log('[seo-aeo-orchestra verify-live] parsing_failed; raw payload: ' . $raw_snippet);
+                orch_debug_log('[seo-aeo-orchestra verify-live] parsing_failed; raw payload: ' . $raw_snippet);
                 self::emit_event('warning', array(
                     'category' => 'parsing_failed',
                     'finding' => 'AI ha risposto ma non e\' stato possibile estrarre insight strutturati.',
@@ -333,7 +347,7 @@ class SEO_AEO_Verify_Live {
     }
 
     private static function base_url($url) {
-        $parts = parse_url($url);
+        $parts = wp_parse_url($url);
         if (!is_array($parts) || empty($parts['host'])) return rtrim((string) home_url('/'), '/');
         $scheme = isset($parts['scheme']) ? $parts['scheme'] : 'https';
         return $scheme . '://' . $parts['host'];
@@ -475,7 +489,7 @@ class SEO_AEO_Verify_Live {
         if ($head_html) {
             // Extract <title>
             if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $head_html, $m)) {
-                $title = trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                $title = trim(html_entity_decode(wp_strip_all_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
                 $title = preg_replace('/\s+/u', ' ', $title);
                 if (function_exists('mb_substr')) $title = mb_substr($title, 0, 200);
                 else $title = substr($title, 0, 200);
@@ -499,7 +513,7 @@ class SEO_AEO_Verify_Live {
             if (preg_match_all('/<p[^>]*>(.*?)<\/p>/is', $body, $matches)) {
                 $paras = array();
                 foreach ($matches[1] as $p) {
-                    $clean = trim(html_entity_decode(strip_tags($p), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                    $clean = trim(html_entity_decode(wp_strip_all_tags($p), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
                     $clean = preg_replace('/\s+/u', ' ', $clean);
                     if (strlen($clean) > 30) $paras[] = $clean;
                     if (count($paras) >= 5) break;
@@ -596,7 +610,7 @@ class SEO_AEO_Verify_Live {
             'temperature' => 0.3,
             // === .82 context injection ===
             'business_name'    => isset($full_context['identity_profile']['business_name']) ? $full_context['identity_profile']['business_name'] : '',
-            'domain'           => parse_url($context['url'], PHP_URL_HOST) ?: '',
+            'domain'           => wp_parse_url($context['url'], PHP_URL_HOST) ?: '',
             'url'              => $context['url'],
             'identity_profile' => $full_context['identity_profile'],
             'brand_voice'      => $full_context['brand_voice'],
@@ -670,7 +684,7 @@ class SEO_AEO_Verify_Live {
             )),
         ));
         if (is_wp_error($resp)) {
-            error_log('[seo-aeo-orchestra] backend_refund WP_Error: ' . $resp->get_error_message());
+            orch_debug_log('[seo-aeo-orchestra] backend_refund WP_Error: ' . $resp->get_error_message());
             return array('success' => false, 'message' => $resp->get_error_message());
         }
         $code = wp_remote_retrieve_response_code($resp);
@@ -678,7 +692,7 @@ class SEO_AEO_Verify_Live {
         if ($code >= 200 && $code < 300 && is_array($body) && !empty($body['success'])) {
             return array('success' => true, 'amount' => (int) $amount);
         }
-        error_log('[seo-aeo-orchestra] backend_refund non-200: code=' . $code);
+        orch_debug_log('[seo-aeo-orchestra] backend_refund non-200: code=' . $code);
         return array('success' => false, 'message' => 'backend non-2xx');
     }
 

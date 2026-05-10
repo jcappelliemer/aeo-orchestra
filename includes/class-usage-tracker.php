@@ -22,7 +22,7 @@ class SEO_AEO_Orchestra_Usage_Tracker {
             add_action('wp_ajax_seo_aeo_orchestra_get_usage', array($this, 'ajax_get_usage'));
             add_action('wp_ajax_seo_aeo_orchestra_get_usage_stats', array($this, 'ajax_get_usage_stats'));
         } catch (Throwable $e) {
-            error_log('SEO AEO Usage Tracker __construct error: ' . $e->getMessage());
+            orch_debug_log('SEO AEO Usage Tracker __construct error: ' . $e->getMessage());
         }
     }
 

@@ -132,7 +132,7 @@ if ($trend === false) {
         GROUP BY bot_name ORDER BY COUNT(*) DESC LIMIT 4
     ");
     $labels = array();
-    for ($i = 27; $i >= 0; $i--) $labels[] = date('Y-m-d', strtotime("-$i days"));
+    for ($i = 27; $i >= 0; $i--) $labels[] = gmdate('Y-m-d', strtotime("-$i days"));
     $series = array();
     if (is_array($top4) && !empty($top4)) {
         $placeholders = implode(',', array_fill(0, count($top4), '%s'));
@@ -201,37 +201,37 @@ if ($compliance === false) {
 <!-- ═══ 4 STAT CARD ═══ -->
 <div class="aip-stats-row">
     <div class="aip-stat-card">
-        <div class="aip-stat-card-label"><?php echo $T('Hits totali'); ?></div>
-        <div class="aip-stat-card-value" id="aip-stat-hits-total"><?php echo number_format_i18n($summary['hits_total']); ?></div>
-        <div class="aip-stat-card-sub"><?php echo $T('ultimi 28gg'); ?></div>
+        <div class="aip-stat-card-label"><?php echo esc_html($T('Hits totali')); ?></div>
+        <div class="aip-stat-card-value" id="aip-stat-hits-total"><?php echo esc_html(number_format_i18n($summary['hits_total'])); ?></div>
+        <div class="aip-stat-card-sub"><?php echo esc_html($T('ultimi 28gg')); ?></div>
     </div>
     <div class="aip-stat-card">
-        <div class="aip-stat-card-label"><?php echo $T('Bot attivi'); ?></div>
+        <div class="aip-stat-card-label"><?php echo esc_html($T('Bot attivi')); ?></div>
         <div class="aip-stat-card-value" id="aip-stat-bots-active"><?php echo (int) $summary['bots_active']; ?></div>
-        <div class="aip-stat-card-sub"><?php echo $T('AI engine distinti'); ?></div>
+        <div class="aip-stat-card-sub"><?php echo esc_html($T('AI engine distinti')); ?></div>
     </div>
     <div class="aip-stat-card">
-        <div class="aip-stat-card-label"><?php echo $T('Trend 28gg'); ?></div>
+        <div class="aip-stat-card-label"><?php echo esc_html($T('Trend 28gg')); ?></div>
         <?php
             $trend_pct = (int) $summary['trend_pct'];
             $trend_class = $trend_pct > 0 ? 'aip-stat-card-trend--up' : ($trend_pct < 0 ? 'aip-stat-card-trend--down' : 'aip-stat-card-trend--flat');
             $trend_arrow = $trend_pct > 0 ? '↗' : ($trend_pct < 0 ? '↘' : '→');
         ?>
-        <div class="aip-stat-card-value <?php echo $trend_class; ?>" id="aip-stat-trend">
+        <div class="aip-stat-card-value <?php echo esc_html($trend_class); ?>" id="aip-stat-trend">
             <?php echo ($trend_pct >= 0 ? '+' : '') . $trend_pct; ?>%
         </div>
-        <div class="aip-stat-card-sub"><?php echo $trend_arrow; ?> <?php echo $T('vs precedenti 28gg'); ?></div>
+        <div class="aip-stat-card-sub"><?php echo esc_html($trend_arrow); ?> <?php echo esc_html($T('vs precedenti 28gg')); ?></div>
     </div>
     <div class="aip-stat-card <?php if ((int) $summary['blocked_bypass'] > 0) echo 'aip-stat-card--alert'; ?>">
-        <div class="aip-stat-card-label"><?php echo $T('Bypass robots.txt'); ?></div>
+        <div class="aip-stat-card-label"><?php echo esc_html($T('Bypass robots.txt')); ?></div>
         <div class="aip-stat-card-value" id="aip-stat-blocked"><?php echo (int) $summary['blocked_bypass']; ?></div>
-        <div class="aip-stat-card-sub"><?php echo $T('bot bloccati che ignorano'); ?></div>
+        <div class="aip-stat-card-sub"><?php echo esc_html($T('bot bloccati che ignorano')); ?></div>
     </div>
 </div>
 
 <!-- ═══ TOP 5 BOT BAR CHART ═══ -->
 <div class="aip-subsection">
-    <h3 class="aip-subsection-title">📊 <?php echo $T('Top 5 bot AI più attivi (28gg)'); ?></h3>
+    <h3 class="aip-subsection-title">📊 <?php echo esc_html($T('Top 5 bot AI più attivi (28gg)')); ?></h3>
     <?php if (!empty($top_bots['rows'])): foreach ($top_bots['rows'] as $b): ?>
         <?php
             $pct = $top_bot_max > 0 ? round(100 * $b['hits'] / $top_bot_max) : 0;
@@ -240,44 +240,44 @@ if ($compliance === false) {
         ?>
         <div class="aip-bot-row">
             <div class="aip-bot-name">
-                <span class="aip-bot-dot aip-bot-dot--<?php echo $cls; ?>"></span>
+                <span class="aip-bot-dot aip-bot-dot--<?php echo esc_html($cls); ?>"></span>
                 <span><?php echo esc_html($b['bot_name']); ?> <span style="color: var(--orch-muted, #475569); font-size: 11px;">(<?php echo esc_html($b['bot_provider']); ?>)</span></span>
             </div>
-            <div class="aip-bot-bar"><div class="aip-bot-bar-fill aip-bot-bar-fill--<?php echo $cls; ?>" style="width: <?php echo $pct; ?>%;"></div></div>
-            <div class="aip-bot-count"><?php echo number_format_i18n($b['hits']); ?></div>
+            <div class="aip-bot-bar"><div class="aip-bot-bar-fill aip-bot-bar-fill--<?php echo esc_html($cls); ?>" style="width: <?php echo esc_html($pct); ?>%;"></div></div>
+            <div class="aip-bot-count"><?php echo esc_html(number_format_i18n($b['hits'])); ?></div>
         </div>
     <?php endforeach; else: ?>
-        <p style="color: var(--orch-muted, #475569); font-size: 13px;"><?php echo $T('Nessun bot rilevato negli ultimi 28 giorni.'); ?></p>
+        <p style="color: var(--orch-muted, #475569); font-size: 13px;"><?php echo esc_html($T('Nessun bot rilevato negli ultimi 28 giorni.')); ?></p>
     <?php endif; ?>
     <div class="aip-bot-legend">
-        <span><span class="aip-bot-dot aip-bot-dot--green" style="display:inline-block; margin-right: 4px;"></span>🟢 <?php echo $T('AI engine diretto'); ?></span>
-        <span><span class="aip-bot-dot aip-bot-dot--yellow" style="display:inline-block; margin-right: 4px;"></span>🟡 <?php echo $T('Multi-purpose'); ?></span>
-        <span><span class="aip-bot-dot aip-bot-dot--red" style="display:inline-block; margin-right: 4px;"></span>🔴 <?php echo $T('Crawler aggregato'); ?></span>
+        <span><span class="aip-bot-dot aip-bot-dot--green" style="display:inline-block; margin-right: 4px;"></span>🟢 <?php echo esc_html($T('AI engine diretto')); ?></span>
+        <span><span class="aip-bot-dot aip-bot-dot--yellow" style="display:inline-block; margin-right: 4px;"></span>🟡 <?php echo esc_html($T('Multi-purpose')); ?></span>
+        <span><span class="aip-bot-dot aip-bot-dot--red" style="display:inline-block; margin-right: 4px;"></span>🔴 <?php echo esc_html($T('Crawler aggregato')); ?></span>
     </div>
 </div>
 
 <!-- ═══ TOP 10 PAGES TABLE ═══ -->
 <div class="aip-subsection">
     <h3 class="aip-subsection-title">
-        📄 <?php echo $T('Top 10 pagine più scansionate (28gg)'); ?>
+        📄 <?php echo esc_html($T('Top 10 pagine più scansionate (28gg)')); ?>
         <span class="aip-subsection-title-actions">
-            <a href="<?php echo esc_url(admin_url('admin-post.php?action=orch_ai_crawler_export_csv')); ?>" class="orch3-btn orch3-btn-ghost orch3-btn-sm" style="font-size: 11px; padding: 4px 10px;">⬇ <?php echo $T('Esporta CSV'); ?></a>
+            <a href="<?php echo esc_url(admin_url('admin-post.php?action=orch_ai_crawler_export_csv')); ?>" class="orch3-btn orch3-btn-ghost orch3-btn-sm" style="font-size: 11px; padding: 4px 10px;">⬇ <?php echo esc_html($T('Esporta CSV')); ?></a>
         </span>
     </h3>
     <?php if (!empty($top_pages_data['rows'])): ?>
     <table class="aip-pages-table">
         <thead>
             <tr>
-                <th><?php echo $T('URL path'); ?></th>
-                <th class="aip-pages-hits"><?php echo $T('Hits'); ?></th>
-                <th><?php echo $T('Bots breakdown'); ?></th>
+                <th><?php echo esc_html($T('URL path')); ?></th>
+                <th class="aip-pages-hits"><?php echo esc_html($T('Hits')); ?></th>
+                <th><?php echo esc_html($T('Bots breakdown')); ?></th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($top_pages_data['rows'] as $p): ?>
                 <tr>
                     <td class="aip-pages-url"><?php echo esc_html($p['url_path']); ?></td>
-                    <td class="aip-pages-hits"><?php echo number_format_i18n($p['hits']); ?></td>
+                    <td class="aip-pages-hits"><?php echo esc_html(number_format_i18n($p['hits'])); ?></td>
                     <td class="aip-pages-bots">
                         <?php
                         $bot_strs = array();
@@ -290,14 +290,14 @@ if ($compliance === false) {
         </tbody>
     </table>
     <?php else: ?>
-        <p style="color: var(--orch-muted, #475569); font-size: 13px;"><?php echo $T('Nessuna pagina scansionata da bot AI negli ultimi 28 giorni.'); ?></p>
+        <p style="color: var(--orch-muted, #475569); font-size: 13px;"><?php echo esc_html($T('Nessuna pagina scansionata da bot AI negli ultimi 28 giorni.')); ?></p>
     <?php endif; ?>
 </div>
 
 <!-- ═══ SPARKLINE TREND 28gg ═══ -->
 <?php if (!empty($trend['series'])): ?>
 <div class="aip-subsection">
-    <h3 class="aip-subsection-title">📈 <?php echo $T('Trend 28 giorni (top 4 bot)'); ?></h3>
+    <h3 class="aip-subsection-title">📈 <?php echo esc_html($T('Trend 28 giorni (top 4 bot)')); ?></h3>
     <?php
     // Build SVG sparkline. Find max value across all series for scaling.
     $max_val = 1;
@@ -313,7 +313,7 @@ if ($compliance === false) {
     }
     $aria_label = sprintf($T('Trend AI bot ultimi 28 giorni: %s'), implode(', ', $aria_parts));
     ?>
-    <svg class="aip-sparkline" viewBox="0 0 <?php echo $svg_w; ?> <?php echo $svg_h; ?>" preserveAspectRatio="none" role="img" aria-label="<?php echo esc_attr($aria_label); ?>">
+    <svg class="aip-sparkline" viewBox="0 0 <?php echo esc_html($svg_w); ?> <?php echo esc_html($svg_h); ?>" preserveAspectRatio="none" role="img" aria-label="<?php echo esc_attr($aria_label); ?>">
         <?php foreach ($trend['series'] as $s):
             $points = array();
             foreach ($s['values'] as $i => $v) {
@@ -329,30 +329,30 @@ if ($compliance === false) {
         <?php foreach ($trend['series'] as $s): ?>
             <span><span class="aip-spark-legend-dot" style="background: <?php echo esc_attr($s['color']); ?>;"></span><?php echo esc_html($s['bot_name']); ?></span>
         <?php endforeach; ?>
-        <span style="margin-left: auto; color: var(--orch-faint, #94a3b8);"><?php echo $T('28gg fa'); ?> ────────→ <?php echo $T('ieri'); ?></span>
+        <span style="margin-left: auto; color: var(--orch-faint, #94a3b8);"><?php echo esc_html($T('28gg fa')); ?> ────────→ <?php echo esc_html($T('ieri')); ?></span>
     </div>
 </div>
 <?php endif; ?>
 
 <!-- ═══ COMPLIANCE CHECK ═══ -->
 <div class="aip-subsection">
-    <h3 class="aip-subsection-title">🛡 <?php echo $T('Robots.txt compliance'); ?></h3>
+    <h3 class="aip-subsection-title">🛡 <?php echo esc_html($T('Robots.txt compliance')); ?></h3>
     <?php if ($compliance['compliant']): ?>
         <?php if ($compliance['blocked_bots_count'] === 0): ?>
             <div class="aip-compliance-card">
-                <strong>✅ <?php echo $T('Nessun bot bloccato in AI Crawlers settings.'); ?></strong>
-                <p style="margin: 6px 0 0; font-size: 13px;"><?php echo $T('Per controllare quali bot scansionano il tuo sito, configura allowlist e robots.txt:'); ?></p>
+                <strong>✅ <?php echo esc_html($T('Nessun bot bloccato in AI Crawlers settings.')); ?></strong>
+                <p style="margin: 6px 0 0; font-size: 13px;"><?php echo esc_html($T('Per controllare quali bot scansionano il tuo sito, configura allowlist e robots.txt:')); ?></p>
                 <div class="aip-compliance-actions">
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-ai-crawlers')); ?>" class="orch3-btn orch3-btn-ghost"><?php echo $T('Configura AI Crawlers →'); ?></a>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-ai-crawlers')); ?>" class="orch3-btn orch3-btn-ghost"><?php echo esc_html($T('Configura AI Crawlers →')); ?></a>
                 </div>
             </div>
         <?php else: ?>
             <div class="aip-compliance-card">
-                <strong>✅ <?php echo $T('Tutti i bot rispettano le tue settings AI Crawlers (28gg)'); ?></strong>
+                <strong>✅ <?php echo esc_html($T('Tutti i bot rispettano le tue settings AI Crawlers (28gg)')); ?></strong>
                 <p style="margin: 6px 0 0; font-size: 13px;"><?php echo sprintf($T('%d bot bloccati, 0 violations rilevate. Compliance perfetta.'), $compliance['blocked_bots_count']); ?></p>
                 <div class="aip-compliance-actions">
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-ai-crawlers')); ?>" class="orch3-btn orch3-btn-ghost"><?php echo $T('Configura AI Crawlers →'); ?></a>
-                    <a href="<?php echo esc_url(home_url('/robots.txt')); ?>" target="_blank" class="orch3-btn orch3-btn-ghost"><?php echo $T('Vedi tuo robots.txt →'); ?></a>
+                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-ai-crawlers')); ?>" class="orch3-btn orch3-btn-ghost"><?php echo esc_html($T('Configura AI Crawlers →')); ?></a>
+                    <a href="<?php echo esc_url(home_url('/robots.txt')); ?>" target="_blank" class="orch3-btn orch3-btn-ghost"><?php echo esc_html($T('Vedi tuo robots.txt →')); ?></a>
                 </div>
             </div>
         <?php endif; ?>
@@ -362,12 +362,12 @@ if ($compliance === false) {
             <strong>⚠ <?php echo sprintf($T('%d hits da bot bloccati ultimi 28gg'), $tot_violations); ?></strong>
             <ul style="margin: 8px 0 0; padding-left: 20px; font-size: 13px;">
                 <?php foreach ($compliance['violations'] as $v): ?>
-                    <li><strong><?php echo esc_html($v['bot_name']); ?></strong> — <?php echo number_format_i18n($v['violations']); ?> <?php echo $T('hits su URL bloccati in robots.txt'); ?></li>
+                    <li><strong><?php echo esc_html($v['bot_name']); ?></strong> — <?php echo esc_html(number_format_i18n($v['violations'])); ?> <?php echo esc_html($T('hits su URL bloccati in robots.txt')); ?></li>
                 <?php endforeach; ?>
             </ul>
-            <p style="margin: 8px 0 0; font-size: 12px; color: #92400e;"><?php echo $T('Possibile non compliance. Considera blocking server-level.'); ?></p>
+            <p style="margin: 8px 0 0; font-size: 12px; color: #92400e;"><?php echo esc_html($T('Possibile non compliance. Considera blocking server-level.')); ?></p>
             <div class="aip-compliance-actions">
-                <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-ai-crawlers')); ?>" class="orch3-btn orch3-btn-ghost"><?php echo $T('Configura AI Crawlers →'); ?></a>
+                <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-ai-crawlers')); ?>" class="orch3-btn orch3-btn-ghost"><?php echo esc_html($T('Configura AI Crawlers →')); ?></a>
             </div>
         </div>
     <?php endif; ?>
@@ -375,7 +375,7 @@ if ($compliance === false) {
 
 <!-- ═══ Phase 2 footer ═══ -->
 <div class="aip-phase2-footer">
-    ℹ <?php echo $T('Phase 2 (Bing Webmaster Tools): citation count reale ChatGPT/Copilot/Bing Chat. Coming in v3.35.85 quando setup Microsoft Azure completato.'); ?>
+    ℹ <?php echo esc_html($T('Phase 2 (Bing Webmaster Tools): citation count reale ChatGPT/Copilot/Bing Chat. Coming in v3.35.85 quando setup Microsoft Azure completato.')); ?>
 </div>
 
 <?php ob_start(); ?>

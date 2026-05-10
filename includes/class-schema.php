@@ -1045,7 +1045,6 @@ class SEO_AEO_Schema {
             'orderby'          => 'menu_order',
             'order'            => 'ASC',
             'no_found_rows'    => true,
-            'suppress_filters' => true,
         ));
         if (!empty($children)) {
             $i = 1;
@@ -1069,7 +1068,6 @@ class SEO_AEO_Schema {
             'orderby'          => 'modified',
             'order'            => 'DESC',
             'no_found_rows'    => true,
-            'suppress_filters' => true,
         ));
         $i = 1;
         foreach ($siblings as $c) {

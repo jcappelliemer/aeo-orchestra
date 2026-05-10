@@ -11,7 +11,7 @@ if (empty($prefill_keyword) && isset($_GET['keyword'])) {
 if (empty($prefill_topic) && isset($_GET['url'])) {
     $url_param = sanitize_text_field(wp_unslash($_GET['url']));
     // Estrai slug come topic readable
-    $slug = trim(parse_url($url_param, PHP_URL_PATH), '/');
+    $slug = trim(wp_parse_url($url_param, PHP_URL_PATH), '/');
     $slug = $slug ? basename($slug) : '';
     $slug = preg_replace('/\.\w+$/', '', $slug);
     $slug = str_replace(array('-', '_'), ' ', $slug);

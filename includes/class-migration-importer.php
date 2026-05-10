@@ -66,7 +66,11 @@ class SEO_AEO_Migration_Importer {
             // AIOSEO 4+ usa custom table wp_aioseo_posts
             $aioseo_table = $wpdb->prefix . 'aioseo_posts';
             $aioseo_table_count = 0;
+            // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
             if ($wpdb->get_var("SHOW TABLES LIKE '$aioseo_table'") === $aioseo_table) {
+                // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
                 $aioseo_table_count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $aioseo_table WHERE title <> '' OR description <> ''");
                 $count = max($count, $aioseo_table_count);
             }

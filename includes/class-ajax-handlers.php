@@ -1848,7 +1848,6 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'posts_per_page' => 1000,
                 'no_found_rows' => true,
                 'fields' => 'ids',
-                'suppress_filters' => true,
             ));
 
             $pages = array();
@@ -2673,7 +2672,6 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'orderby'          => 'modified',
                 'order'            => 'DESC',
                 'no_found_rows'    => true,
-                'suppress_filters' => true,
             ));
             foreach ($posts as $p) {
                 $excerpt = trim((string) $p->post_excerpt);
@@ -4916,6 +4914,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
             }
             // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fclose -- closing php://output for streaming CSV download
             fclose($out);
             wp_die();
         } catch (Throwable $e) {
@@ -5448,7 +5447,6 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'orderby'          => 'relevance',
                 'order'            => 'DESC',
                 'no_found_rows'    => true,
-                'suppress_filters' => true,
             ));
 
             // Merge role matches at the front (highest priority), dedup by ID

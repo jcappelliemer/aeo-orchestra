@@ -129,7 +129,6 @@ class SEO_AEO_Page_Roles {
             'orderby'          => 'modified',
             'order'            => 'DESC',
             'no_found_rows'    => true,
-            'suppress_filters' => true,
         ));
         if (!empty($posts)) return $posts;
 
@@ -150,7 +149,6 @@ class SEO_AEO_Page_Roles {
             'posts_per_page'   => $limit,
             'orderby'          => 'post__in',
             'no_found_rows'    => true,
-            'suppress_filters' => true,
         ));
     }
 
@@ -256,7 +254,6 @@ class SEO_AEO_Page_Roles {
             'orderby'          => 'ID',
             'order'            => 'ASC',
             'no_found_rows'    => true,
-            'suppress_filters' => true,
         ));
 
         $map = self::get_map();
@@ -351,7 +348,6 @@ class SEO_AEO_Page_Roles {
                 'posts_per_page'   => 1,
                 'fields'           => 'ids',
                 'no_found_rows'    => true,
-                'suppress_filters' => true,
             ));
             if (!empty($children)) {
                 return array('role' => 'category_landing', 'confidence' => 0.7);
@@ -390,7 +386,6 @@ class SEO_AEO_Page_Roles {
             'orderby'          => 'modified',
             'order'            => 'DESC',
             'no_found_rows'    => true,
-            'suppress_filters' => true,
         ));
         if (empty($candidates)) return array();
 
@@ -419,7 +414,6 @@ class SEO_AEO_Page_Roles {
                     'posts_per_page'   => 1,
                     'fields'           => 'ids',
                     'no_found_rows'    => true,
-                    'suppress_filters' => true,
                 )));
                 if ($children_count > 0) $score += 30;
             }
@@ -471,7 +465,6 @@ class SEO_AEO_Page_Roles {
             'orderby'          => 'modified',
             'order'            => 'DESC',
             'no_found_rows'    => true,
-            'suppress_filters' => true,
         ));
 
         $scored = array();
@@ -500,7 +493,6 @@ class SEO_AEO_Page_Roles {
                     'posts_per_page'   => 1,
                     'fields'           => 'ids',
                     'no_found_rows'    => true,
-                    'suppress_filters' => true,
                 )));
                 if ($children_count > 0) $score += 30;
             }

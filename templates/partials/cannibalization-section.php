@@ -25,19 +25,19 @@ if (!isset($T) || !is_callable($T)) {
 <div class="orchestra-v3">
 <div class="orch3-card orch-cannibal-card">
     <div class="orch-cannibal-head">
-        <h2 class="orch3-h2"><?php echo $T('Cannibalizzazione SEO'); ?></h2>
-        <button type="button" class="orch3-btn orch3-btn-ghost orch-cannibal-toggle" aria-expanded="true"><?php echo $T('Nascondi'); ?></button>
+        <h2 class="orch3-h2"><?php echo esc_html($T('Cannibalizzazione SEO')); ?></h2>
+        <button type="button" class="orch3-btn orch3-btn-ghost orch-cannibal-toggle" aria-expanded="true"><?php echo esc_html($T('Nascondi')); ?></button>
     </div>
     <div class="orch-cannibal-body">
         <p class="orch3-muted">
-            <?php echo $T('Trova pagine del sito che competono per la stessa focus keyword (cannibalizzazione). Quando 2 o più pagine targetizzano la stessa query, Google fatica a capire quale mostrare e il ranking di entrambe peggiora.'); ?>
+            <?php echo esc_html($T('Trova pagine del sito che competono per la stessa focus keyword (cannibalizzazione). Quando 2 o più pagine targetizzano la stessa query, Google fatica a capire quale mostrare e il ranking di entrambe peggiora.')); ?>
         </p>
         <div class="orch-cannibal-runbar">
             <button type="button" class="orch3-btn orch3-btn-primary" id="orch-cannibal-scan-btn"
                 <?php if (!$license_valid) echo 'disabled'; ?>>
-                <?php echo $T('Esegui scansione'); ?>
+                <?php echo esc_html($T('Esegui scansione')); ?>
             </button>
-            <span class="orch3-muted orch-cannibal-hint"><?php echo $T('Gratis · scansiona post + pagine pubblicate'); ?></span>
+            <span class="orch3-muted orch-cannibal-hint"><?php echo esc_html($T('Gratis · scansiona post + pagine pubblicate')); ?></span>
         </div>
         <div id="orch-cannibal-results"></div>
     </div>

@@ -234,7 +234,7 @@ class SEO_AEO_Global_Filters {
                 if (!array_key_exists('post_types', $current_sitemap) || $current_sitemap['post_types'] === null) {
                     $current_sitemap['post_types'] = array_values($existing_pt);
                     update_option(self::OPTION_SITEMAP_SETTINGS, $current_sitemap);
-                    error_log('[SEO_AEO] v2 migration: copied global.post_types → sitemap.post_types: ' . wp_json_encode($existing_pt));
+                    orch_debug_log('[SEO_AEO] v2 migration: copied global.post_types → sitemap.post_types: ' . wp_json_encode($existing_pt));
                 }
             }
             // post_types in $new is no longer used as a global selector but kept
@@ -244,7 +244,7 @@ class SEO_AEO_Global_Filters {
         $new['schema_version'] = self::SCHEMA_VERSION;
         update_option(self::OPTION_KEY, $new);
 
-        error_log('[SEO_AEO] Global filters migrated to schema v' . self::SCHEMA_VERSION);
+        orch_debug_log('[SEO_AEO] Global filters migrated to schema v' . self::SCHEMA_VERSION);
 
         return true;
     }

@@ -23,7 +23,7 @@ class SEO_AEO_API_Client {
             $this->license_key = get_option('seo_aeo_orchestra_license_key', get_option('seo_aeo_license_key', ''));
             $this->domain = $this->get_site_domain();
         } catch (Throwable $e) {
-            error_log('SEO AEO API Client __construct error: ' . $e->getMessage());
+            orch_debug_log('SEO AEO API Client __construct error: ' . $e->getMessage());
             $this->api_url = 'https://aeo-orchestra.com';
             $this->license_key = '';
             $this->domain = '';
@@ -35,15 +35,18 @@ class SEO_AEO_API_Client {
      */
     private function get_site_domain() {
         $url = get_site_url();
-        $parsed = parse_url($url);
+        $parsed = wp_parse_url($url);
         $host = isset($parsed['host']) ? $parsed['host'] : $url;
         return strtolower(preg_replace('/^www\./', '', $host));
     }
 
     /**
-     * Quick connectivity pre-check using fsockopen (2s timeout).
+     * Quick connectivity pre-check via wp_remote_head (2s timeout).
      * Prevents PHP from hanging on wp_remote_post when outbound HTTP is blocked.
-     * Result is cached per-request.
+     * Result is cached for 5 minutes (success) / 1 minute (failure).
+     *
+     * 3.36.0 (WP.org compliance): swapped fsockopen() for wp_remote_head() per
+     * WordPress.WP.AlternativeFunctions.file_system_read_fsockopen.
      *
      * @return bool True if the API host is reachable.
      */
@@ -52,7 +55,7 @@ class SEO_AEO_API_Client {
             return $this->can_reach_api;
         }
 
-        // Check transient first (avoid socket check on every page load)
+        // Check transient first (avoid HTTP probe on every page load)
         $cached = get_transient('seo_aeo_api_reachable');
         if ($cached === 'yes') {
             $this->can_reach_api = true;
@@ -63,17 +66,21 @@ class SEO_AEO_API_Client {
             return false;
         }
 
-        $parsed = parse_url($this->api_url);
-        $host = isset($parsed['host']) ? $parsed['host'] : 'aeo-orchestra.com';
-        $port = (isset($parsed['scheme']) && $parsed['scheme'] === 'https') ? 443 : 80;
-
-        $conn = @fsockopen($host, $port, $errno, $errstr, 2);
-        if ($conn) {
-            fclose($conn);
+        // HEAD request with a 2s timeout. Any HTTP response (incl. 401/404)
+        // proves the host is reachable; only a WP_Error means the network/DNS
+        // itself failed.
+        $resp = wp_remote_head($this->api_url, array(
+            'timeout'     => 2,
+            'redirection' => 0,
+            'sslverify'   => true,
+        ));
+        if (!is_wp_error($resp)) {
             $this->can_reach_api = true;
             set_transient('seo_aeo_api_reachable', 'yes', 300); // Cache 5 min
         } else {
-            error_log('[SEO_AEO] Cannot reach ' . $host . ':' . $port . ' - errno=' . $errno . ' ' . $errstr);
+            $parsed = wp_parse_url($this->api_url);
+            $host = isset($parsed['host']) ? $parsed['host'] : $this->api_url;
+            orch_debug_log('[SEO_AEO] Cannot reach ' . $host . ' - ' . $resp->get_error_message());
             $this->can_reach_api = false;
             set_transient('seo_aeo_api_reachable', 'no', 60); // Retry in 1 min
         }
@@ -85,7 +92,7 @@ class SEO_AEO_API_Client {
      * Returns a user-friendly error when the API host is unreachable.
      */
     private function unreachable_error() {
-        $parsed = parse_url($this->api_url);
+        $parsed = wp_parse_url($this->api_url);
         $host = isset($parsed['host']) ? $parsed['host'] : $this->api_url;
         return array(
             'error' => true,
@@ -116,7 +123,7 @@ class SEO_AEO_API_Client {
         ));
 
         if (is_wp_error($response)) {
-            error_log('SEO AEO activate_license HTTP error: ' . $response->get_error_message());
+            orch_debug_log('SEO AEO activate_license HTTP error: ' . $response->get_error_message());
             return array('success' => false, 'message' => 'Errore di connessione: ' . $response->get_error_message());
         }
 
@@ -133,7 +140,7 @@ class SEO_AEO_API_Client {
         }
 
         $detail = isset($body['detail']) ? $body['detail'] : (isset($body['message']) ? $body['message'] : 'Attivazione fallita.');
-        error_log('SEO AEO activate_license failed: ' . $detail);
+        orch_debug_log('SEO AEO activate_license failed: ' . $detail);
         return array('success' => false, 'message' => $detail);
     }
 
@@ -314,7 +321,7 @@ class SEO_AEO_API_Client {
 
         if ($code === 403) {
             $msg = isset($result['message']) ? $result['message'] : 'Accesso negato.';
-            error_log('SEO AEO API 403: ' . $msg);
+            orch_debug_log('SEO AEO API 403: ' . $msg);
             return array('error' => true, 'message' => $msg);
         }
 

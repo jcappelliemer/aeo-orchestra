@@ -41,42 +41,42 @@ $bp_url = admin_url('admin.php?page=seo-aeo-business-profile');
         }
         ?>
     </div>
-    <p style="color: var(--orch-muted, #475569); margin: 0 0 8px;"><?php echo $T('Nessun bot AI rilevato ancora.'); ?></p>
+    <p style="color: var(--orch-muted, #475569); margin: 0 0 8px;"><?php echo esc_html($T('Nessun bot AI rilevato ancora.')); ?></p>
     <p style="color: var(--orch-muted, #475569); margin: 0 0 16px; font-size: 13px;">
-        <?php echo $T('I dati AI bot iniziano ad apparire entro 24-72h dalla prima scansione (dipende dal traffico organico del tuo sito).'); ?>
+        <?php echo esc_html($T('I dati AI bot iniziano ad apparire entro 24-72h dalla prima scansione (dipende dal traffico organico del tuo sito).')); ?>
     </p>
 
     <p style="color: var(--orch-ink, #0f172a); font-weight: 600; margin: 18px 0 6px;">
-        <?php echo $T('Mentre attendi, ottimizza il tuo sito per essere scansionato:'); ?>
+        <?php echo esc_html($T('Mentre attendi, ottimizza il tuo sito per essere scansionato:')); ?>
     </p>
 
     <div class="aip-empty-checklist">
         <div style="margin: 4px 0; color: #16a34a;">
-            ✓ <?php echo $T('llms.txt nativo'); ?> <strong><?php echo $T('ATTIVO'); ?></strong>
+            ✓ <?php echo esc_html($T('llms.txt nativo')); ?> <strong><?php echo esc_html($T('ATTIVO')); ?></strong>
         </div>
         <div style="margin: 4px 0; color: #16a34a;">
-            ✓ <?php echo $T('Schema markup'); ?> <strong><?php echo $T('ATTIVO'); ?></strong>
+            ✓ <?php echo esc_html($T('Schema markup')); ?> <strong><?php echo esc_html($T('ATTIVO')); ?></strong>
         </div>
         <div style="margin: 4px 0; color: <?php echo $bp_confirmed ? '#16a34a' : '#d97706'; ?>;">
             <?php echo $bp_confirmed ? '✓' : '⚠'; ?>
-            <?php echo $T('Profilo Business'); ?>
-            <strong><?php echo $bp_percent; ?>%</strong>
+            <?php echo esc_html($T('Profilo Business')); ?>
+            <strong><?php echo esc_html($bp_percent); ?>%</strong>
             <?php if (!$bp_confirmed): ?>
-                <a href="<?php echo esc_url($bp_url); ?>" style="margin-left: 6px; font-size: 12px;"><?php echo $T('Completa →'); ?></a>
+                <a href="<?php echo esc_url($bp_url); ?>" style="margin-left: 6px; font-size: 12px;"><?php echo esc_html($T('Completa →')); ?></a>
             <?php endif; ?>
         </div>
     </div>
 
     <div style="margin-top: 22px;">
         <a href="<?php echo esc_url($vl_url); ?>" class="aip-empty-cta">
-            ▶ <?php echo $T('Verifica come le AI vedono il tuo sito ora →'); ?>
+            ▶ <?php echo esc_html($T('Verifica come le AI vedono il tuo sito ora →')); ?>
         </a>
         <p style="font-size: 11px; color: var(--orch-muted, #475569); margin: 8px 0 0;">
-            (<?php echo $T('Verify-Live · 5 crediti · risultato in ~30s'); ?>)
+            (<?php echo esc_html($T('Verify-Live · 5 crediti · risultato in ~30s')); ?>)
         </p>
     </div>
 </div>
 
 <div class="aip-phase2-footer">
-    ℹ <?php echo $T('Phase 2 (Bing Webmaster Tools): citation count reale ChatGPT/Copilot/Bing Chat. Coming in v3.35.85.'); ?>
+    ℹ <?php echo esc_html($T('Phase 2 (Bing Webmaster Tools): citation count reale ChatGPT/Copilot/Bing Chat. Coming in v3.35.85.')); ?>
 </div>

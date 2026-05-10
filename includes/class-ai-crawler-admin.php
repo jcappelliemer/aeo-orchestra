@@ -96,6 +96,8 @@ class SEO_AEO_AI_Crawler_Admin {
                 $total = (int) $wpdb->get_var($wpdb->prepare($count_sql, $params));
                 $rows = $wpdb->get_results($wpdb->prepare($rows_sql, $params_for_rows), ARRAY_A);
             } else {
+                // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
                 $total = (int) $wpdb->get_var($count_sql);
                 $rows = $wpdb->get_results($wpdb->prepare($rows_sql, $per_page, $offset), ARRAY_A);
             }
@@ -237,10 +239,12 @@ class SEO_AEO_AI_Crawler_Admin {
         if (!empty($params)) {
             $rows = $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
         } else {
+            // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
             $rows = $wpdb->get_results($sql, ARRAY_A);
         }
 
-        $filename = 'aeo-crawler-log-' . date('Y-m-d-His');
+        $filename = 'aeo-crawler-log-' . gmdate('Y-m-d-His');
         if ($bot_filter) $filename .= '-' . $bot_filter;
         $filename .= '.csv';
 
@@ -266,6 +270,7 @@ class SEO_AEO_AI_Crawler_Admin {
                 $r['user_agent'],
             ));
         }
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fclose -- closing php://output for streaming CSV download
         fclose($out);
         exit;
     }
@@ -276,7 +281,7 @@ class SEO_AEO_AI_Crawler_Admin {
 
     private static function _check_ajax_auth() {
         if (!check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce', false)) {
-            error_log('[AIP] AJAX nonce check failed');
+            orch_debug_log('[AIP] AJAX nonce check failed');
             wp_send_json_error(array('message' => 'invalid_nonce'), 403);
         }
         if (!current_user_can('manage_options')) {
@@ -342,7 +347,7 @@ class SEO_AEO_AI_Crawler_Admin {
             set_transient($cache_key, $result, 5 * MINUTE_IN_SECONDS);
             wp_send_json_success($result);
         } catch (Throwable $e) {
-            error_log('[AIP] ajax_aip_summary exception: ' . $e->getMessage());
+            orch_debug_log('[AIP] ajax_aip_summary exception: ' . $e->getMessage());
             wp_send_json_error(array('message' => $e->getMessage()), 500);
         }
     }
@@ -385,7 +390,7 @@ class SEO_AEO_AI_Crawler_Admin {
             set_transient($cache_key, $result, 15 * MINUTE_IN_SECONDS);
             wp_send_json_success($result);
         } catch (Throwable $e) {
-            error_log('[AIP] ajax_top_bots exception: ' . $e->getMessage());
+            orch_debug_log('[AIP] ajax_top_bots exception: ' . $e->getMessage());
             wp_send_json_error(array('message' => $e->getMessage()), 500);
         }
     }
@@ -447,7 +452,7 @@ class SEO_AEO_AI_Crawler_Admin {
             set_transient($cache_key, $result, 15 * MINUTE_IN_SECONDS);
             wp_send_json_success($result);
         } catch (Throwable $e) {
-            error_log('[AIP] ajax_top_pages exception: ' . $e->getMessage());
+            orch_debug_log('[AIP] ajax_top_pages exception: ' . $e->getMessage());
             wp_send_json_error(array('message' => $e->getMessage()), 500);
         }
     }
@@ -502,7 +507,7 @@ class SEO_AEO_AI_Crawler_Admin {
             // Build labels (28 days back from today)
             $labels = array();
             for ($i = 27; $i >= 0; $i--) {
-                $labels[] = date('Y-m-d', strtotime("-$i days"));
+                $labels[] = gmdate('Y-m-d', strtotime("-$i days"));
             }
             // Build series: 1 polyline per top bot
             $series = array();
@@ -526,7 +531,7 @@ class SEO_AEO_AI_Crawler_Admin {
             set_transient($cache_key, $result, HOUR_IN_SECONDS);
             wp_send_json_success($result);
         } catch (Throwable $e) {
-            error_log('[AIP] ajax_trend exception: ' . $e->getMessage());
+            orch_debug_log('[AIP] ajax_trend exception: ' . $e->getMessage());
             wp_send_json_error(array('message' => $e->getMessage()), 500);
         }
     }
@@ -590,7 +595,7 @@ class SEO_AEO_AI_Crawler_Admin {
             set_transient($cache_key, $result, HOUR_IN_SECONDS);
             wp_send_json_success($result);
         } catch (Throwable $e) {
-            error_log('[AIP] ajax_compliance exception: ' . $e->getMessage());
+            orch_debug_log('[AIP] ajax_compliance exception: ' . $e->getMessage());
             wp_send_json_error(array('message' => $e->getMessage()), 500);
         }
     }

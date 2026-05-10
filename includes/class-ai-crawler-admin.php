@@ -111,7 +111,7 @@ class SEO_AEO_AI_Crawler_Admin {
                 $rows = $wpdb->get_results($wpdb->prepare($rows_sql, $params_for_rows), ARRAY_A);
             } else {
                 // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
-                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+                // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
                 $total = (int) $wpdb->get_var($count_sql);
                 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Table name is $wpdb->prefix-derived (schema-controlled), placeholders come from array_fill in IN() clauses, admin-diagnostic query (low frequency, no caching needed).
                 $rows = $wpdb->get_results($wpdb->prepare($rows_sql, $per_page, $offset), ARRAY_A);
@@ -260,7 +260,7 @@ class SEO_AEO_AI_Crawler_Admin {
             $rows = $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
         } else {
             // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+            // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
             $rows = $wpdb->get_results($sql, ARRAY_A);
         }
 
@@ -290,7 +290,7 @@ class SEO_AEO_AI_Crawler_Admin {
                 $r['user_agent'],
             ));
         }
-        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fclose -- closing php://output for streaming CSV download
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose,WordPress.WP.AlternativeFunctions.file_system_read_fclose -- closing php://output for streaming CSV download, WP_Filesystem not applicable for output streams
         fclose($out);
         exit;
     }

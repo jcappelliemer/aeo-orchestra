@@ -38,11 +38,11 @@ $bp_url = admin_url('admin.php?page=seo-aeo-business-profile');
     <div class="aip-empty-title">
         <?php
         if ($days_since === 0) {
-            echo $T('Tracking AI bot attivo da poche ore');
+            echo esc_html($T('Tracking AI bot attivo da poche ore'));
         } elseif ($days_since === 1) {
-            echo $T('Tracking AI bot attivo da 1 giorno');
+            echo esc_html($T('Tracking AI bot attivo da 1 giorno'));
         } else {
-            echo sprintf($T('Tracking AI bot attivo da %d giorni'), $days_since);
+            echo esc_html(sprintf($T('Tracking AI bot attivo da %d giorni'), (int) $days_since));
         }
         ?>
     </div>

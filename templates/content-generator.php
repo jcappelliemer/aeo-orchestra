@@ -114,7 +114,7 @@ if (empty($prefill_topic) && !empty($prefill_keyword)) {
                     class="button <?php echo $is_premium ? 'button-secondary' : 'button-primary button-hero'; ?>"
                     id="seo-aeo-generate-content-btn" <?php if (!$license_valid) echo 'disabled'; ?>>
                 <span class="dashicons dashicons-edit-large"></span>
-                <?php echo $is_premium ? SEO_AEO_T::t('Genera solo testo') : SEO_AEO_T::t('Genera Contenuto'); ?>
+                <?php echo esc_html($is_premium ? SEO_AEO_T::t('Genera solo testo') : SEO_AEO_T::t('Genera Contenuto')); ?>
                 — <span class="credit-cost" data-cost-key="content_generation_medium">10</span> <?php SEO_AEO_T::e('crediti'); ?>
             </button>
         </p>

@@ -370,7 +370,7 @@ wp_enqueue_style(
     'seo-aeo-fontshare',
     'https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=general-sans@400,500,600&display=swap',
     array(),
-    null
+    defined('SEO_AEO_VERSION') ? SEO_AEO_VERSION : '3.36.2'
 );
 ?>
 
@@ -392,7 +392,7 @@ wp_enqueue_style(
                 <span class="orch4-health-label"><?php echo esc_html(SEO_AEO_T::t('Health Score')); ?></span>
                 <?php if ($score_delta !== null && $score_delta !== 0): ?>
                 <span class="orch4-delta orch4-delta-<?php echo $score_delta > 0 ? 'up' : 'down'; ?>">
-                    <?php echo ($score_delta > 0 ? '+' : '') . $score_delta; ?>
+                    <?php echo esc_html(($score_delta > 0 ? '+' : '') . (int) $score_delta); ?>
                     <?php echo $score_delta > 0 ? '▲' : '▼'; ?>
                 </span>
                 <?php endif; ?>
@@ -503,9 +503,9 @@ wp_enqueue_style(
                 </div>
                 <div class="orch-onboarding-foot">
                     <button type="button" class="orch3-btn orch3-btn-ghost" id="orch-onboarding-skip-btn"><?php echo esc_html(SEO_AEO_T::t('Salta tutorial')); ?></button>
-                    <a href="<?php echo $license_valid ? '#orchestrator-start' : admin_url('admin.php?page=seo-aeo-settings'); ?>"
+                    <a href="<?php echo esc_url($license_valid ? '#orchestrator-start' : admin_url('admin.php?page=seo-aeo-settings')); ?>"
                        class="orch3-btn orch3-btn-primary" id="orch-onboarding-cta">
-                        <?php echo $license_valid ? $T('Inizia ora →') : $T('Vai a Impostazioni →'); ?>
+                        <?php echo wp_kses_post($license_valid ? $T('Inizia ora →') : $T('Vai a Impostazioni →')); ?>
                     </a>
                 </div>
             </div>

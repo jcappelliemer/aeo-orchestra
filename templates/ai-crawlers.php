@@ -201,7 +201,7 @@ $provider_labels = array(
         <div style="margin-top:8px;display:flex;gap:8px;">
             <button type="button" class="button button-primary" id="orch-robots-save-btn">💾 Salva override</button>
             <button type="button" class="button" id="orch-robots-clear-btn">🗑 Rimuovi override</button>
-            <a href="<?php echo esc_url(home_url('/robots.txt')); ?>?_v=<?php echo time(); ?>" target="_blank" rel="noopener" class="button">🔗 Apri /robots.txt live</a>
+            <a href="<?php echo esc_url(home_url('/robots.txt')); ?>?_v=<?php echo esc_attr(time()); ?>" target="_blank" rel="noopener" class="button">🔗 Apri /robots.txt live</a>
         </div>
 
         <div id="orch-robots-diff" style="margin-top:14px;display:none;"></div>

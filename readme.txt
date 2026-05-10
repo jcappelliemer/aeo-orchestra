@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.36.1
+Stable tag: 3.36.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,14 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.36.2 =
+* Plugin Check final sweep: 22 errors closed (16 OutputNotEscaped + 3 PreparedSQL.NotPrepared + 2 fclose + 1 wp_enqueue_style version param).
+* OutputNotEscaped fixes in templates: admin-dashboard score_delta + admin_url + ternary translations, ai-crawlers + native-output cache-buster time(), content-generator SEO_AEO_T constant, ai-crawler-empty-state sprintf, ai-crawler-live-state trend_pct + bot_strs + sprintf bot count.
+* PreparedSQL annotations updated to include WordPress.DB.PreparedSQL.NotPrepared rule (table-name-only interpolation, no user input).
+* fclose phpcs:ignore annotations consolidated for php://output streams (CSV export, WP_Filesystem not applicable).
+* wp_enqueue_style for Fontshare now passes SEO_AEO_VERSION as version parameter (was null).
+
 
 = 3.36.1 =
 * Plugin Check sweep: zero errors after 3rd-pass remediation. Warnings reduced or annotated with documented phpcs:ignore (false positives only — table-name interpolation is $wpdb->prefix-derived, AJAX nonces are verified upstream by check_ajax_referer, template variables are local scope).

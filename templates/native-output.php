@@ -450,7 +450,7 @@ if (is_admin() && defined('SEO_AEO_URL')) {
                                 <button type="button" class="orch3-btn orch3-btn-ghost orch-preview-refresh" data-orch-preview-refresh="head">
                                     🔄 <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Aggiorna anteprima')) : 'Aggiorna anteprima'; ?>
                                 </button>
-                                <a href="<?php echo esc_url(home_url('/')); ?>?_orch_preview_bust=<?php echo time(); ?>" target="_blank" rel="noopener" class="orch3-btn orch3-btn-ghost orch-preview-open">
+                                <a href="<?php echo esc_url(home_url('/')); ?>?_orch_preview_bust=<?php echo esc_attr(time()); ?>" target="_blank" rel="noopener" class="orch3-btn orch3-btn-ghost orch-preview-open">
                                     🔗 <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Apri homepage')) : 'Apri homepage'; ?>
                                 </a>
                             </div>
@@ -600,7 +600,7 @@ if (is_admin() && defined('SEO_AEO_URL')) {
                                 <button type="button" class="orch3-btn orch3-btn-ghost orch-preview-refresh" data-orch-preview-refresh="sitemap">
                                     🔄 <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Aggiorna anteprima')) : 'Aggiorna anteprima'; ?>
                                 </button>
-                                <a href="<?php echo esc_url(home_url('/sitemap.xml')); ?>?_orch_preview_bust=<?php echo time(); ?>" target="_blank" rel="noopener" class="orch3-btn orch3-btn-ghost orch-preview-open">
+                                <a href="<?php echo esc_url(home_url('/sitemap.xml')); ?>?_orch_preview_bust=<?php echo esc_attr(time()); ?>" target="_blank" rel="noopener" class="orch3-btn orch3-btn-ghost orch-preview-open">
                                     🔗 <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Apri /sitemap.xml')) : 'Apri /sitemap.xml'; ?>
                                 </a>
                             </div>
@@ -859,7 +859,7 @@ if (is_admin() && defined('SEO_AEO_URL')) {
                                 <button type="button" class="orch3-btn orch3-btn-ghost orch-preview-refresh" data-orch-preview-refresh="llms">
                                     🔄 <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Aggiorna anteprima')) : 'Aggiorna anteprima'; ?>
                                 </button>
-                                <a href="<?php echo esc_url(home_url('/llms.txt')); ?>?_orch_preview_bust=<?php echo time(); ?>" target="_blank" rel="noopener" class="orch3-btn orch3-btn-ghost orch-preview-open">
+                                <a href="<?php echo esc_url(home_url('/llms.txt')); ?>?_orch_preview_bust=<?php echo esc_attr(time()); ?>" target="_blank" rel="noopener" class="orch3-btn orch3-btn-ghost orch-preview-open">
                                     🔗 <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Apri /llms.txt')) : 'Apri /llms.txt'; ?>
                                 </a>
                             </div>
@@ -958,7 +958,7 @@ if (is_admin() && defined('SEO_AEO_URL')) {
                                 <button type="button" class="orch3-btn orch3-btn-ghost orch-preview-refresh" data-orch-preview-refresh="llms-full">
                                     🔄 <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Aggiorna anteprima')) : 'Aggiorna anteprima'; ?>
                                 </button>
-                                <a href="<?php echo esc_url(home_url('/llms-full.txt')); ?>?_orch_preview_bust=<?php echo time(); ?>" target="_blank" rel="noopener" class="orch3-btn orch3-btn-ghost orch-preview-open">
+                                <a href="<?php echo esc_url(home_url('/llms-full.txt')); ?>?_orch_preview_bust=<?php echo esc_attr(time()); ?>" target="_blank" rel="noopener" class="orch3-btn orch3-btn-ghost orch-preview-open">
                                     🔗 <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Apri /llms-full.txt')) : 'Apri /llms-full.txt'; ?>
                                 </a>
                             </div>
@@ -1294,7 +1294,7 @@ if (is_admin() && defined('SEO_AEO_URL')) {
                                 <button type="button" class="orch3-btn orch3-btn-ghost orch-preview-refresh" data-orch-preview-refresh="schema">
                                     🔄 <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Aggiorna anteprima')) : 'Aggiorna anteprima'; ?>
                                 </button>
-                                <a href="<?php echo esc_url(home_url('/')); ?>?_orch_preview_bust=<?php echo time(); ?>" target="_blank" rel="noopener" class="orch3-btn orch3-btn-ghost orch-preview-open">
+                                <a href="<?php echo esc_url(home_url('/')); ?>?_orch_preview_bust=<?php echo esc_attr(time()); ?>" target="_blank" rel="noopener" class="orch3-btn orch3-btn-ghost orch-preview-open">
                                     🔗 <?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Apri homepage')) : 'Apri homepage'; ?>
                                 </a>
                             </div>

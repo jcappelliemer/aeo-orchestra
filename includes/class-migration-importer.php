@@ -146,6 +146,7 @@ class SEO_AEO_Migration_Importer {
             "SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ($placeholders) AND meta_value <> ''",
             $keys
         );
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is the return of $wpdb->prepare() on the prior statement; Plugin Check cannot trace cross-line.
         return (int) $wpdb->get_var($sql);
     }
 

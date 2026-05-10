@@ -4911,10 +4911,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     !empty($cap) ? '1' : '0',
                     !empty($desc) ? '1' : '0',
                 ));
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
             }
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fclose -- closing php://output for streaming CSV download
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose,WordPress.WP.AlternativeFunctions.file_system_read_fclose -- closing php://output for streaming CSV download, WP_Filesystem not applicable for output streams
             fclose($out);
             wp_die();
         } catch (Throwable $e) {

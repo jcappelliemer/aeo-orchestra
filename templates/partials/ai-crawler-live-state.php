@@ -233,7 +233,7 @@ if ($compliance === false) {
             $trend_arrow = $trend_pct > 0 ? '↗' : ($trend_pct < 0 ? '↘' : '→');
         ?>
         <div class="aip-stat-card-value <?php echo esc_html($trend_class); ?>" id="aip-stat-trend">
-            <?php echo ($trend_pct >= 0 ? '+' : '') . $trend_pct; ?>%
+            <?php echo esc_html(($trend_pct >= 0 ? '+' : '') . (float) $trend_pct); ?>%
         </div>
         <div class="aip-stat-card-sub"><?php echo esc_html($trend_arrow); ?> <?php echo esc_html($T('vs precedenti 28gg')); ?></div>
     </div>
@@ -297,7 +297,7 @@ if ($compliance === false) {
                         <?php
                         $bot_strs = array();
                         foreach ($p['bots'] as $b) $bot_strs[] = esc_html($b['bot_name']) . ' ' . (int) $b['hits'];
-                        echo implode(', ', $bot_strs);
+                        echo wp_kses_post(implode(', ', $bot_strs));
                         ?>
                     </td>
                 </tr>
@@ -364,7 +364,7 @@ if ($compliance === false) {
         <?php else: ?>
             <div class="aip-compliance-card">
                 <strong>✅ <?php echo esc_html($T('Tutti i bot rispettano le tue settings AI Crawlers (28gg)')); ?></strong>
-                <p style="margin: 6px 0 0; font-size: 13px;"><?php echo sprintf($T('%d bot bloccati, 0 violations rilevate. Compliance perfetta.'), $compliance['blocked_bots_count']); ?></p>
+                <p style="margin: 6px 0 0; font-size: 13px;"><?php echo esc_html(sprintf($T('%d bot bloccati, 0 violations rilevate. Compliance perfetta.'), (int) $compliance['blocked_bots_count'])); ?></p>
                 <div class="aip-compliance-actions">
                     <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-ai-crawlers')); ?>" class="orch3-btn orch3-btn-ghost"><?php echo esc_html($T('Configura AI Crawlers →')); ?></a>
                     <a href="<?php echo esc_url(home_url('/robots.txt')); ?>" target="_blank" class="orch3-btn orch3-btn-ghost"><?php echo esc_html($T('Vedi tuo robots.txt →')); ?></a>
@@ -374,7 +374,7 @@ if ($compliance === false) {
     <?php else: ?>
         <div class="aip-compliance-card aip-compliance-card--violations">
             <?php $tot_violations = array_sum(array_column($compliance['violations'], 'violations')); ?>
-            <strong>⚠ <?php echo sprintf($T('%d hits da bot bloccati ultimi 28gg'), $tot_violations); ?></strong>
+            <strong>⚠ <?php echo esc_html(sprintf($T('%d hits da bot bloccati ultimi 28gg'), (int) $tot_violations)); ?></strong>
             <ul style="margin: 8px 0 0; padding-left: 20px; font-size: 13px;">
                 <?php foreach ($compliance['violations'] as $v): ?>
                     <li><strong><?php echo esc_html($v['bot_name']); ?></strong> — <?php echo esc_html(number_format_i18n($v['violations'])); ?> <?php echo esc_html($T('hits su URL bloccati in robots.txt')); ?></li>

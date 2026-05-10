@@ -146,6 +146,7 @@ class SEO_AEO_Migration_Importer {
             "SELECT COUNT(DISTINCT post_id) FROM {$wpdb->postmeta} WHERE meta_key IN ($placeholders) AND meta_value <> ''",
             $keys
         );
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter,WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Table name from $wpdb->prefix (schema-controlled, no user input); IN() placeholders built via array_fill() then passed to $wpdb->prepare(); $sql often returned from prior $wpdb->prepare() call (Plugin Check cannot trace cross-line); admin diagnostic queries — low frequency, caching not applicable.
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- $sql is the return of $wpdb->prepare() on the prior statement; Plugin Check cannot trace cross-line.
         return (int) $wpdb->get_var($sql);
     }
@@ -312,6 +313,7 @@ class SEO_AEO_Migration_Importer {
 
         // Fetch batch of post IDs ordered by ID for deterministic pagination
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Table name is $wpdb->prefix-derived (schema-controlled), placeholders come from array_fill in IN() clauses, admin-diagnostic query (low frequency, no caching needed).
+        // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber -- False positive: replacements count = count($source_keys) + 2 (LIMIT, OFFSET) via array_merge, matching placeholders count = count($source_keys) + 2 (IN + %d + %d). Plugin Check static analyzer cannot evaluate array_merge() result length.
         $sql_batch = $wpdb->prepare(
             "SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ($placeholders) AND meta_value <> '' ORDER BY post_id ASC LIMIT %d OFFSET %d",
             array_merge($source_keys, array($limit, $offset))

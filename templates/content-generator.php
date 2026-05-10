@@ -1,9 +1,14 @@
 <?php if (!defined('ABSPATH')) exit;
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.VariableNotPrefixed
+// phpcs:disable WordPress.Security.NonceVerification.Recommended
 // Reason: template scope. Variables are local to this include/template,
 // passed by the calling function via include/require. The Plugin Check
 // heuristic doesn't distinguish template-scope locals from globals.
+// NonceVerification disabled: this template reads $_GET prefill params
+// for FORM PRE-FILL ONLY (prefill_topic, prefill_keyword, url_param,
+// slug). No state mutation, no DB writes, no email sends. Reads pass
+// through sanitize_text_field(wp_unslash()) at the call site.
 $license_key = get_option('seo_aeo_orchestra_license_key', '');
 $license_valid = !empty($license_key);
 // Prefill da Keyword Research (3.23.0): query string ?prefill_topic=...&prefill_keyword=...

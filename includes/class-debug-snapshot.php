@@ -31,6 +31,7 @@ class SEO_AEO_Debug_Snapshot {
         }
 
         // Register custom error handler — non-destructive, chains to previous
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_set_error_handler -- Wrapped in WP_DEBUG conditional above (line 29), never installed in production. Diagnostic error trap is admin/dev-side only.
         $prev = set_error_handler(array(__CLASS__, 'handle_error'));
         // Store previous handler so we don't break other plugins' handlers
         $GLOBALS['seo_aeo_prev_error_handler'] = $prev;

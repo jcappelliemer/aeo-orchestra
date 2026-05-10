@@ -124,6 +124,7 @@ class SEO_AEO_Page_Roles {
             'post_type'        => 'any',
             'post_status'      => 'publish',
             'posts_per_page'   => $limit,
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Admin diagnostic query for page-role mapping, executed on plugin admin pages only, not on frontend. Acceptable performance trade-off for the diagnostic value.
             'meta_key'         => self::META_KEY,
             'meta_value'       => $role,
             'orderby'          => 'modified',
@@ -380,6 +381,7 @@ class SEO_AEO_Page_Roles {
             'post_type'        => 'any',
             'post_status'      => 'publish',
             'posts_per_page'   => 50, // pool to score
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Admin diagnostic query for page-role mapping, executed on plugin admin pages only, not on frontend. Acceptable performance trade-off for the diagnostic value.
             'meta_key'         => self::META_KEY,
             'meta_value'       => $role,
             // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- Not targeting VIP infrastructure; standard WordPress API

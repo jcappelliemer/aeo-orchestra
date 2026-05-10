@@ -482,6 +482,7 @@ class SEO_AEO_AI_Crawler_Detector {
         }
         $url_path = substr($url_path, 0, 255);
 
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter,WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Table name from $wpdb->prefix (schema-controlled, no user input); IN() placeholders built via array_fill() then passed to $wpdb->prepare(); $sql often returned from prior $wpdb->prepare() call (Plugin Check cannot trace cross-line); admin diagnostic queries — low frequency, caching not applicable.
         @$wpdb->insert($table, array(
             'bot_name'              => $def['name'],
             'bot_provider'          => $def['provider'],

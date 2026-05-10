@@ -1,4 +1,9 @@
 <?php
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.VariableNotPrefixed
+// Reason: template scope. Variables are local to this include/template,
+// passed by the calling function via include/require. The Plugin Check
+// heuristic doesn't distinguish template-scope locals from globals.
 /*
  * Partial: Brand Voice Quick Edit (since 3.21.9)
  * Pill in alto al template + drawer laterale per modifica veloce del profilo attivo,

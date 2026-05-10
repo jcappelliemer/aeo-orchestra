@@ -1,4 +1,9 @@
 <?php
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.VariableNotPrefixed
+// Reason: template scope. Variables are local to this include/template,
+// passed by the calling function via include/require. The Plugin Check
+// heuristic doesn't distinguish template-scope locals from globals.
 /*
  * 3.35.83-beta — Business Profile pannello dedicato
  *

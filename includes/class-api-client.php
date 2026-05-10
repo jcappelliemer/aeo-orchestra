@@ -1,5 +1,4 @@
 <?php
-error_reporting(0);
 /*
  * Copyright 2026 Solaris Code SL - aeo-orchestra.com. All rights reserved.
  * Unauthorized copying, redistribution or resale is strictly prohibited.
@@ -23,7 +22,7 @@ class SEO_AEO_API_Client {
             $this->license_key = get_option('seo_aeo_orchestra_license_key', get_option('seo_aeo_license_key', ''));
             $this->domain = $this->get_site_domain();
         } catch (Throwable $e) {
-            orch_debug_log('SEO AEO API Client __construct error: ' . $e->getMessage());
+            seo_aeo_debug_log('SEO AEO API Client __construct error: ' . $e->getMessage());
             $this->api_url = 'https://aeo-orchestra.com';
             $this->license_key = '';
             $this->domain = '';
@@ -80,7 +79,7 @@ class SEO_AEO_API_Client {
         } else {
             $parsed = wp_parse_url($this->api_url);
             $host = isset($parsed['host']) ? $parsed['host'] : $this->api_url;
-            orch_debug_log('[SEO_AEO] Cannot reach ' . $host . ' - ' . $resp->get_error_message());
+            seo_aeo_debug_log('[SEO_AEO] Cannot reach ' . $host . ' - ' . $resp->get_error_message());
             $this->can_reach_api = false;
             set_transient('seo_aeo_api_reachable', 'no', 60); // Retry in 1 min
         }
@@ -123,7 +122,7 @@ class SEO_AEO_API_Client {
         ));
 
         if (is_wp_error($response)) {
-            orch_debug_log('SEO AEO activate_license HTTP error: ' . $response->get_error_message());
+            seo_aeo_debug_log('SEO AEO activate_license HTTP error: ' . $response->get_error_message());
             return array('success' => false, 'message' => 'Errore di connessione: ' . $response->get_error_message());
         }
 
@@ -140,7 +139,7 @@ class SEO_AEO_API_Client {
         }
 
         $detail = isset($body['detail']) ? $body['detail'] : (isset($body['message']) ? $body['message'] : 'Attivazione fallita.');
-        orch_debug_log('SEO AEO activate_license failed: ' . $detail);
+        seo_aeo_debug_log('SEO AEO activate_license failed: ' . $detail);
         return array('success' => false, 'message' => $detail);
     }
 
@@ -321,7 +320,7 @@ class SEO_AEO_API_Client {
 
         if ($code === 403) {
             $msg = isset($result['message']) ? $result['message'] : 'Accesso negato.';
-            orch_debug_log('SEO AEO API 403: ' . $msg);
+            seo_aeo_debug_log('SEO AEO API 403: ' . $msg);
             return array('error' => true, 'message' => $msg);
         }
 

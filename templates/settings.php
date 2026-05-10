@@ -1,4 +1,9 @@
 <?php if (!defined('ABSPATH')) exit;
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.VariableNotPrefixed
+// Reason: template scope. Variables are local to this include/template,
+// passed by the calling function via include/require. The Plugin Check
+// heuristic doesn't distinguish template-scope locals from globals.
 $seo_aeo_license_type = get_option('seo_aeo_orchestra_license_type', 'starter');
 $seo_aeo_can_hide_branding = in_array($seo_aeo_license_type, array('professional', 'team', 'b2b_custom'));
 $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)) : esc_html($s); };

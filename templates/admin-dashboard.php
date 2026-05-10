@@ -1,5 +1,9 @@
 <?php
-error_reporting(0);
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.VariableNotPrefixed
+// Reason: template scope. Variables are local to this include/template,
+// passed by the calling function via include/require. The Plugin Check
+// heuristic doesn't distinguish template-scope locals from globals.
 if (!defined('ABSPATH')) exit;
 $license_key = get_option('seo_aeo_orchestra_license_key', '');
 $license_valid = !empty($license_key);
@@ -355,9 +359,20 @@ function seo_aeo_v250_sparkline($values, $width = 110, $height = 28, $color = '#
 }
 ?>
 
-<!-- 2.3.0-beta: font Satoshi + General Sans via Fontshare (caricati solo in questa pagina plugin) -->
-<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
-<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=general-sans@400,500,600&display=swap" rel="stylesheet">
+<?php
+// 3.36.1 (WP.org A.5 compliance): font CSS routed through wp_enqueue_style;
+// preconnect via wp_resource_hints. No more inline <link> tags.
+add_filter('wp_resource_hints', function ($urls, $relation_type) {
+    if ($relation_type === 'preconnect') $urls[] = 'https://api.fontshare.com';
+    return $urls;
+}, 10, 2);
+wp_enqueue_style(
+    'seo-aeo-fontshare',
+    'https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=general-sans@400,500,600&display=swap',
+    array(),
+    null
+);
+?>
 
 <?php $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)) : esc_html($s); }; ?>
 <div class="wrap orchestra-admin orchestra-v3">

@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.36.0
+Stable tag: 3.36.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,18 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.36.1 =
+* Plugin Check sweep: zero errors after 3rd-pass remediation. Warnings reduced or annotated with documented phpcs:ignore (false positives only — table-name interpolation is $wpdb->prefix-derived, AJAX nonces are verified upstream by check_ajax_referer, template variables are local scope).
+* Output escaping completed: SSE str_repeat padding annotated, admin-notices body wrapped with wp_kses_post.
+* SQL prepare(): direct DB queries on admin diagnostics surfaced with phpcs:ignore + table-name safety note. Table names come from $wpdb->prefix + literal constant, never user input.
+* Removed inline error_reporting() calls from 12 files (production code uses WP_DEBUG via WordPress core).
+* set_error_handler in class-debug-snapshot now gated behind WP_DEBUG — production sites never install the handler.
+* class-verify-live SSE emit_event hardened: sanitize_key on event name, wp_json_encode on payload, phpcs:disable EscapeOutput with detailed comment explaining text/event-stream context.
+* Inline link/script tags moved to wp_enqueue_style / wp_enqueue_script (admin-dashboard fonts, native-output Prism syntax highlighter).
+* orch_debug_log() renamed to seo_aeo_debug_log() for consistent plugin-wide prefix (76 call sites updated).
+* Template files receive file-level phpcs:disable for NonPrefixedVariableFound — local-scope variables in templates are not globals despite the static analyzer's heuristic.
+
 
 = 3.35.85.0 =
 * WordPress.org review compliance: removed all client-side license gating. Every feature loads in every build; service-backed flows return a clear upgrade message when no license is present. The standalone "Pro Features" upsell submenu was removed; the same CTA is available inside Settings (admin-facing only).

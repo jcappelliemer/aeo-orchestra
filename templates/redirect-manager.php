@@ -1,4 +1,9 @@
 <?php
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.VariableNotPrefixed
+// Reason: template scope. Variables are local to this include/template,
+// passed by the calling function via include/require. The Plugin Check
+// heuristic doesn't distinguish template-scope locals from globals.
 /*
  * Template: SEO Output Nativo (v3.18.0 — refactor completo)
  * Tutte le card "Migrazione SEO" (Output, Sitemap, llms.txt, Schema, Redirect Manager)

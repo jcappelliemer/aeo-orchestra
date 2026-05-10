@@ -74,7 +74,9 @@ class SEO_AEO_Hreflang {
         if (!$post_type) return array();
 
         $element_type = 'post_' . $post_type;
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WPML upstream hook name, fixed by external plugin
         $details = apply_filters('wpml_post_language_details', null, $post_id);
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WPML upstream hook name, fixed by external plugin
         $default_lang = apply_filters('wpml_default_language', null);
 
         $translations = array();
@@ -82,6 +84,7 @@ class SEO_AEO_Hreflang {
         if (!is_array($langs)) return array();
 
         foreach ($langs as $lang_code => $info) {
+            // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WPML upstream hook name, fixed by external plugin
             $tx_id = apply_filters('wpml_object_id', $post_id, $post_type, false, $lang_code);
             if (!$tx_id) continue;
             $url = get_permalink($tx_id);

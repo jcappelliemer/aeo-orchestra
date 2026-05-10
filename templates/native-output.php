@@ -1,4 +1,9 @@
 <?php
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.VariableNotPrefixed
+// Reason: template scope. Variables are local to this include/template,
+// passed by the calling function via include/require. The Plugin Check
+// heuristic doesn't distinguish template-scope locals from globals.
 /*
  * Template: SEO Output Nativo (v3.18.0 — refactor completo)
  * Tutte le card "Migrazione SEO" (Output, Sitemap, llms.txt, Schema, Redirect Manager)
@@ -10,15 +15,21 @@ $seo_aeo_is_other_seo_active = class_exists('SEO_AEO_Output_Renderer') ? SEO_AEO
 $seo_aeo_labels = array('yoast' => 'Yoast SEO', 'rankmath' => 'Rank Math', 'aioseo' => 'All in One SEO');
 $seo_aeo_plugin_name_label = $seo_aeo_is_other_seo_active && isset($seo_aeo_labels[$seo_aeo_is_other_seo_active]) ? $seo_aeo_labels[$seo_aeo_is_other_seo_active] : '';
 ?>
-<?php if (is_admin() && defined('SEO_AEO_URL')):
+<?php
+// 3.36.1 (WP.org A.5 compliance): Prism syntax-highlighter assets routed
+// through wp_enqueue_* instead of inline <link>/<script src=> tags.
+if (is_admin() && defined('SEO_AEO_URL')) {
     $orch_prism_base = SEO_AEO_URL . 'assets/vendor/prism/';
     $orch_prism_ver  = defined('SEO_AEO_VERSION') ? SEO_AEO_VERSION : '1';
+    wp_enqueue_style('seo-aeo-prism', $orch_prism_base . 'prism-tomorrow.min.css', array(), $orch_prism_ver);
+    wp_enqueue_script('seo-aeo-prism', $orch_prism_base . 'prism.min.js', array(), $orch_prism_ver, true);
+    wp_enqueue_script('seo-aeo-prism-md', $orch_prism_base . 'components/prism-markdown.min.js', array('seo-aeo-prism'), $orch_prism_ver, true);
+    wp_enqueue_script('seo-aeo-prism-json', $orch_prism_base . 'components/prism-json.min.js', array('seo-aeo-prism'), $orch_prism_ver, true);
+    foreach (array('seo-aeo-prism', 'seo-aeo-prism-md', 'seo-aeo-prism-json') as $orch_prism_h) {
+        wp_script_add_data($orch_prism_h, 'data-manual', 'true');
+    }
+}
 ?>
-<link rel="stylesheet" href="<?php echo esc_url($orch_prism_base . 'prism-tomorrow.min.css?ver=' . $orch_prism_ver); ?>" />
-<script src="<?php echo esc_url($orch_prism_base . 'prism.min.js?ver=' . $orch_prism_ver); ?>" data-manual></script>
-<script src="<?php echo esc_url($orch_prism_base . 'components/prism-markdown.min.js?ver=' . $orch_prism_ver); ?>" data-manual></script>
-<script src="<?php echo esc_url($orch_prism_base . 'components/prism-json.min.js?ver=' . $orch_prism_ver); ?>" data-manual></script>
-<?php endif; ?>
 <div class="wrap orchestra-v3 orch-native-page">
 
     <div class="orch-native-hero">

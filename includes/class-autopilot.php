@@ -232,7 +232,7 @@ class SEO_AEO_Autopilot {
             try {
                 self::process_one_keyword((int) $job['id']);
             } catch (Throwable $e) {
-                orch_debug_log('SEO_AEO Autopilot run_due_jobs error job=' . $job['id'] . ': ' . $e->getMessage());
+                seo_aeo_debug_log('SEO_AEO Autopilot run_due_jobs error job=' . $job['id'] . ': ' . $e->getMessage());
             }
         }
     }
@@ -350,7 +350,7 @@ class SEO_AEO_Autopilot {
                     }
                 }
             } catch (Throwable $e) {
-                orch_debug_log('SEO_AEO Autopilot attach image failed: ' . $e->getMessage());
+                seo_aeo_debug_log('SEO_AEO Autopilot attach image failed: ' . $e->getMessage());
             }
         }
 
@@ -365,7 +365,7 @@ class SEO_AEO_Autopilot {
                     ));
                 }
             } catch (Throwable $e) {
-                orch_debug_log('SEO_AEO Autopilot write_meta failed: ' . $e->getMessage());
+                seo_aeo_debug_log('SEO_AEO Autopilot write_meta failed: ' . $e->getMessage());
             }
         }
 

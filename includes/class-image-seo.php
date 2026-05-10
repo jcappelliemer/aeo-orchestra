@@ -1,5 +1,4 @@
 <?php
-error_reporting(0);
 /*
  * Copyright 2026 Solaris Code SL - aeo-orchestra.com. All rights reserved.
  * Unauthorized copying, redistribution or resale is strictly prohibited.
@@ -251,7 +250,7 @@ class SEO_AEO_Image_SEO {
             }
             update_option(self::QUEUE_OPT, $state);
         } catch (Throwable $e) {
-            orch_debug_log('[SEO_AEO Image SEO] tick FATAL: ' . $e->getMessage());
+            seo_aeo_debug_log('[SEO_AEO Image SEO] tick FATAL: ' . $e->getMessage());
         }
     }
 

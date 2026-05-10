@@ -9,7 +9,7 @@
  * flagging it as "Debug code should not normally be used in production".
  *
  * Usage:
- *   orch_debug_log('keyword research failed', ['post_id' => $id, 'error' => $err]);
+ *   seo_aeo_debug_log('keyword research failed', ['post_id' => $id, 'error' => $err]);
  *
  * The optional second argument is appended as compact JSON. Pass null or
  * omit it if you only have a message.
@@ -17,8 +17,8 @@
 
 if (!defined('ABSPATH')) exit;
 
-if (!function_exists('orch_debug_log')) {
-    function orch_debug_log($msg, $context = null) {
+if (!function_exists('seo_aeo_debug_log')) {
+    function seo_aeo_debug_log($msg, $context = null) {
         if (!defined('WP_DEBUG') || !WP_DEBUG) return;
         $line = '[Orchestra] ' . (string) $msg;
         if ($context !== null) {

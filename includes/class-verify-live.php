@@ -135,6 +135,7 @@ class SEO_AEO_Verify_Live {
         header('Connection: keep-alive');
 
         // Initial flush to start the stream
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- literal whitespace padding for SSE proxies, no XSS surface
         echo str_repeat(' ', 2048) . "\n";  // padding for some proxies
         @flush();
     }
@@ -283,7 +284,7 @@ class SEO_AEO_Verify_Live {
                 $vl_status_reason = 'Parser returned 0 insights/warnings/score from non-empty payload';
                 $errors++;
                 $raw_snippet = substr((string) $ai_result['response']['text'], 0, 500);
-                orch_debug_log('[seo-aeo-orchestra verify-live] parsing_failed; raw payload: ' . $raw_snippet);
+                seo_aeo_debug_log('[seo-aeo-orchestra verify-live] parsing_failed; raw payload: ' . $raw_snippet);
                 self::emit_event('warning', array(
                     'category' => 'parsing_failed',
                     'finding' => 'AI ha risposto ma non e\' stato possibile estrarre insight strutturati.',
@@ -684,7 +685,7 @@ class SEO_AEO_Verify_Live {
             )),
         ));
         if (is_wp_error($resp)) {
-            orch_debug_log('[seo-aeo-orchestra] backend_refund WP_Error: ' . $resp->get_error_message());
+            seo_aeo_debug_log('[seo-aeo-orchestra] backend_refund WP_Error: ' . $resp->get_error_message());
             return array('success' => false, 'message' => $resp->get_error_message());
         }
         $code = wp_remote_retrieve_response_code($resp);
@@ -692,7 +693,7 @@ class SEO_AEO_Verify_Live {
         if ($code >= 200 && $code < 300 && is_array($body) && !empty($body['success'])) {
             return array('success' => true, 'amount' => (int) $amount);
         }
-        orch_debug_log('[seo-aeo-orchestra] backend_refund non-200: code=' . $code);
+        seo_aeo_debug_log('[seo-aeo-orchestra] backend_refund non-200: code=' . $code);
         return array('success' => false, 'message' => 'backend non-2xx');
     }
 

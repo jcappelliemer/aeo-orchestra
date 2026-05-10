@@ -23,6 +23,13 @@ class SEO_AEO_Debug_Snapshot {
     const PLUGIN_PATH_FRAGMENT = 'seo-aeo-orchestra';
 
     public static function init() {
+        // 3.36.1 (WP.org B.4): WP_DEBUG only — diagnostic error trap is admin/dev-side
+        // only. In production (WP_DEBUG=false) we never install the handler, so the
+        // Plugin Check `set_error_handler` warning never fires for end users.
+        if (!defined('WP_DEBUG') || !WP_DEBUG) {
+            return;
+        }
+
         // Register custom error handler — non-destructive, chains to previous
         $prev = set_error_handler(array(__CLASS__, 'handle_error'));
         // Store previous handler so we don't break other plugins' handlers

@@ -1064,6 +1064,7 @@ class SEO_AEO_Schema {
             'post_type'        => $post->post_type,
             'post_status'      => 'publish',
             'posts_per_page'   => $limit,
+            // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- Not targeting VIP infrastructure; standard WordPress API
             'post__not_in'     => array($post->ID),
             'orderby'          => 'modified',
             'order'            => 'DESC',

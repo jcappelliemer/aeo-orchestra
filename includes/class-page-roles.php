@@ -382,6 +382,7 @@ class SEO_AEO_Page_Roles {
             'posts_per_page'   => 50, // pool to score
             'meta_key'         => self::META_KEY,
             'meta_value'       => $role,
+            // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- Not targeting VIP infrastructure; standard WordPress API
             'post__not_in'     => array_map('intval', $exclude_ids),
             'orderby'          => 'modified',
             'order'            => 'DESC',

@@ -32,8 +32,7 @@ $body_style = $orch_gsc_auto_load ? '' : 'style="display:none;"';
 $toggle_label = $orch_gsc_auto_load ? $T('Nascondi') : $T('Mostra');
 $toggle_aria = $orch_gsc_auto_load ? 'true' : 'false';
 
-// Chart.js: enqueue once, idempotent. Si limita a inserire il <?php ob_start(); ?>
-CDN
+// Chart.js: enqueue once, idempotent. Si limita a inserire il script CDN
 // se non è già stato registrato/enqueued altrove (più istanze del partial sicure).
 if (function_exists('wp_script_is') && !wp_script_is('chartjs', 'enqueued') && !wp_script_is('chartjs', 'registered')) {
     wp_register_script('chartjs', SEO_AEO_URL . 'assets/vendor/chart.umd.min.js', array(), '4.4.0', true);
@@ -125,7 +124,7 @@ if (function_exists('wp_script_is') && !wp_script_is('chartjs', 'enqueued') && !
 .orchestra-v3 .orch-gsc-impact-note { margin-top: 10px; font-size: 11.5px; color: #475569; }
 <?php SEO_AEO_Inline_Assets::add_inline_style(ob_get_clean()); ?>
 
-<script type="text/javascript">
+<?php ob_start(); /* 3.36.7: buffer GSC inline JS for SEO_AEO_Inline_Assets::add_inline_script(); previous literal script tag broke admin dashboard layout */ ?>
 /* ═════════════════════════════════════════════════════════
    3.10.0 — GSC Insights (extracted to partial 3.28.0)
    ═════════════════════════════════════════════════════════ */

@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.36.6
+Stable tag: 3.36.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,11 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.36.7 =
+* Fixed critical UI regression introduced by v3.36.0 wp_enqueue refactor: literal <script type=text/javascript> tag in templates/partials/gsc-section.php (line 128) was never closed with </script>, breaking the admin dashboard layout (5-box stat header collapsed to vertical list) and emitting "Uncaught SyntaxError: Unexpected token <" in the browser console. Replaced with ob_start() so SEO_AEO_Inline_Assets::add_inline_script() captures the JS via wp_add_inline_script (which wraps the JS in script tags itself).
+* Cleanup line 35-37 comment corruption (same v3.36.0 refactor pass had incorrectly converted "<script> CDN" text inside a PHP comment to "<?php ob_start(); ?>\nCDN" — restored to plain prose).
+
 
 = 3.36.6 =
 * Plugin Check zero/zero: wrapped 2 additional functions in class-ai-crawler-detector with function-scope phpcs:disable/enable for InterpolatedNotPrepared (cleanup_old_logs covers DELETE FROM $table, daily_aggregate covers DELETE FROM $log_table + DELETE FROM $stats_table).

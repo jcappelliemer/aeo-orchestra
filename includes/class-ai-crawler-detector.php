@@ -367,6 +367,7 @@ class SEO_AEO_AI_Crawler_Detector {
     }
 
     public static function cleanup_old_logs() {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders).
         global $wpdb;
         $table = $wpdb->prefix . self::TABLE_NAME;
         // Table name is derived from $wpdb->prefix + literal constant — no user input. Plugin schema operation, no cache.
@@ -375,6 +376,7 @@ class SEO_AEO_AI_Crawler_Detector {
         if ($deleted > 0) {
             seo_aeo_debug_log("[AEO Orchestra] AI crawler log cleanup: deleted $deleted entries > 30d");
         }
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     }
 
     /**
@@ -499,8 +501,8 @@ class SEO_AEO_AI_Crawler_Detector {
             'visited_at'            => current_time('mysql'),
         ));
     }
-
     public static function daily_aggregate() {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders).
         global $wpdb;
         $log_table = $wpdb->prefix . self::TABLE_NAME;
         $stats_table = $wpdb->prefix . self::TABLE_DAILY_STATS;
@@ -533,6 +535,7 @@ class SEO_AEO_AI_Crawler_Detector {
         delete_transient('seo_aeo_aip_top_pages_28d');
         delete_transient('seo_aeo_aip_trend_28d');
         delete_transient('seo_aeo_aip_compliance_28d');
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
     }
 
     public static function classification($slug) {

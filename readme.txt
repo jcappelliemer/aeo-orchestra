@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.36.7
+Stable tag: 3.36.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,10 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.36.8 =
+* CRITICAL FIX dashboard layout: wp_add_inline_style() called from inside template body buffers (the ob_start/ob_get_clean pattern in 25+ templates) was silently dropped by WordPress because admin_print_styles flushes queued styles in <head> BEFORE the template body runs, marking the handle as done. SEO_AEO_Inline_Assets::add_inline_style() now detects late calls via did_action(admin_print_styles) and defers emission to admin_print_footer_scripts, emitting a <style> tag at footer time. Same fix mirrored for add_inline_script. Restores the .orch-wiz-hero flex header and ~20-50KB of dashboard CSS that had been silently dropped since v3.36.0.
+
 
 = 3.36.7 =
 * Fixed critical UI regression introduced by v3.36.0 wp_enqueue refactor: literal <script type=text/javascript> tag in templates/partials/gsc-section.php (line 128) was never closed with </script>, breaking the admin dashboard layout (5-box stat header collapsed to vertical list) and emitting "Uncaught SyntaxError: Unexpected token <" in the browser console. Replaced with ob_start() so SEO_AEO_Inline_Assets::add_inline_script() captures the JS via wp_add_inline_script (which wraps the JS in script tags itself).

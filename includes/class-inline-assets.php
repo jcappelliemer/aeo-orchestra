@@ -66,12 +66,47 @@ class SEO_AEO_Inline_Assets {
     public static function add_inline_style($css) {
         if (!is_string($css) || $css === '') return;
         self::ensure_registered();
+        // 3.36.8 — fix late-call regression: wp_add_inline_style() only emits
+        // CSS if the registered handle has not yet been printed. Admin pages
+        // print queued styles in <head> via admin_print_styles, BEFORE the
+        // template body runs. So calls from inside a template body buffer
+        // (the ob_start/ob_get_clean pattern used by 25+ templates here)
+        // were silently dropped. WordPress queued the inline content but
+        // never re-printed the already-done handle, collapsing dashboard
+        // layouts where flex/grid CSS lived inside a template-body buffer
+        // (e.g. the .orch-wiz-hero 5-box header).
+        // Detection: if admin_print_styles has already fired, defer the CSS
+        // to admin_print_footer_scripts (which also runs for styles, despite
+        // the action name) and emit a style tag at footer time. CSS is
+        // plugin-authored source, so it is trusted at the framing layer.
+        if (did_action('admin_print_styles') > 0) {
+            add_action('admin_print_footer_scripts', function () use ($css) {
+                $tag_id = 'seo-aeo-inline-late-' . substr(md5($css), 0, 8);
+                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CSS is plugin-authored, trusted at framing layer; the only dynamic part is the tag_id (md5-hashed).
+                echo "\n<style id=\"" . esc_attr($tag_id) . "\">\n" . $css . "\n</style>\n";
+            });
+            return;
+        }
         wp_add_inline_style(self::STYLE_HANDLE, $css);
     }
 
     public static function add_inline_script($js) {
         if (!is_string($js) || $js === '') return;
         self::ensure_registered();
+        // 3.36.8 — mirror late-call fix for scripts. See add_inline_style()
+        // comment above for the reasoning. wp_print_footer_scripts naturally
+        // re-runs script printing, but wp_add_inline_script() suffers the
+        // same "handle already done" silent drop for scripts in head group.
+        // The plugin registers SCRIPT_HANDLE with in_footer=true so this is
+        // rare, but defensive parity keeps behaviour symmetric.
+        if (did_action('admin_print_scripts') > 0 && did_action('admin_print_footer_scripts') > 0) {
+            add_action('admin_footer', function () use ($js) {
+                $tag_id = 'seo-aeo-inline-late-' . substr(md5($js), 0, 8);
+                // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JS is plugin-authored, trusted at framing layer; the only dynamic part is the tag_id (md5-hashed).
+                echo "\n<script id=\"" . esc_attr($tag_id) . "\">\n" . $js . "\n</script>\n";
+            }, 999);
+            return;
+        }
         wp_add_inline_script(self::SCRIPT_HANDLE, $js);
     }
 }

@@ -116,6 +116,7 @@ class SEO_AEO_Page_Roles {
      * Find published posts of a given role. Returns array of WP_Post objects.
      */
     public static function find_by_role($role, $limit = 10) {
+        // phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_value,WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Admin diagnostic query for page role mapping, low frequency (admin pages only), acceptable performance trade-off.
         if (!in_array($role, self::ROLES, true)) return array();
         $limit = max(1, min(100, (int) $limit));
 
@@ -151,6 +152,7 @@ class SEO_AEO_Page_Roles {
             'orderby'          => 'post__in',
             'no_found_rows'    => true,
         ));
+        // phpcs:enable WordPress.DB.SlowDBQuery.slow_db_query_meta_value,WordPress.DB.SlowDBQuery.slow_db_query_meta_key
     }
 
     /**
@@ -373,6 +375,7 @@ class SEO_AEO_Page_Roles {
      * @return WP_Post[]
      */
     public static function find_by_role_ranked($role, $limit = 1, $exclude_ids = array()) {
+        // phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_value,WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Admin diagnostic query for page role mapping, low frequency (admin pages only), acceptable performance trade-off.
         if (!in_array($role, self::ROLES, true)) return array();
         $limit = max(1, min(20, (int) $limit));
 
@@ -431,6 +434,7 @@ class SEO_AEO_Page_Roles {
         usort($scored, function ($a, $b) { return $b['score'] - $a['score']; });
         $top = array_slice($scored, 0, $limit);
         return array_map(function ($x) { return $x['post']; }, $top);
+        // phpcs:enable WordPress.DB.SlowDBQuery.slow_db_query_meta_value,WordPress.DB.SlowDBQuery.slow_db_query_meta_key
     }
 
     /**

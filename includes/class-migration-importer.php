@@ -138,6 +138,7 @@ class SEO_AEO_Migration_Importer {
      * Count post.ID con almeno una delle meta keys popolata (non vuota).
      */
     private static function count_posts_with_any_meta($keys) {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders); IN() clause placeholders dynamically built via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern).
         global $wpdb;
         if (empty($keys)) return 0;
         $placeholders = implode(',', array_fill(0, count($keys), '%s'));
@@ -148,6 +149,7 @@ class SEO_AEO_Migration_Importer {
         );
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value,PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table names come from $wpdb->prefix + literal constant (schema-controlled, never user input). IN() clause placeholders generated via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern). $sql variable often returned from a prior $wpdb->prepare() call on a separate line, which the Plugin Check static analyzer cannot trace. Admin diagnostic queries (one-shot per admin page load), caching not applicable.
         return (int) $wpdb->get_var($sql);
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
     }
 
     /**
@@ -216,6 +218,7 @@ class SEO_AEO_Migration_Importer {
      * Returns backup_id (option key suffix).
      */
     public static function create_backup($plugin) {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders); IN() clause placeholders dynamically built via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern).
         global $wpdb;
         $mapping = self::get_mapping($plugin);
         if (empty($mapping)) return false;
@@ -260,6 +263,7 @@ class SEO_AEO_Migration_Importer {
         self::purge_expired_backups();
 
         return $backup_id;
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
     }
 
     /**
@@ -282,6 +286,7 @@ class SEO_AEO_Migration_Importer {
      * }
      */
     public static function import_batch($plugin, $offset = 0, $limit = 50, $opts = array()) {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders); IN() clause placeholders dynamically built via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern).
         global $wpdb;
         $mapping = self::get_mapping($plugin);
         if (empty($mapping)) return array('error' => 'unknown_plugin');
@@ -377,6 +382,7 @@ class SEO_AEO_Migration_Importer {
             'keys_written'       => $keys_written,
             'samples'            => $samples,
         );
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
     }
 
     /**

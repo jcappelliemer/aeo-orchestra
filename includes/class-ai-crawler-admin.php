@@ -145,6 +145,7 @@ class SEO_AEO_AI_Crawler_Admin {
     }
 
     public static function ajax_stats() {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders); IN() clause placeholders dynamically built via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern).
         try {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
             if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'forbidden')); return; }
@@ -200,6 +201,7 @@ class SEO_AEO_AI_Crawler_Admin {
             wp_send_json(array('error' => true, 'message' => $e->getMessage()));
         }
         wp_die();
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
     }
 
     public static function ajax_robots_save() {
@@ -314,6 +316,7 @@ class SEO_AEO_AI_Crawler_Admin {
      * GET wp-ajax/orch_ai_crawler_summary OR existing ajax_stats extended.
      */
     public static function ajax_aip_summary() {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders); IN() clause placeholders dynamically built via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern).
         self::_check_ajax_auth();
         try {
             $force = !empty($_POST['force']);
@@ -374,12 +377,14 @@ class SEO_AEO_AI_Crawler_Admin {
             seo_aeo_debug_log('[AIP] ajax_aip_summary exception: ' . $e->getMessage());
             wp_send_json_error(array('message' => $e->getMessage()), 500);
         }
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
     }
 
     /**
      * 3.35.84: top 5 bot last 28 days (bar chart).
      */
     public static function ajax_top_bots() {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders); IN() clause placeholders dynamically built via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern).
         self::_check_ajax_auth();
         try {
             $force = !empty($_POST['force']);
@@ -418,12 +423,14 @@ class SEO_AEO_AI_Crawler_Admin {
             seo_aeo_debug_log('[AIP] ajax_top_bots exception: ' . $e->getMessage());
             wp_send_json_error(array('message' => $e->getMessage()), 500);
         }
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
     }
 
     /**
      * 3.35.84: top 10 pages last 28 days with bot breakdown.
      */
     public static function ajax_top_pages() {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders); IN() clause placeholders dynamically built via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern).
         self::_check_ajax_auth();
         try {
             $force = !empty($_POST['force']);
@@ -482,12 +489,14 @@ class SEO_AEO_AI_Crawler_Admin {
             seo_aeo_debug_log('[AIP] ajax_top_pages exception: ' . $e->getMessage());
             wp_send_json_error(array('message' => $e->getMessage()), 500);
         }
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
     }
 
     /**
      * 3.35.84: trend 28gg per top 4 bot (sparkline data).
      */
     public static function ajax_trend() {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders); IN() clause placeholders dynamically built via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern).
         self::_check_ajax_auth();
         try {
             $force = !empty($_POST['force']);
@@ -564,12 +573,14 @@ class SEO_AEO_AI_Crawler_Admin {
             seo_aeo_debug_log('[AIP] ajax_trend exception: ' . $e->getMessage());
             wp_send_json_error(array('message' => $e->getMessage()), 500);
         }
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
     }
 
     /**
      * 3.35.84: compliance check robots.txt — cross-reference allowlist vs logs.
      */
     public static function ajax_compliance() {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders); IN() clause placeholders dynamically built via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern).
         self::_check_ajax_auth();
         try {
             $force = !empty($_POST['force']);
@@ -630,6 +641,7 @@ class SEO_AEO_AI_Crawler_Admin {
             seo_aeo_debug_log('[AIP] ajax_compliance exception: ' . $e->getMessage());
             wp_send_json_error(array('message' => $e->getMessage()), 500);
         }
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
     }
 
 }

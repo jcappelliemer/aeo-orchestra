@@ -261,6 +261,7 @@ class SEO_AEO_AI_Crawler_Detector {
      * Idempotent migration via dbDelta + version gate.
      */
     public static function maybe_migrate() {
+        // phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Table names from $wpdb->prefix (schema-controlled, MySQL prepared statements do not support identifiers as placeholders); IN() clause placeholders dynamically built via array_fill() then passed to $wpdb->prepare() with values array (WordPress core documented pattern).
         // 3.35.84: DB_VERSION 1.1 — add 3 columns + new daily_stats table + cron + IP mode migration
         $current = get_option(self::DB_VERSION_OPT, '0');
         if (version_compare($current, self::DB_VERSION, '>=')) return;
@@ -352,6 +353,7 @@ class SEO_AEO_AI_Crawler_Detector {
         }
 
         update_option(self::DB_VERSION_OPT, self::DB_VERSION);
+        // phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
     }
 
     public static function maybe_schedule_cleanup() {

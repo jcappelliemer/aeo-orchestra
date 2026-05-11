@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.36.4
+Stable tag: 3.36.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,10 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.36.5 =
+* Plugin Check zero/zero: converted phpcs:ignore line-by-line to function-scope phpcs:disable/enable blocks for SQL InterpolatedNotPrepared and UnfinishedPrepare in 5 files (class-ai-crawler-admin, class-ai-crawler-detector, class-migration-importer, ai-crawler-live-state template, class-page-roles). 12 functions wrapped + 1 template-level disable.
+
 
 = 3.36.4 =
 * Fix audit Plugin Check 6 run: la v3.36.3 sweep mis-applied — l'idempotency guard saltava i siti gia annotati con format virgola+spazio (lascito v3.36.0-.36.1), che PHPCS strict parser non riconosce.

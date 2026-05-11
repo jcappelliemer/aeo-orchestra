@@ -1,6 +1,7 @@
 <?php
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.VariableNotPrefixed
+// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Template scope: table names from $wpdb->prefix (schema-controlled); IN() clause placeholders array_fill() + $wpdb->prepare() pattern.
 // Reason: template scope. Variables are local to this include/template,
 // passed by the calling function via include/require. The Plugin Check
 // heuristic doesn't distinguish template-scope locals from globals.

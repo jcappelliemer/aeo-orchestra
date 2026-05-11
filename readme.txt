@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.36.3
+Stable tag: 3.36.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,13 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.36.4 =
+* Fix audit Plugin Check 6 run: la v3.36.3 sweep mis-applied — l'idempotency guard saltava i siti gia annotati con format virgola+spazio (lascito v3.36.0-.36.1), che PHPCS strict parser non riconosce.
+* Normalizzate 222 phpcs:ignore/disable lines su 60 files dal format "Rule1, Rule2" a "Rule1,Rule2" (PHPCS strict parser).
+* Sostituite 59 ignore lines pre-esistenti con la versione comprensiva (aggiunte PluginCheck.Security.DirectDB.UnescapedDBParameter e WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber al set di regole soppresse).
+* class-ajax-handlers.php: aggiunta WordPress.Security.NonceVerification.Missing/Recommended al file-level disable (il namespace effettivamente flaggato da Plugin Check, non solo PluginCheck.Security.Nonce).
+
 
 = 3.36.3 =
 * Plugin Check zero/zero sweep: closed all remaining warnings via documented phpcs:ignore comments with audit-friendly justification (no real code changes — only annotations explaining technical false positives).

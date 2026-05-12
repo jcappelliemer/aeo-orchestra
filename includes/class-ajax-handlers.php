@@ -740,6 +740,165 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
     }
 
     // -- Orchestrate single page --
+    /**
+     * 3.39.0 — Map a single issue text to a structured action.
+     *
+     * The AI analysis prompt returns issues as flat strings. This mapper
+     * detects keyword patterns in the issue text and produces a concrete
+     * Action object: executor_agent (one of the four agents wired in
+     * ajax_execute_action), action_title (user-facing one-liner),
+     * action_description (2-3 sentences: WHAT / WHY / impact), and
+     * auto_executable boolean. Unmapped issues become manual-review
+     * actions but with a context-specific hint (never the generic
+     * "rivedi manualmente").
+     *
+     * @param string $issue_text The issue description from the AI.
+     * @param string $type       'seo' or 'aeo' — sets the priority floor.
+     * @param array  $context    keys: url, keyword, post_id, title.
+     * @return array|null Action ready for the frontend, or null if the
+     *                    issue is too vague to act on.
+     */
+    private function build_action_from_issue($issue_text, $type, $context) {
+        $text = strtolower((string) $issue_text);
+        if (strlen(trim($text)) < 10) return null;
+        $url     = isset($context['url']) ? $context['url'] : '';
+        $keyword = isset($context['keyword']) ? $context['keyword'] : '';
+        $post_id = isset($context['post_id']) ? (int) $context['post_id'] : 0;
+        $title   = isset($context['title']) ? $context['title'] : '';
+
+        // Pattern → recipe table. First match wins.
+        $patterns = array(
+            array(
+                'rx'    => '/schema|markup|json[\s\-]?ld|structured\s+data|dati\s+strutturati|rich\s+result/i',
+                'agent' => 'aeo_content',
+                'type'  => 'GENERATE_SCHEMA',
+                'title' => 'Genera schema JSON-LD per questa pagina',
+                'desc'  => 'Aggiungo automaticamente il markup Schema.org (Organization, Service o Article a seconda del tipo di pagina) come blocco JSON-LD. Migliora rich results su Google e citabilita\' AEO. ~3 minuti.',
+                'cr'    => 10,
+            ),
+            array(
+                'rx'    => '/\bfaq\b|domand[ae]\s+frequent|domanda[\-\s]+risposta|sezione\s+faq|q&a/i',
+                'agent' => 'aeo_content',
+                'type'  => 'ADD_FAQ_SECTION',
+                'title' => 'Genera sezione FAQ con domande tipo per questo argomento',
+                'desc'  => 'Estraggo le 5-7 domande piu\' frequenti sul tuo argomento dal contesto Brand Voice + Profilo Business e genero una sezione FAQ con risposte concise. Riduce significativamente il gap AEO. ~5 minuti.',
+                'cr'    => 10,
+            ),
+            array(
+                'rx'    => '/meta\s+(title|description)|meta[\-\s]?tag|description\s+(mancante|corta|generica)/i',
+                'agent' => 'meta_tags',
+                'type'  => 'REWRITE_META',
+                'title' => 'Riscrivi Meta Title + Meta Description ottimizzati',
+                'desc'  => 'Genero Meta Title (50-60 caratteri) e Meta Description (140-160) ottimizzati per la keyword e per il CTR nei risultati Google. Salvati direttamente nel post WordPress. ~1 minuto.',
+                'cr'    => 3,
+            ),
+            array(
+                'rx'    => '/\bh1\b|\bh2\b|\bh3\b|intestazion|heading|gerarchia\s+titoli/i',
+                'agent' => 'content_generator',
+                'type'  => 'FIX_HEADING_STRUCTURE',
+                'title' => 'Riscrivi struttura H1/H2/H3 della pagina',
+                'desc'  => 'Rianalizzo la struttura titoli e propongo una gerarchia H1→H2→H3 corretta, con keyword integrate naturalmente. Migliora scannability + SEO. ~3 minuti.',
+                'cr'    => 15,
+            ),
+            array(
+                'rx'    => '/internal\s+link|link\s+intern|collegamenti?\s+intern/i',
+                'agent' => 'content_generator',
+                'type'  => 'ADD_INTERNAL_LINKS',
+                'title' => 'Suggerisci internal link contestuali',
+                'desc'  => 'Analizzo le altre pagine del sito e propongo 3-5 internal link contestuali da inserire in questa pagina con anchor text ottimizzati. Migliora authority distribution. ~3 minuti.',
+                'cr'    => 15,
+            ),
+            array(
+                'rx'    => '/intro|introduzion|focus\s+(sul|sulla)|prodotto|product\s+description|descrizione\s+prodotto|risponde\s+a\s+domand/i',
+                'agent' => 'aeo_content',
+                'type'  => 'REWRITE_INTRO',
+                'title' => 'Riscrivi intro pagina con focus problema-soluzione',
+                'desc'  => 'Riformulo i primi 200 caratteri della pagina per aprire con il problema del cliente e la soluzione, non con il prodotto. Migliora engagement e citabilita\' AEO. ~2 minuti.',
+                'cr'    => 10,
+            ),
+            array(
+                'rx'    => '/citab|cita(zione|bilita)|autorit|e[\-\s]?e[\-\s]?a[\-\s]?t|expertise|fonte/i',
+                'agent' => 'aeo_content',
+                'type'  => 'ADD_AUTHORITY_SIGNALS',
+                'title' => 'Aggiungi segnali di autorita\' per AEO',
+                'desc'  => 'Riscrivo passaggi chiave inserendo segnali E-E-A-T (autore, data, fonti, dati verificabili) che le AI considerano nella valutazione di citabilita\'. ~4 minuti.',
+                'cr'    => 10,
+            ),
+            array(
+                'rx'    => '/featured\s+snippet|snippet|risposta\s+(diretta|breve)|paragrafo\s+iniziale/i',
+                'agent' => 'aeo_content',
+                'type'  => 'OPTIMIZE_FEATURED_SNIPPET',
+                'title' => 'Ottimizza per Featured Snippet (risposta diretta nei primi 2-3 paragrafi)',
+                'desc'  => 'Riformulo l\'apertura della pagina con una risposta diretta e citabile alla query principale (formato definizione/lista/tabella). Aumenta probabilita\' di apparire in Featured Snippet e AI Overviews. ~3 minuti.',
+                'cr'    => 10,
+            ),
+            array(
+                'rx'    => '/keyword|parol[ae]\s+chiave|densita/i',
+                'agent' => 'meta_tags',
+                'type'  => 'OPTIMIZE_KEYWORDS',
+                'title' => 'Ottimizza keyword targeting + LSI',
+                'desc'  => 'Identifico le keyword secondarie (LSI) piu\' rilevanti per questa pagina e aggiorno meta + suggerisco integrazione naturale nel contenuto. ~2 minuti.',
+                'cr'    => 3,
+            ),
+            array(
+                'rx'    => '/contenuto\s+(breve|corto|insufficiente)|word\s*count|troppo\s+corta|poche\s+parol/i',
+                'agent' => 'content_generator',
+                'type'  => 'EXPAND_CONTENT',
+                'title' => 'Espandi contenuto della pagina',
+                'desc'  => 'Genero 300-500 parole aggiuntive ottimizzate per la keyword principale, mantenendo il tono Brand Voice. Migliora ranking + segnali di qualita\'. ~5 minuti.',
+                'cr'    => 15,
+            ),
+        );
+
+        foreach ($patterns as $p) {
+            if (preg_match($p['rx'], $text)) {
+                return array(
+                    'agent'           => $p['agent'],
+                    'priority'        => ($type === 'aeo') ? 'alta' : 'media',
+                    'label'           => $p['title'],
+                    'description'     => $p['desc'],
+                    'action_type'     => $p['type'],
+                    'auto_executable' => true,
+                    'executor_agent'  => $p['agent'],
+                    'estimated_credits' => $p['cr'],
+                    'issue_ref'       => $issue_text,
+                    'data'            => array(
+                        'url'      => $url,
+                        'keyword'  => $keyword,
+                        'post_id'  => $post_id,
+                        'topic'    => $title,
+                        'issue'    => $issue_text,
+                    ),
+                );
+            }
+        }
+
+        // Unmapped: keep an explicit, specific manual-review action so the
+        // frontend never falls back to "rivedi manualmente".
+        return array(
+            'agent'             => 'manual_review',
+            'priority'          => 'bassa',
+            'label'             => 'Rivedi: ' . $this->truncate_text($issue_text, 80),
+            'description'       => 'Questo problema richiede una valutazione manuale. Apri la pagina nell\'editor WordPress e rivedi il punto segnalato. Suggerimento: configura Brand Voice e Profilo Business per ricevere azioni piu\' specifiche alla prossima analisi.',
+            'action_type'       => 'MANUAL_REVIEW',
+            'auto_executable'   => false,
+            'executor_agent'    => null,
+            'estimated_credits' => 0,
+            'issue_ref'         => $issue_text,
+            'data'              => array(
+                'url'     => $url,
+                'post_id' => $post_id,
+                'issue'   => $issue_text,
+            ),
+        );
+    }
+
+    private function truncate_text($s, $max) {
+        $s = (string) $s;
+        if (strlen($s) <= $max) return $s;
+        return rtrim(substr($s, 0, $max - 1)) . chr(0xE2) . chr(0x80) . chr(0xA6); // UTF-8 ellipsis
+    }
+
     public function ajax_orchestrate_single() {
         try {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
@@ -820,6 +979,35 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'description' => !empty($top_suggs) ? implode('; ', array_filter($top_suggs)) : 'Il contenuto potrebbe essere migliorato per SEO + AEO',
                 'data' => array('topic' => $title, 'keyword' => $keyword)
             );
+        }
+
+        // 3.39.0 — produce one structured action per AI-detected issue.
+        // Without this, pages with aeo_score above the < 60 threshold but
+        // 6+ aeo issues showed zero executable actions. The keyword-based
+        // mapper below (build_action_from_issue) emits one Action per
+        // issue with executor_agent + auto_executable + estimated_credits,
+        // so the inline "Come risolvere" cards always offer a real path.
+        $issue_context = array(
+            'url'     => $url,
+            'keyword' => $keyword,
+            'post_id' => $post_id,
+            'title'   => $title,
+        );
+        if (isset($seo['issues']) && is_array($seo['issues'])) {
+            foreach ($seo['issues'] as $iss) {
+                $iss_text = is_string($iss) ? $iss : (isset($iss['description']) ? $iss['description'] : (isset($iss['message']) ? $iss['message'] : ''));
+                if (!$iss_text) continue;
+                $a = $this->build_action_from_issue($iss_text, 'seo', $issue_context);
+                if ($a) $actions[] = $a;
+            }
+        }
+        if (isset($aeo['issues']) && is_array($aeo['issues'])) {
+            foreach ($aeo['issues'] as $iss) {
+                $iss_text = is_string($iss) ? $iss : (isset($iss['description']) ? $iss['description'] : (isset($iss['message']) ? $iss['message'] : ''));
+                if (!$iss_text) continue;
+                $a = $this->build_action_from_issue($iss_text, 'aeo', $issue_context);
+                if ($a) $actions[] = $a;
+            }
         }
 
         if ($post_id > 0) {

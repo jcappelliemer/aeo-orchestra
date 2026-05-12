@@ -2538,6 +2538,41 @@
         },
 
         // Generate detailed description for orchestrator actions
+        // 3.39.0 — context-aware fallback when no action matches an issue.
+        // Returns an Italian Italian copy snippet pointing the user to the
+        // specific Orchestra page or workflow where the issue is fixable.
+        // Never returns the generic "rivedi manualmente" text.
+        contextHintForIssue: function(issueText) {
+            var T = SeoAeoOrchestra.t || function(s){return s;};
+            var t = String(issueText || '').toLowerCase();
+            var rules = [
+                {rx: /schema|markup|json[\s\-]?ld|structured\s+data|dati\s+strutturati|rich\s+result/i,
+                 txt: T('Vai a SEO+AEO Output Nativo → Schema → abilita la generazione automatica del markup JSON-LD per questa pagina.')},
+                {rx: /\bfaq\b|domand[ae]\s+frequent|domanda[\-\s]+risposta|sezione\s+faq|q&a/i,
+                 txt: T('Vai a Contenuti AEO → genera sezione FAQ con domande tipiche per questo argomento (Brand Voice consigliato per tono coerente).')},
+                {rx: /meta\s+(title|description)|meta[\-\s]?tag|description\s+(mancante|corta|generica)/i,
+                 txt: T('Vai a Meta Tags AI → genera Meta Title + Meta Description ottimizzati per la keyword di questa pagina, oppure abilita Override Mode in SEO+AEO Output.')},
+                {rx: /\bh1\b|\bh2\b|\bh3\b|intestazion|heading|gerarchia\s+titoli/i,
+                 txt: T('Apri la pagina nell\'editor WordPress e correggi la gerarchia titoli (un solo H1, H2 per sezioni principali, H3 per sotto-sezioni).')},
+                {rx: /internal\s+link|link\s+intern|collegamenti?\s+intern/i,
+                 txt: T('Vai a Contenuti AI → Suggerimenti, oppure usa il Piano d\'Azione per ottenere proposte di internal link contestuali.')},
+                {rx: /citab|cita(zione|bilita)|autorit|e[\-\s]?e[\-\s]?a[\-\s]?t|expertise|fonte/i,
+                 txt: T('Aggiungi segnali E-E-A-T: autore con bio, data di pubblicazione, fonti verificabili. Vai a Contenuti AEO per generare passaggi con citazioni.')},
+                {rx: /featured\s+snippet|snippet|risposta\s+(diretta|breve)/i,
+                 txt: T('Vai a Contenuti AEO → riformula l\'apertura della pagina come risposta diretta + breve (formato definizione/lista) per Featured Snippet e AI Overviews.')},
+                {rx: /keyword|parol[ae]\s+chiave|densita/i,
+                 txt: T('Vai a Keyword Research per identificare le keyword secondarie (LSI) piu\' rilevanti, poi aggiorna Meta Tags AI.')},
+                {rx: /brand\s+voice|tono|voce|style/i,
+                 txt: T('Configura Brand Voice → analizza 10-20 articoli del sito per estrarre il tuo profilo di tono e usarlo come system message in tutte le generazioni AI.')},
+                {rx: /profilo\s+business|business\s+profile|chi\s+sei|territor|prodott|servizi|industry/i,
+                 txt: T('Apri Setup Guidato → Profilo Business per compilare i campi business core (nome, industry, value proposition, territori). Migliora le analisi future.')}
+            ];
+            for (var i = 0; i < rules.length; i++) {
+                if (rules[i].rx.test(t)) return '<em>' + rules[i].txt + '</em>';
+            }
+            return '<em>' + T('Apri il Piano d\'Azione (sopra) per vedere azioni eseguibili o configura Brand Voice + Profilo Business per analisi piu\' mirate.') + '</em>';
+        },
+
         getActionDetailDescription: function(action) {
             var T = SeoAeoOrchestra.t;
             var label = '<strong>' + T('Cosa fara:') + '</strong> ';
@@ -2587,12 +2622,19 @@
                 var out = '<div class="orch-problem-cards">';
                 Object.keys(groups).forEach(function(issueText, idx) {
                     var g = groups[issueText];
-                    // Find first action whose page_title matches one of the affected pages.
+                    // 3.39.0 — prefer exact issue_ref match (per-issue actions emitted
+                    // by build_action_from_issue), then fall back to page-level match.
                     var matchAction = null;
                     for (var i = 0; i < allActions.length; i++) {
-                        if (g.pages.indexOf(allActions[i].page_title) !== -1) {
-                            matchAction = allActions[i];
-                            break;
+                        var aa = allActions[i];
+                        if (aa.issue_ref && aa.issue_ref === g.issue) { matchAction = aa; break; }
+                    }
+                    if (!matchAction) {
+                        for (var j = 0; j < allActions.length; j++) {
+                            if (g.pages.indexOf(allActions[j].page_title) !== -1) {
+                                matchAction = allActions[j];
+                                break;
+                            }
                         }
                     }
                     var icon = (kind === 'aeo') ? '🟡' : '🔴';
@@ -2608,18 +2650,29 @@
                     }
                     out += '</span>';
                     out += '</div>';
-                    // Solution block
-                    var desc = matchAction
-                        ? SeoAeoOrchestra.getActionDetailDescription(matchAction)
-                        : '<em>' + SeoAeoOrchestra.t('Suggerimento: rivedi manualmente questa pagina o usa il Piano d\'Azione per dettagli specifici.') + '</em>';
+                    // 3.39.0 — Solution block. Prefer the rich Italian copy emitted
+                    // by build_action_from_issue (matchAction.description), fall back
+                    // to legacy by-agent text, then to a context-aware hint mapped on
+                    // issue keywords. Generic "rivedi manualmente" is NEVER shown.
+                    var desc;
+                    if (matchAction && matchAction.description && matchAction.description.length > 0) {
+                        desc = '<strong>' + SeoAeoOrchestra.t('Cosa fara:') + '</strong> ' + matchAction.description;
+                    } else if (matchAction) {
+                        desc = SeoAeoOrchestra.getActionDetailDescription(matchAction);
+                    } else {
+                        desc = SeoAeoOrchestra.contextHintForIssue(g.issue);
+                    }
                     out += '<div class="orch-problem-solution"><strong>💡 ' + SeoAeoOrchestra.t('Come risolvere') + ':</strong> ' + desc + '</div>';
-                    // Actions
+                    // Actions — show Esegui only when the action is auto-executable.
                     out += '<div class="orch-problem-actions">';
-                    if (matchAction) {
+                    var canAutoExec = matchAction && (matchAction.auto_executable !== false) && matchAction.agent && matchAction.agent !== 'manual_review';
+                    if (canAutoExec) {
+                        var credits = matchAction.estimated_credits || '';
+                        var creditsLabel = credits ? ' (' + credits + ' cr)' : '';
                         out += '<button type="button" class="button button-primary orch-execute-btn orch-problem-exec" ';
                         out += 'data-agent="' + escHtml(matchAction.agent) + '" ';
                         out += 'data-action-data=\'' + JSON.stringify(matchAction.data || {}).replace(/\'/g, '&apos;') + '\'>';
-                        out += '⚡ ' + SeoAeoOrchestra.t('Esegui automaticamente') + '</button>';
+                        out += '⚡ ' + SeoAeoOrchestra.t('Esegui automaticamente') + creditsLabel + '</button>';
                     }
                     out += '<button type="button" class="button orch-problem-toggle-pages" data-target="' + cardId + '-pages">';
                     out += '👁 ' + SeoAeoOrchestra.t('Mostra pagine') + ' (' + g.pages.length + ')';

@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.38.9
+Stable tag: 3.39.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,14 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.0 =
+* CRITICAL UX FIX — every Problemi SEO / Problemi AEO card now has a concrete actionable solution inline. Before: the orchestrator endpoint built actions HEURISTICALLY from score thresholds (seo_score<70, aeo_score<60, suggestions count>2, meta missing). Pages with above-threshold scores but multiple AI-detected issues (e.g. aeo_score 75 with 6 AEO issues on a homepage) produced ZERO actions, so every problem card fell back to a generic "rivedi manualmente questa pagina" hint. The plugin appeared to identify problems but offered no path to fix them.
+* Backend Part 1 — new build_action_from_issue() PHP helper with 10-pattern keyword→action mapping (schema/markup → GENERATE_SCHEMA, FAQ/domande → ADD_FAQ_SECTION, meta/description → REWRITE_META, headings → FIX_HEADING_STRUCTURE, internal link → ADD_INTERNAL_LINKS, intro/focus → REWRITE_INTRO, citability/E-E-A-T → ADD_AUTHORITY_SIGNALS, featured snippet → OPTIMIZE_FEATURED_SNIPPET, keyword → OPTIMIZE_KEYWORDS, expand → EXPAND_CONTENT). Each emitted action carries action_type, action_title, action_description (2-3 sentences: WHAT/WHY/impact), auto_executable boolean, executor_agent (one of meta_tags / aeo_content / content_generator / manual_review), estimated_credits, and issue_ref linking back to the AI-detected problem.
+* Backend wiring — ajax_orchestrate_single() iterates seo[issues] and aeo[issues] arrays AFTER the legacy aggregate actions and emits one action per issue. Unmapped issues become MANUAL_REVIEW with a specific issue-prefix hint (never the generic "rivedi manualmente" copy).
+* Frontend Part 2 — buildProblemCards() in admin.js now: (a) prefers exact issue_ref match over the legacy page_title-intersection fallback, (b) prefers action.description (rich Italian copy from the new backend mapper) over getActionDetailDescription (legacy switch by agent), (c) when no action matches, calls the new SeoAeoOrchestra.contextHintForIssue() with 10 regex rules pointing to specific Orchestra pages (Schema → SEO+AEO Output Nativo, FAQ → Contenuti AEO, meta → Meta Tags AI, etc.).
+* Esegui button gating — the inline "Esegui automaticamente" button now appears only when matchAction.auto_executable !== false AND agent is not manual_review, and shows the estimated_credits inline in the label (e.g. "⚡ Esegui automaticamente (10 cr)").
+* Zero occurrences of "rivedi manualmente questa pagina" in problem cards after this release. Plugin Check 0/0 on the WP.org ZIP.
 
 = 3.38.9 =
 * Cronologia "Riapri" — addendum to the v3.38.8 modal wiring. The confirmation modal opened and the AJAX returned 200, but the underlying restoreFromHistory() only painted three innerHTMLs, never hydrated the in-memory data behind clickable problem cards, never updated scalar counters, and never revealed #orchestrator-results (which is display:none until JS reveals it). Net effect: confirming the modal silently did nothing on the page.

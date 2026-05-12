@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.37.2
+Stable tag: 3.38.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,25 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.38.1 =
+* Task 2 hotfix — Ambassador banner relocated to the correct template (wizard-home.php / Dashboard page). It was wrongly placed in admin-dashboard.php (Orchestratore page) in 3.38.0 and therefore never visible to users landing on Dashboard. Plus added a "Setup completato" celebration variant when all 7 steps done.
+* Task 1 — Step data preview in Setup Guidato. Every done step now renders a compact summary of underlying data (Perimetro fields, Business Profile description + Context AI char count, Keyword Research count + timestamp, Brand Voice profile/tone/audience, Orchestrator health score + pages analyzed, Native Output 4 toggle states, Auto-Pilot job count). Perimetro inline form now prepopulates with saved values. New "✗ Marca da rifare" action per step lets users reset status to TODO while keeping the underlying data intact.
+* Task 3 — Free first home analysis backend. New free_analyses_used collection with unique-index on user_id; try_claim_free_analysis() is race-safe (DuplicateKeyError caught). The /api/ai/analyze + /api/ai/aeo-analyze endpoints accept an is_free_first field — when set and the user has never claimed, both calls skip credit deduction. Setup Guidato Step 5 button now links to Orchestratore with ?is_free_first=1; the Orchestratore JS reads the param and passes it ONLY to the first page of the analysis run.
+* Task 4 — Post-activation redirect to Setup Guidato. Industry-standard pattern (Yoast/RankMath/Elementor): new register_activation_hook sets a 60s transient scoped to current user; admin_init listener detects it, clears it, and redirects to ?page=seo-aeo-setup-guidato&first_run=1. The first-run hero shows a warm welcome + ⭐ "prima analisi gratis" callout + two CTAs (Inizia il setup / Esplora liberamente). The "Esplora liberamente" path persists seo_aeo_setup_skipped_by_user and respects the choice on future activations. Once all 7 steps are done the seo_aeo_setup_completed_once flag prevents future auto-redirect on plugin deactivate/reactivate.
+
+= 3.38.0 =
+* NEW: Setup Guidato (Onboarding 3.0). 7-step guided plugin configuration, persistent state, resume anytime. Persona branching (consultant / WP owner / exploring). Auto-detection of already-completed steps (no false TODOs). Sticky widget on every admin page showing progress + jump-to-step. Ambassador banner replaces the legacy 3-step onboarding overlay on Dashboard (overlay retained for parallel coexistence; will be removed in 3.38.1 once Setup Guidato is browser-verified). Free first home analysis (Step 5 messaging) — backend mechanism lands in 3.38.1.
+* Module 16.3 — GSC property-mismatch message rewritten. When the connected Google account does not have access to the current domain, the widget now names the actual domain + connected email + offers two clear options (verify ownership in GSC, or change account via the new "⚙ Cambia account Google" button). Removed residual "team Orchestra" copy from the deprecated managed-mode branch.
+* New menu entry: 🎯 Setup Guidato (position 12, between Dashboard and Profilo Business).
+* Pure client-side state for now (WP option seo_aeo_setup_progress). No backend changes required.
+
+= 3.37.3 =
+* Module 12 (Path C) — Cancel button on Orchestratore now actually aborts the in-flight AJAX request and triggers an automatic credit refund via /api/ai/refund-generation with reason="cancelled". The 3/day refund cap is bypassed for user cancellations within the 5-minute window. Toast "Analisi annullata. Crediti rimborsati." confirms the action.
+* Module 12 — Wired generation_log audit entries into 4 endpoints that previously had no refund path: keyword-research, brand-voice-analyze, suggest-keywords, generate-content. Each now returns a generation_id usable with /refund-generation.
+* Module 16.2 — Deprecated the managed-by-admin GSC mode. All licenses now use per-tenant OAuth regardless of the (now-ignored) gsc_managed_by_admin flag. Removed the "Search Console gestito centralmente dal team Orchestra — contatta supporto" dead-end UI; every client license can self-connect via the standard OAuth flow.
+* Module 16.2 — Google OAuth URL now always uses prompt=select_account so users see the account picker and can switch identities.
+* Module 16.2 — New "⚙ Disconnetti / Cambia account" button label + dedicated "Cambia account ↗" link that disconnects and re-triggers OAuth.
 
 = 3.37.2 =
 * CRITICAL: Module 14 — fixed double-bind on Orchestratore "Avvia analisi" button that caused 2× AJAX requests + 2× credit consumption per page. Removed redundant inline onclick + added idempotency guard.

@@ -90,6 +90,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             add_action('wp_ajax_seo_aeo_orchestra_analyze', array($this, 'ajax_analyze_seo'));
             add_action('wp_ajax_seo_aeo_orchestra_generate_meta', array($this, 'ajax_generate_meta'));
             add_action('wp_ajax_seo_aeo_orchestra_generate_content', array($this, 'ajax_generate_content'));
+            // 3.37.3 Module 12 — generic refund AJAX (proxies to backend /ai/refund-generation).
+            add_action('wp_ajax_seo_aeo_orchestra_refund_generation', array($this, 'ajax_refund_generation'));
             add_action('wp_ajax_seo_aeo_orchestra_local_seo', array($this, 'ajax_local_seo'));
 
             // AEO Agents
@@ -757,8 +759,12 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             $has_meta_title = $post_id > 0 ? (bool)get_post_meta($post_id, '_seo_aeo_meta_title', true) : false;
             $has_meta_desc = $post_id > 0 ? (bool)get_post_meta($post_id, '_seo_aeo_meta_description', true) : false;
 
-            $seo = $api->api_request('/ai/analyze', array('url' => $url, 'keyword' => $keyword));
-            $aeo = $api->api_request('/ai/aeo-analyze', array('url' => $url, 'keyword' => $keyword));
+            // 3.38.1 Task 3 — pass-through is_free_first flag for Setup Guidato Step 5.
+            $is_free_first = isset($_POST['is_free_first']) ? (bool) intval(wp_unslash($_POST['is_free_first'])) : false;
+            $payload_extra = $is_free_first ? array('is_free_first' => true) : array();
+
+            $seo = $api->api_request('/ai/analyze', array_merge(array('url' => $url, 'keyword' => $keyword), $payload_extra));
+            $aeo = $api->api_request('/ai/aeo-analyze', array_merge(array('url' => $url, 'keyword' => $keyword), $payload_extra));
 
         $seo_score = isset($seo['seo_score']) ? intval($seo['seo_score']) : (isset($seo['score']) ? intval($seo['score']) : null);
         $aeo_score = isset($aeo['aeo_score']) ? intval($aeo['aeo_score']) : null;
@@ -3824,6 +3830,38 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             wp_send_json(array('error' => $e->getMessage()));
         }
     }
+
+    /**
+     * 3.37.3 Module 12 — Generic refund AJAX. Proxies to backend
+     * /api/ai/refund-generation with reason='cancelled' for user-initiated
+     * cancellation (skips the 3/day cap inside the 5-min window).
+     */
+    public function ajax_refund_generation() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) { wp_send_json(array('error' => 'Solo amministratori.')); return; }
+            $generation_id = isset($_POST['generation_id']) ? sanitize_text_field(wp_unslash($_POST['generation_id'])) : '';
+            $reason = isset($_POST['reason']) ? sanitize_text_field(wp_unslash($_POST['reason'])) : 'cancelled';
+            if (empty($generation_id)) {
+                wp_send_json(array('error' => 'generation_id mancante'));
+                return;
+            }
+            global $seo_aeo_api;
+            if (!$seo_aeo_api) {
+                wp_send_json(array('error' => 'API client not initialized'));
+                return;
+            }
+            $result = $seo_aeo_api->api_request('/ai/refund-generation', array(
+                'generation_id' => $generation_id,
+                'reason'        => $reason,
+            ));
+            wp_send_json(is_array($result) ? $result : array('error' => 'risposta non valida'));
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => $e->getMessage()));
+        }
+    }
+
+
 
     /**
      * 3.35.0 — Riprendi preview: leggi transient e ritorna i dati.

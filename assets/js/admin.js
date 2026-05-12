@@ -527,9 +527,33 @@
             $(document).on('click', '.orch-execute-btn', this.executeAction);
 
             // Cancel orchestrator
+            // 3.37.3 Module 12 — actually stop the in-flight AJAX + request refund.
             $(document).on('click', '#orch-cancel-analysis', function() {
                 SeoAeoOrchestra.orchestrateCancelled = true;
-                $(this).prop('disabled', true).text('Annullamento...');
+                $(this).prop('disabled', true).text(SeoAeoOrchestra.t('Annullamento...'));
+                // Abort the XHR for the page currently being analyzed (if any).
+                var xhr = SeoAeoOrchestra._orchestrateXhr;
+                if (xhr && typeof xhr.abort === 'function') {
+                    try { xhr.abort(); } catch (e) {}
+                }
+                SeoAeoOrchestra._orchestrateXhr = null;
+                // Request server-side refund for the generation_id of the page
+                // that was mid-flight, if we have one. Reason='cancelled' skips
+                // the 3/day cap inside the 5-min window.
+                var pendingGen = SeoAeoOrchestra._orchestratePendingGenId;
+                if (pendingGen) {
+                    SeoAeoOrchestra._orchestratePendingGenId = null;
+                    $.post(seoAeoOrchestra.ajaxUrl, {
+                        action: 'seo_aeo_orchestra_refund_generation',
+                        nonce: seoAeoOrchestra.nonce,
+                        generation_id: pendingGen,
+                        reason: 'cancelled',
+                    }).always(function() {
+                        SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Analisi annullata. Crediti rimborsati.'), 'success');
+                    });
+                } else {
+                    SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Analisi annullata.'), 'info');
+                }
             });
 
             // History filter
@@ -2018,6 +2042,14 @@
             SeoAeoOrchestra.orchestrateIndex = 0;
             SeoAeoOrchestra.orchestrateStartTime = Date.now();
             SeoAeoOrchestra.orchestrateCancelled = false;
+            // 3.38.1 Task 3 — read ?is_free_first=1 once. Applied ONLY to the
+            // first page of this run (idx === 0 inside orchestrateNext).
+            try {
+                var qs = new URLSearchParams(window.location.search);
+                SeoAeoOrchestra.orchestrateIsFreeFirst = qs.get('is_free_first') === '1';
+            } catch (e) {
+                SeoAeoOrchestra.orchestrateIsFreeFirst = false;
+            }
             SeoAeoOrchestra.orchestrateNext();
         },
 
@@ -2071,14 +2103,27 @@
 
             $('#orch-progress-log').prepend('<div>&#9654; Analizzando pagina ' + (idx + 1) + '/' + pages.length + ': ' + page.title + '...</div>');
 
-            $.post(seoAeoOrchestra.ajaxUrl, {
+            // 3.37.3 Module 12 — keep the XHR handle for cancel-abort; clear
+            // generation_id from prior iteration.
+            SeoAeoOrchestra._orchestratePendingGenId = null;
+            // 3.38.1 Task 3 — pass is_free_first ONLY on the first page of the
+            // run. Backend claims the free slot on first call; subsequent
+            // pages in the same orchestrate session pay normal credits.
+            var _isFree = (idx === 0 && SeoAeoOrchestra.orchestrateIsFreeFirst) ? 1 : 0;
+            SeoAeoOrchestra._orchestrateXhr = $.post(seoAeoOrchestra.ajaxUrl, {
                 action: 'seo_aeo_orchestra_orchestrate_single',
                 nonce: seoAeoOrchestra.nonce,
                 url: page.url,
                 title: page.title,
                 post_id: page.post_id,
-                keyword: ''
+                keyword: '',
+                is_free_first: _isFree
             }, function(result) {
+                // Capture generation_id (if the backend returned one) so cancel
+                // can call /refund-generation with it.
+                if (result && result.generation_id) {
+                    SeoAeoOrchestra._orchestratePendingGenId = result.generation_id;
+                }
                 if (result && !result.error) {
                     SeoAeoOrchestra.orchestrateResults.push(result);
                     var seo = result.seo_score !== null ? result.seo_score : '?';

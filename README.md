@@ -3,7 +3,7 @@
 > **AI specialists, perfectly orchestrated.**
 > One conductor. Many AI specialists. One symphony of search visibility.
 
-**Latest release**: [v3.37.2](https://github.com/jcappelliemer/aeo-orchestra/releases/tag/v3.37.2) — see [CHANGELOG](https://wordpress.org/plugins/aeo-orchestra/#developers) on WordPress.org.
+**Latest release**: [v3.38.1](https://github.com/jcappelliemer/aeo-orchestra/releases/tag/v3.38.1) — see [CHANGELOG](https://wordpress.org/plugins/aeo-orchestra/#developers) on WordPress.org.
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 [![WordPress 5.8+](https://img.shields.io/badge/WordPress-5.8%2B-21759b.svg)](https://wordpress.org/)

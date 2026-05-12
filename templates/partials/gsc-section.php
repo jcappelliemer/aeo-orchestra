@@ -241,20 +241,22 @@ jQuery(function($) {
     }
 
     function renderClientWaitingForAdmin() {
-        return '<div class="orch-gsc-disabled">' +
-                 '<strong>' + SeoAeoOrchestra.t('Search Console gestito centralmente dal team Orchestra.') + '</strong><br>' +
-                 SeoAeoOrchestra.t('L\'amministratore non ha ancora attivato la connessione, oppure il tuo dominio non risulta tra le property GSC autorizzate. Contatta il supporto per attivare gli insights di Search Console su questo sito.') +
-               '</div>';
+        // 3.38.0 Module 16.3 — function body emptied. Module 16.2 deprecated
+        // gsc_managed_by_admin mode and the routing condition above (gating on
+        // resp.is_managed) now never reaches this branch. Kept as no-op for
+        // backward compatibility with any stale call site. Returns empty
+        // string — caller renders nothing.
+        return '';
     }
 
     function renderConnected(s) {
+        // 3.37.3 Module 16.2 — per-tenant OAuth flow always. No more
+        // managed-mode dead-end UI. Disconnect button always rendered;
+        // adds a "Cambia account" affordance that re-OAuths with
+        // prompt=select_account.
         var connectedAt = s.connected_at ? new Date(s.connected_at).toLocaleDateString(SeoAeoOrchestra.bcp47(), {day:'2-digit',month:'short',year:'numeric'}) : '—';
-        var disconnectBtn = (s.system_mode && !s.is_admin)
-            ? ''
-            : '<button type="button" class="orch3-btn orch3-btn-ghost orch3-btn-sm" id="orch-gsc-disconnect-btn">' + SeoAeoOrchestra.t('Disconnetti') + '</button>';
-        var connectedLabel = (s.system_mode && !s.is_admin)
-            ? SeoAeoOrchestra.t('GSC attivo · gestito dal team Orchestra')
-            : SeoAeoOrchestra.t('Connesso come') + ' <strong>' + escapeHtml(s.email || '?') + '</strong> · ' + SeoAeoOrchestra.t('dal') + ' ' + escapeHtml(connectedAt);
+        var disconnectBtn = '<button type="button" class="orch3-btn orch3-btn-ghost orch3-btn-sm" id="orch-gsc-disconnect-btn">⚙ ' + SeoAeoOrchestra.t('Disconnetti / Cambia account') + '</button>';
+        var connectedLabel = SeoAeoOrchestra.t('Connesso come') + ' <strong>' + escapeHtml(s.email || '?') + '</strong> · ' + SeoAeoOrchestra.t('dal') + ' ' + escapeHtml(connectedAt);
         return '<div class="orch-gsc-connected-bar">' +
                  '<div class="orch-gsc-connected-info">' +
                    '<span class="orch-gsc-connected-dot"></span>' +
@@ -262,6 +264,7 @@ jQuery(function($) {
                  '</div>' +
                  disconnectBtn +
                '</div>' +
+               '<div class="orch3-muted" style="font-size:12px;margin:6px 0 14px;">' + SeoAeoOrchestra.t('Email sbagliata?') + ' <a href="#" id="orch-gsc-switch-account">' + SeoAeoOrchestra.t('Cambia account ↗') + '</a></div>' +
                '<div id="orch-gsc-sites" class="orch-gsc-sites">' +
                  '<div class="orch3-muted" style="padding:8px 0;"><span class="rv-spinner"></span> ' + SeoAeoOrchestra.t('Carico siti GSC…') + '</div>' +
                '</div>' +
@@ -288,10 +291,23 @@ jQuery(function($) {
                 return s.permission_level && s.permission_level.indexOf('siteUnverifiedUser') === -1;
             }) : [];
             if (!sites.length) {
-                var msg = (currentStatus && currentStatus.system_mode && !currentStatus.is_admin)
-                    ? SeoAeoOrchestra.t('Il tuo dominio non risulta tra le property GSC del team Orchestra. Aggiungi l\'email amministratore Orchestra come Utente o Proprietario nella tua property Search Console, poi ricarica la dashboard.')
-                    : SeoAeoOrchestra.t('Nessun sito verificato in GSC con questo account.');
-                $sites.html('<div class="orch-gsc-warn">' + msg + '</div>');
+                // 3.37.3 / v3.38.0 Module 16.3 — self-service property-mismatch UX.
+                // Names the domain + connected email so the user can act, plus offers
+                // a Cambia account CTA. Removed legacy "team Orchestra" copy.
+                var currentDomain = '';
+                try { currentDomain = window.location.hostname.replace(/^www\./, ''); } catch(e) {}
+                var connectedEmail = (currentStatus && currentStatus.email) ? currentStatus.email : '';
+                var html = '<div class="orch-gsc-warn" style="line-height:1.55;">' +
+                  '<p style="margin:0 0 10px;"><strong>' + SeoAeoOrchestra.t('Dominio non trovato nelle property GSC') + '</strong></p>' +
+                  '<p style="margin:0 0 12px;">' + SeoAeoOrchestra.t('Il tuo dominio') + ' <code>' + escapeHtml(currentDomain) + '</code> ' + SeoAeoOrchestra.t('non risulta tra le property accessibili dall\'account Google connesso') + (connectedEmail ? ' (<strong>' + escapeHtml(connectedEmail) + '</strong>)' : '') + '.</p>' +
+                  '<p style="margin:0 0 10px;font-size:13px;"><strong>' + SeoAeoOrchestra.t('Due opzioni') + '</strong></p>' +
+                  '<ol style="margin:0 0 14px 18px;padding:0;font-size:13px;">' +
+                    '<li>' + SeoAeoOrchestra.t('Verifica che') + ' <code>' + escapeHtml(currentDomain) + '</code> ' + SeoAeoOrchestra.t('sia presente nel tuo Google Search Console') + ' (<a href="https://search.google.com/search-console" target="_blank" rel="noopener">search.google.com/search-console</a>) ' + SeoAeoOrchestra.t('e che l\'account') + (connectedEmail ? ' <code>' + escapeHtml(connectedEmail) + '</code> ' : ' ') + SeoAeoOrchestra.t('abbia accesso (Proprietario o Utente). Poi ricarica la dashboard.') + '</li>' +
+                    '<li>' + SeoAeoOrchestra.t('Oppure cambia account Google connesso:') + '</li>' +
+                  '</ol>' +
+                  '<button type="button" class="orch3-btn orch3-btn-ghost orch3-btn-sm" id="orch-gsc-switch-account">⚙ ' + SeoAeoOrchestra.t('Cambia account Google') + '</button>' +
+                  '</div>';
+                $sites.html(html);
                 return;
             }
             var currentHost = (function() {
@@ -750,6 +766,31 @@ jQuery(function($) {
         }).done(function(resp) {
             statusLoaded = false;
             loadStatus();
+        });
+    });
+
+    // 3.37.3 Module 16.2 — Cambia account: disconnect then auto-redirect to
+    // the auth URL. Google's prompt=select_account (set server-side) shows
+    // the account picker so the user can choose a different identity.
+    $card.on('click', '#orch-gsc-switch-account', function(e) {
+        e.preventDefault();
+        if (!confirm(SeoAeoOrchestra.t('Vuoi cambiare account Google? Verrai disconnesso e reindirizzato a Google per scegliere un altro account.'))) return;
+        $.post(ajaxurl, {
+            action: 'seo_aeo_orchestra_gsc_disconnect',
+            nonce: seoAeoOrchestra.nonce,
+        }).always(function() {
+            // After disconnect (success or error), launch the auth URL flow.
+            $.post(ajaxurl, {
+                action: 'seo_aeo_orchestra_gsc_auth_url',
+                nonce: seoAeoOrchestra.nonce,
+                return_url: window.location.href,
+            }).done(function(resp) {
+                if (resp && resp.auth_url) {
+                    window.location.href = resp.auth_url;
+                } else {
+                    SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Impossibile avviare il cambio account. Riprova.'), 'error');
+                }
+            });
         });
     });
 

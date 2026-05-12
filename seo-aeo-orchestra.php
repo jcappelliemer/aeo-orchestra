@@ -4,7 +4,7 @@
  * Plugin Name: AEO Orchestra
  * Plugin URI: https://aeo-orchestra.com
  * Description: Plugin SEO + AEO completo: specialisti AI perfettamente orchestrati per meta tags, content generation, schema, llms.txt, sitemap, redirect manager, brand voice e altro.
- * Version: 3.37.2
+ * Version: 3.38.1
  * Requires at least: 5.8
  * Tested up to: 6.9
  * Requires PHP: 7.4
@@ -27,7 +27,7 @@
  */
 if (!defined('ABSPATH')) exit;
 
-define('SEO_AEO_VERSION', '3.37.2');
+define('SEO_AEO_VERSION', '3.38.1');
 define('SEO_AEO_AGENTS_COUNT', 13);  // 3.35.84.2: +Verify-Live  // mirrors backend/helpers/config.py AGENTS_COUNT — bump on every new agent
 define('SEO_AEO_TOOLS_COUNT', 22);   // 3.35.84.2: +Verify-Live, Profilo Business, AI Performance, AI Crawlers   // mirrors backend/helpers/config.py TOOLS_COUNT — bump on every new tool
 define('SEO_AEO_DIR', plugin_dir_path(__FILE__));
@@ -67,6 +67,35 @@ register_activation_hook(__FILE__, function () {
     // Defer the first heuristic classification to a single-fire event so activation stays fast.
     wp_schedule_single_event(time() + 30, 'seo_aeo_first_role_classify');
 });
+
+// 3.38.1 Task 4 — Post-activation redirect to Setup Guidato. Industry-standard
+// onboarding pattern (Yoast, RankMath, Elementor): on first activation, set a
+// short-lived transient scoped to the activating user. An admin_init listener
+// then redirects them to Setup Guidato in first-run mode.
+register_activation_hook(__FILE__, function () {
+    // Don't redirect during multi-plugin bulk activation (WP fires deactivation
+    // hooks for each one and we'd compete).
+    if (isset($_REQUEST['activate-multi'])) return;
+    $uid = get_current_user_id();
+    if ($uid <= 0) return;
+    // Respect users who previously opted out and users who already completed setup.
+    if (get_option('seo_aeo_setup_skipped_by_user', false)) return;
+    if (get_option('seo_aeo_setup_completed_once', false)) return;
+    set_transient('seo_aeo_just_activated_' . $uid, 1, 60);
+});
+
+add_action('admin_init', function () {
+    if (defined('DOING_AJAX') && DOING_AJAX) return;
+    if (defined('DOING_CRON') && DOING_CRON) return;
+    $uid = get_current_user_id();
+    if ($uid <= 0) return;
+    if (!get_transient('seo_aeo_just_activated_' . $uid)) return;
+    // Clear the flag BEFORE redirecting so we never loop.
+    delete_transient('seo_aeo_just_activated_' . $uid);
+    $url = admin_url('admin.php?page=seo-aeo-setup-guidato&first_run=1');
+    wp_safe_redirect($url);
+    exit;
+}, 1);
 register_deactivation_hook(__FILE__, function () {
     $ts = wp_next_scheduled('seo_aeo_weekly_role_classify');
     if ($ts) wp_unschedule_event($ts, 'seo_aeo_weekly_role_classify');
@@ -157,6 +186,8 @@ try {
     // wraps wp_add_inline_{style,script} on a deps-only registered handle.
     require_once SEO_AEO_DIR . 'includes/class-inline-assets.php';
     require_once SEO_AEO_DIR . 'includes/class-business-profile.php'; // 3.35.83: foundation feature
+    require_once SEO_AEO_DIR . 'includes/class-setup-progress.php'; // 3.38.0: Onboarding 3.0 state machine
+    require_once SEO_AEO_DIR . 'includes/class-setup-widget.php'; // 3.38.0: sticky widget on every admin page
     require_once SEO_AEO_DIR . 'includes/class-admin-ui.php';
     require_once SEO_AEO_DIR . 'includes/class-ajax-handlers.php';
     require_once SEO_AEO_DIR . 'includes/class-widget.php';

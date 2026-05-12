@@ -102,6 +102,52 @@ if ($seo_aeo_bp_stats === false) {
         </div>
     </div>
 
+    <?php
+    // 3.38.0 Module 17 (relocated in 3.38.1 from admin-dashboard.php — wrong template).
+    // Ambassador banner for Setup Guidato. Visible above the legacy '5 mosse'
+    // quickstart while !all_done(). Once Setup Guidato is browser-verified
+    // in production we will REMOVE the legacy section entirely.
+    if (class_exists('SEO_AEO_Setup_Progress') && !SEO_AEO_Setup_Progress::all_done()):
+        $sg_done  = SEO_AEO_Setup_Progress::done_count();
+        $sg_total = count(SEO_AEO_Setup_Progress::STEPS);
+        $sg_pct   = $sg_total > 0 ? round(($sg_done / $sg_total) * 100) : 0;
+        $sg_url   = admin_url('admin.php?page=seo-aeo-setup-guidato');
+    ?>
+    <div class="orch-setup-ambassador-banner">
+        <div class="orch-setup-ambassador-icon">🎯</div>
+        <div class="orch-setup-ambassador-content">
+            <strong><?php SEO_AEO_T::e('Setup Guidato'); ?></strong>
+            <p><?php SEO_AEO_T::e('Adatta AEO Orchestra al tuo sito in 7 step semplici. Riprendi quando vuoi.'); ?></p>
+        </div>
+        <div class="orch-setup-ambassador-progress">
+            <div class="orch-setup-ambassador-bar"><div class="orch-setup-ambassador-bar-fill" style="width:<?php echo esc_attr($sg_pct); ?>%"></div></div>
+            <span class="orch-setup-ambassador-count"><?php echo esc_html($sg_done); ?>/<?php echo esc_html($sg_total); ?></span>
+        </div>
+        <a href="<?php echo esc_url($sg_url); ?>" class="orch3-btn orch3-btn-primary"><?php SEO_AEO_T::e('Continua →'); ?></a>
+    </div>
+    <style>
+    .orch-setup-ambassador-banner { display:flex; align-items:center; gap:16px; padding: 16px 20px; background: linear-gradient(135deg, rgba(0,85,255,0.08), rgba(0,229,255,0.06)); border: 1px solid rgba(0,85,255,0.2); border-radius: 12px; margin: 0 0 20px; }
+    .orch-setup-ambassador-icon { font-size: 28px; flex-shrink: 0; }
+    .orch-setup-ambassador-content { flex: 1; min-width: 0; }
+    .orch-setup-ambassador-content strong { display:block; font-size:14px; color:#0f172a; margin-bottom: 2px; }
+    .orch-setup-ambassador-content p { margin:0; font-size:12.5px; color:#475569; line-height:1.45; }
+    .orch-setup-ambassador-progress { display:flex; align-items:center; gap:8px; min-width:130px; }
+    .orch-setup-ambassador-bar { flex:1; height:8px; background: rgba(0,85,255,0.15); border-radius:999px; overflow:hidden; min-width:80px; }
+    .orch-setup-ambassador-bar-fill { height:100%; background: linear-gradient(90deg, #0055FF, #00E5FF); border-radius:999px; transition: width 350ms; }
+    .orch-setup-ambassador-count { font-size:12px; font-weight:700; color:#0055FF; white-space:nowrap; }
+    @media (max-width: 720px) { .orch-setup-ambassador-banner { flex-wrap: wrap; } .orch-setup-ambassador-progress { width:100%; } }
+    </style>
+    <?php elseif (class_exists('SEO_AEO_Setup_Progress') && SEO_AEO_Setup_Progress::all_done()): ?>
+    <div class="orch-setup-ambassador-banner orch-setup-ambassador-banner--done" style="border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.06);">
+        <div class="orch-setup-ambassador-icon">✓</div>
+        <div class="orch-setup-ambassador-content">
+            <strong><?php SEO_AEO_T::e('Setup Guidato completato'); ?></strong>
+            <p><?php SEO_AEO_T::e('Tutti i 7 step configurati. Buon lavoro con AEO Orchestra.'); ?></p>
+        </div>
+        <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-setup-guidato')); ?>" class="orch3-btn orch3-btn-ghost orch3-btn-sm"><?php SEO_AEO_T::e('Vedi recap'); ?></a>
+    </div>
+    <?php endif; ?>
+
     <!-- QUICKSTART 4 STEP -->
     <section class="orch-wiz-section">
         <h2 class="orch-wiz-section-title"><?php SEO_AEO_T::e('🚀 Per iniziare in 5 mosse'); ?></h2>

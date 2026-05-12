@@ -46,6 +46,8 @@ class SEO_AEO_Orchestra_Admin_UI {
 
         // ─── Top of menu ───
         add_submenu_page('seo-aeo-orchestra', $tt('Dashboard'),               $tt('📊 Dashboard'),               'manage_options', 'seo-aeo-orchestra',           array($this, 'render_wizard_page'),         10);
+        // 3.38.0 — Onboarding 3.0 Setup Guidato.
+        add_submenu_page('seo-aeo-orchestra', $tt('Setup Guidato'),          $tt('🎯 Setup Guidato'),          'manage_options', 'seo-aeo-setup-guidato',       array($this, 'render_setup_guidato_page'), 12);
         // 3.35.83: Business Profile — foundation feature (single source of context per tutti i tool AI)
         add_submenu_page('seo-aeo-orchestra', $tt('Profilo Business'),       $tt('🏢 Profilo Business'),        'manage_options', 'seo-aeo-business-profile',    array('SEO_AEO_Business_Profile', 'render_page'), 15);
         // SEO + AEO Output (3.35.65: rename da "SEO Output Nativo", slug invariato per backward compat)
@@ -268,6 +270,12 @@ class SEO_AEO_Orchestra_Admin_UI {
         $template = SEO_AEO_DIR . 'templates/wizard-home.php';
         if (file_exists($template)) include $template;
         else echo '<div class="wrap"><h1>Wizard</h1><p>Template mancante.</p></div>';
+    }
+
+    public function render_setup_guidato_page() {
+        $template = SEO_AEO_DIR . 'templates/setup-guidato.php';
+        if (file_exists($template)) include $template;
+        else echo '<div class="wrap"><h1>Setup Guidato</h1><p>Template mancante.</p></div>';
     }
 
     public function render_keyword_research_page() {

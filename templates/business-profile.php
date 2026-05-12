@@ -88,6 +88,19 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
 }
 .orch-bp-section--public { background: var(--bp-public-bg); border-left: 4px solid var(--bp-public-accent); }
 .orch-bp-section--internal { background: var(--bp-internal-bg); border-left: 4px solid var(--bp-internal-accent); }
+.orch-bp-section--site-context { background: #fffbeb; border-left: 4px solid #d97706; }
+.orch-bp-section-badge--site-context { background: #fef3c7; color: #92400e; }
+.orch-bp-sc-status { padding: 10px 12px; border-radius: 6px; margin-top: 10px; font-size: 13px; }
+.orch-bp-sc-status.is-loading { background: #eff6ff; color: #1e40af; border-left: 3px solid #3b82f6; }
+.orch-bp-sc-status.is-ok { background: #ecfdf5; color: #065f46; border-left: 3px solid #10b981; }
+.orch-bp-sc-status.is-err { background: #fef2f2; color: #991b1b; border-left: 3px solid #ef4444; }
+.orch-bp-term-row { display: grid; grid-template-columns: 1fr 1.4fr 1.4fr auto; gap: 8px; margin-bottom: 8px; align-items: start; }
+.orch-bp-term-row input { padding: 6px 8px; font-size: 13px; border: 1px solid #d1d5db; border-radius: 4px; }
+.orch-bp-term-row .orch-bp-term-remove { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.orch-bp-term-row .orch-bp-term-remove:hover { background: #fee2e2; }
+@media (max-width: 720px) {
+    .orch-bp-term-row { grid-template-columns: 1fr; }
+}
 .orch-bp-section--preview { background: var(--bp-preview-bg); color: var(--bp-preview-text); border-left: 4px solid var(--orch-accent); }
 
 .orch-bp-section-head {
@@ -511,6 +524,57 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
         </details>
 
         <!-- ════════════════════════════════════════════════════════════ -->
+        <!-- 🎯 SECTION SITE CONTEXT (3.39.1) — anti-hallucination          -->
+        <!-- ════════════════════════════════════════════════════════════ -->
+        <details class="orch-bp-section orch-bp-section--site-context" data-section-id="site-context" <?php if ($is_section_open('site-context', true)) echo 'open'; ?>>
+            <summary class="orch-bp-section-head">
+                <span class="orch-bp-section-badge orch-bp-section-badge--site-context">🎯 CONTESTO SITO</span>
+            </summary>
+            <div class="orch-bp-section-body">
+                <div class="orch-bp-section-info">
+                    <strong>Aiuta Orchestra a evitare interpretazioni errate del tuo sito da parte degli AI engine.</strong>
+                    Piu' preciso il contesto, piu' accurate le analisi. Questi campi vengono iniettati come blocco autoritativo in ogni analisi SEO/AEO.
+                </div>
+
+                <div class="orch-bp-field" style="margin:8px 0 16px;">
+                    <button type="button" id="orch-bp-sc-generate" class="orch3-btn orch3-btn-primary">
+                        🔍 Genera automaticamente dal sito (3 cr)
+                    </button>
+                    <p class="orch-bp-field-help" style="margin-top:6px;">Analizza homepage + pagine /chi-siamo, /servizi, /about, /services se presenti. Verifica e modifica i suggerimenti prima di salvare.</p>
+                    <div id="orch-bp-sc-status" class="orch-bp-sc-status" style="display:none;"></div>
+                </div>
+
+                <div class="orch-bp-field" data-field="site_context_description">
+                    <label class="orch-bp-field-label">📝 Cosa fa il sito <span class="orch-bp-field-icon">🎯</span></label>
+                    <p class="orch-bp-field-help">Descrizione concreta in 2-3 frasi (es. "Plugin WordPress per SEO + AEO che automatizza meta tags, schema, sitemap, llms.txt").</p>
+                    <textarea class="orch-bp-textarea" name="site_context_description" rows="3" maxlength="600" data-max="600" placeholder="Es. AEO Orchestra e' un plugin WordPress che automatizza SEO + Answer Engine Optimization..."></textarea>
+                    <div class="orch-bp-counter">0 / 600</div>
+                </div>
+
+                <div class="orch-bp-field" data-field="site_context_value_prop">
+                    <label class="orch-bp-field-label">💎 Value proposition <span class="orch-bp-field-icon">🎯</span></label>
+                    <p class="orch-bp-field-help">La promessa di valore distintiva (1-2 frasi).</p>
+                    <textarea class="orch-bp-textarea" name="site_context_value_prop" rows="2" maxlength="400" data-max="400" placeholder="Es. L'unico plugin che disambigua brand ambigui per ChatGPT, Perplexity, Claude..."></textarea>
+                    <div class="orch-bp-counter">0 / 400</div>
+                </div>
+
+                <div class="orch-bp-field" data-field="site_context_target_audience">
+                    <label class="orch-bp-field-label">👥 Target audience dettagliato <span class="orch-bp-field-icon">🎯</span></label>
+                    <p class="orch-bp-field-help">Chi sono i clienti tipo (settore, ruolo, dimensione, problema).</p>
+                    <textarea class="orch-bp-textarea" name="site_context_target_audience" rows="2" maxlength="400" data-max="400" placeholder="Es. PMI italiane 5-50 dipendenti, agenzie SEO, founder che vogliono SEO senza skill tecniche..."></textarea>
+                    <div class="orch-bp-counter">0 / 400</div>
+                </div>
+
+                <details class="orch-bp-collapse" data-field="site_context_ambiguous_terms">
+                    <summary>⚠️ Termini ambigui da disambiguare (max 12) <span class="orch-bp-collapse-count">[<span data-count>0</span> compilati]</span> 🎯</summary>
+                    <p class="orch-bp-field-help">I LLM possono interpretare male nomi/brand. Aggiungi qui i termini con il significato corretto + quello che NON significano. Esempio: "Orchestra" → significa "Plugin AEO software", NON significa "Orchestra musicale".</p>
+                    <div class="orch-bp-terms-list" data-orch-bp-terms="site_context_ambiguous_terms" data-max="12"></div>
+                    <button type="button" class="orch-bp-add-btn" data-orch-bp-add-term="site_context_ambiguous_terms">+ Aggiungi termine</button>
+                </details>
+            </div>
+        </details>
+
+        <!-- ════════════════════════════════════════════════════════════ -->
         <!-- 🔒 SECTION INTERNAL                                            -->
         <!-- ════════════════════════════════════════════════════════════ -->
         <details class="orch-bp-section orch-bp-section--internal" data-section-id="internal" <?php if ($is_section_open('internal', true)) echo 'open'; ?>>
@@ -834,7 +898,7 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
     function serializeProfile() {
         var data = {};
         // Scalars
-        ['business_name','industry','business_description','about_strategic','value_proposition','target_audience','additional_notes','internal_pricing_strategy'].forEach(function(f) {
+        ['business_name','industry','business_description','about_strategic','value_proposition','target_audience','additional_notes','internal_pricing_strategy','site_context_description','site_context_value_prop','site_context_target_audience'].forEach(function(f) {
             data[f] = ($form.find('[name="' + f + '"]').val() || '').trim();
         });
         // Number
@@ -850,8 +914,120 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
             var $l = $form.find('[data-orch-bp-repeat="' + f + '"]');
             if ($l.length) data[f] = getStructValues($l);
         });
+        // 3.39.1 — Site Context ambiguous terms (3-field rows).
+        var $terms = $form.find('[data-orch-bp-terms="site_context_ambiguous_terms"]');
+        if ($terms.length) data.site_context_ambiguous_terms = getTermsValues($terms);
         return data;
     }
+
+    // 3.39.1 — Site Context terms helpers.
+    function getTermsValues($container) {
+        var out = [];
+        $container.find('.orch-bp-term-row').each(function() {
+            var $row = $(this);
+            var term = ($row.find('[data-term-field="term"]').val() || '').trim();
+            var correct = ($row.find('[data-term-field="correct_meaning"]').val() || '').trim();
+            var not_m = ($row.find('[data-term-field="not_meaning"]').val() || '').trim();
+            if (term && correct) out.push({term: term, correct_meaning: correct, not_meaning: not_m});
+        });
+        return out;
+    }
+    function setTermsValues($container, items) {
+        $container.empty();
+        if (!Array.isArray(items)) return;
+        items.forEach(function(it) {
+            addTermRow($container, it || {});
+        });
+        updateTermsCount($container);
+    }
+    function addTermRow($container, init) {
+        init = init || {};
+        var max = parseInt($container.data('max') || 12, 10);
+        if ($container.find('.orch-bp-term-row').length >= max) return;
+        var safeT = (init.term || '').toString().replace(/"/g, '&quot;');
+        var safeC = (init.correct_meaning || '').toString().replace(/"/g, '&quot;');
+        var safeN = (init.not_meaning || '').toString().replace(/"/g, '&quot;');
+        var row = '<div class="orch-bp-term-row">' +
+            '<input type="text" data-term-field="term" maxlength="80" placeholder="Termine" value="' + safeT + '">' +
+            '<input type="text" data-term-field="correct_meaning" maxlength="200" placeholder="Significato corretto" value="' + safeC + '">' +
+            '<input type="text" data-term-field="not_meaning" maxlength="200" placeholder="NON significa (opzionale)" value="' + safeN + '">' +
+            '<button type="button" class="orch-bp-term-remove" title="Rimuovi">×</button>' +
+            '</div>';
+        $container.append(row);
+    }
+    function updateTermsCount($container) {
+        var n = $container.find('.orch-bp-term-row').length;
+        $container.closest('details').find('[data-count]').text(n);
+    }
+    $(document).on('click', '[data-orch-bp-add-term]', function() {
+        var key = $(this).data('orch-bp-add-term');
+        var $c = $form.find('[data-orch-bp-terms="' + key + '"]');
+        addTermRow($c, {});
+        updateTermsCount($c);
+        $c.find('.orch-bp-term-row:last input:first').focus();
+        triggerSave();
+    });
+    $(document).on('click', '.orch-bp-term-remove', function() {
+        var $row = $(this).closest('.orch-bp-term-row');
+        var $c = $row.closest('[data-orch-bp-terms]');
+        $row.remove();
+        updateTermsCount($c);
+        triggerSave();
+    });
+    $(document).on('input change', '.orch-bp-term-row input', function() {
+        var $c = $(this).closest('[data-orch-bp-terms]');
+        updateTermsCount($c);
+        triggerSave();
+    });
+
+    // 3.39.1 — Auto-generate Site Context from the live site.
+    $(document).on('click', '#orch-bp-sc-generate', function() {
+        var $btn = $(this);
+        var $status = $('#orch-bp-sc-status');
+        if (!confirm('Avviare la generazione automatica del Contesto Sito? Costa 3 crediti.')) return;
+        $btn.prop('disabled', true).text('⏳ Generazione in corso...');
+        $status.attr('class', 'orch-bp-sc-status is-loading').text('Sto analizzando homepage + pagine chi siamo/servizi...').show();
+        $.post(ajaxurl, {
+            action: 'seo_aeo_business_profile_generate_site_context',
+            nonce: nonce
+        }).done(function(resp) {
+            if (!resp || !resp.success) {
+                var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Errore sconosciuto';
+                $status.attr('class', 'orch-bp-sc-status is-err').text('✗ ' + msg);
+                return;
+            }
+            var fields = (resp.data && resp.data.fields) || {};
+            // Populate the textareas (preserve user-typed content if non-empty).
+            ['site_context_description','site_context_value_prop','site_context_target_audience'].forEach(function(k) {
+                var $el = $form.find('[name="' + k + '"]');
+                if ($el.length && fields[k]) {
+                    if (!$el.val() || confirm('Sovrascrivere ' + k + ' esistente?')) {
+                        $el.val(fields[k]);
+                        updateCounter($el);
+                    }
+                }
+            });
+            // Populate ambiguous terms (append, don't overwrite — user may have custom).
+            var $terms = $form.find('[data-orch-bp-terms="site_context_ambiguous_terms"]');
+            if ($terms.length && Array.isArray(fields.site_context_ambiguous_terms)) {
+                fields.site_context_ambiguous_terms.forEach(function(t) {
+                    addTermRow($terms, t);
+                });
+                updateTermsCount($terms);
+            }
+            $status.attr('class', 'orch-bp-sc-status is-ok').text('✓ Contesto generato (' + (resp.data.pages_analyzed || 0) + ' pagine analizzate). Verifica e modifica prima di salvare.');
+            triggerSave();
+        }).fail(function(xhr) {
+            var msg = 'HTTP ' + (xhr ? xhr.status : '?');
+            try {
+                var r = JSON.parse(xhr.responseText || '{}');
+                if (r && r.data && r.data.message) msg = r.data.message;
+            } catch (e) {}
+            $status.attr('class', 'orch-bp-sc-status is-err').text('✗ ' + msg);
+        }).always(function() {
+            $btn.prop('disabled', false).text('🔍 Genera automaticamente dal sito (3 cr)');
+        });
+    });
 
     function triggerSave() {
         setAutosave('saving');
@@ -920,6 +1096,9 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
                 var $l = $form.find('[data-orch-bp-repeat="' + f + '"]');
                 if ($l.length) setStructValues($l, currentProfile[f] || []);
             });
+            // 3.39.1 — populate site-context ambiguous terms.
+            var $sc_terms = $form.find('[data-orch-bp-terms="site_context_ambiguous_terms"]');
+            if ($sc_terms.length) setTermsValues($sc_terms, currentProfile.site_context_ambiguous_terms || []);
             // Update counters
             $form.find('.orch-bp-input, .orch-bp-textarea').each(function() { updateCounter($(this)); });
             // 3.38.4 — defensive backstop sync (covers any missed per-field path)

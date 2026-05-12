@@ -471,6 +471,29 @@ class SEO_AEO_API_Client {
     /**
      * 3.35.83 — Business Profile save (PUT, partial fields).
      */
+    /**
+     * 3.39.1 — Trigger Site Context auto-generation on the backend.
+     */
+    public function generate_site_context() {
+        if (!$this->can_reach_host()) {
+            return $this->unreachable_error();
+        }
+        $body = array(
+            'license_key' => $this->license_key,
+            'domain'      => $this->domain,
+        );
+        $response = @wp_remote_post($this->api_url . '/api/business-profile/site-context-generate', array(
+            'timeout' => 60,
+            'headers' => array('Content-Type' => 'application/json'),
+            'body'    => wp_json_encode($body),
+        ));
+        if (is_wp_error($response)) {
+            return array('error' => true, 'message' => $response->get_error_message());
+        }
+        $body_decoded = json_decode(wp_remote_retrieve_body($response), true);
+        return is_array($body_decoded) ? $body_decoded : array('error' => true, 'message' => 'Risposta non valida.');
+    }
+
     public function save_business_profile($fields = array()) {
         if (!$this->can_reach_host()) {
             return $this->unreachable_error();

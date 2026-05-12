@@ -96,6 +96,8 @@ class SEO_AEO_Business_Profile {
         add_action('wp_ajax_seo_aeo_business_profile_save',    array(__CLASS__, 'ajax_save'));
         add_action('wp_ajax_seo_aeo_business_profile_preview', array(__CLASS__, 'ajax_preview'));
         add_action('wp_ajax_seo_aeo_business_profile_confirm', array(__CLASS__, 'ajax_confirm'));
+        // 3.39.1 — Site Context auto-generation.
+        add_action('wp_ajax_seo_aeo_business_profile_generate_site_context', array(__CLASS__, 'ajax_generate_site_context'));
         add_action('wp_ajax_seo_aeo_bp_banner_snooze',         array(__CLASS__, 'ajax_banner_snooze'));
         add_action('wp_ajax_seo_aeo_bp_section_state',         array(__CLASS__, 'ajax_section_state'));
     }
@@ -294,6 +296,36 @@ class SEO_AEO_Business_Profile {
     public static function render_page() {
         if (!current_user_can('manage_options')) wp_die('forbidden');
         require_once SEO_AEO_DIR . 'templates/business-profile.php';
+    }
+
+    /**
+     * 3.39.1 — Proxy /api/business-profile/site-context-generate.
+     */
+    public static function ajax_generate_site_context() {
+        if (!check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce', false)) {
+            wp_send_json_error(array('message' => 'invalid_nonce'), 403);
+        }
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(array('message' => 'forbidden'), 403);
+        }
+        try {
+            $api = new SEO_AEO_API_Client();
+            $resp = $api->generate_site_context();
+            if (!is_array($resp)) {
+                wp_send_json_error(array('message' => 'invalid_response'), 500);
+            }
+            if (!empty($resp['error']) || (isset($resp['success']) && !$resp['success'])) {
+                $msg = isset($resp['message']) ? $resp['message'] : (isset($resp['detail']) ? $resp['detail'] : 'Errore sconosciuto');
+                wp_send_json_error(array('message' => $msg), 500);
+            }
+            wp_send_json_success(array(
+                'fields'         => isset($resp['fields']) ? $resp['fields'] : array(),
+                'pages_analyzed' => isset($resp['pages_analyzed']) ? (int) $resp['pages_analyzed'] : 0,
+                'content_chars'  => isset($resp['content_chars']) ? (int) $resp['content_chars'] : 0,
+            ));
+        } catch (Throwable $e) {
+            wp_send_json_error(array('message' => 'exception: ' . $e->getMessage()), 500);
+        }
     }
 }
 

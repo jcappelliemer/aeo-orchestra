@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.0
+Stable tag: 3.39.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,16 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.1 =
+* CRITICAL P0 — anti-hallucination fix. Verified Chrome MCP on aeo-orchestra.com homepage v3.39.0: AI analysis said the page was "incentrato sull'orchestra musicale, concerti, musicisti" even though it's plugin software with zero music context. Backend prompts received only (url, keyword, content) and guessed semantics from the brand name. Same risk on any business with an ambiguous name.
+* Backend prompts — ai_analyze_seo + ai_aeo_analysis now accept keyword-only kwargs (page_title, meta_description, h1, h2_list, body_text 5000ch, site_context_block). Prompt is split into delimited "=== CONTESTO SITO ===" + "=== PAGINA DA ANALIZZARE ===" blocks followed by 5 REGOLE CRITICHE: analyze ONLY provided content, mark missing info as NON DETERMINABILE, treat site_context as authoritative, cite specific page passages, don't estimate when content is too short.
+* Plugin context extraction — new extract_page_context() helper in class-ajax-handlers.php pulls page_title, meta_description (Orchestra → bridge → Yoast fallback), h1 (regex on raw HTML → post_title fallback), first 10 h2s, body_text (apply_filters('the_content') if raw too short → strip tags → collapse whitespace → 5000 char cap). Merged into the api_request payload sent to both /ai/analyze and /ai/aeo-analyze.
+* NEW feature — Site Context section in Profilo Business (between PUBLIC and INTERNAL). Four fields the AI prompts treat as authoritative source: cosa-fa-il-sito (600 char), value proposition (400 char), target audience (400 char), and most importantly TERMINI DA DISAMBIGUARE (list of {term, correct_meaning, not_meaning} — explicit "X means Y, NOT Z" pairs the LLM must respect). Example for AEO Orchestra: term="Orchestra" / correct="Plugin AEO software" / not="Orchestra musicale".
+* Auto-generation — "🔍 Genera automaticamente dal sito (3 cr)" button crawls homepage + Italian/English /chi-siamo, /servizi, /about, /services, /what-we-do slugs (httpx, 6s timeout, 9k chars combined), runs Gemini Flash with JSON-only system message, returns 4 fields the user reviews + edits before saving. Refund-on-failure for both LLM exceptions and parse failures.
+* Centralized helper — helpers/site_context.py: fetch_site_context (Mongo lookup) + format_site_context_block (delimited Italian block) + build_site_context_block one-shot + ANTI_HALLUCINATION_RULES constant available for future ai.py call sites (Brand Voice, Schema, Keyword Research, FAQ, Meta Tags, Content Rewrite).
+* Backend schema — business_profile.py ALL_USER_FIELDS + VALIDATION_RULES extended with site_context_description, site_context_value_prop, site_context_target_audience, site_context_ambiguous_terms (new sc_list validator: dicts with term + correct_meaning + not_meaning, capped 80/200/200 chars, max 12 items).
+* Plugin Check 0/0 on the WP.org ZIP.
 
 = 3.39.0 =
 * CRITICAL UX FIX — every Problemi SEO / Problemi AEO card now has a concrete actionable solution inline. Before: the orchestrator endpoint built actions HEURISTICALLY from score thresholds (seo_score<70, aeo_score<60, suggestions count>2, meta missing). Pages with above-threshold scores but multiple AI-detected issues (e.g. aeo_score 75 with 6 AEO issues on a homepage) produced ZERO actions, so every problem card fell back to a generic "rivedi manualmente questa pagina" hint. The plugin appeared to identify problems but offered no path to fix them.

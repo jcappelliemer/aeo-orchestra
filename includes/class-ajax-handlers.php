@@ -899,6 +899,91 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
         return rtrim(substr($s, 0, $max - 1)) . chr(0xE2) . chr(0x80) . chr(0xA6); // UTF-8 ellipsis
     }
 
+    /**
+     * 3.39.1 — Build the rich page-context payload that the v3.39.1 backend
+     * AI prompts now consume. Returns an associative array with:
+     *   - page_title (post_title or rendered <title>)
+     *   - meta_description (Orchestra meta or fallback engine bridge)
+     *   - h1 (first H1 from rendered content)
+     *   - h2_list (first 10 H2 strings)
+     *   - body_text (first 5000 chars of stripped post_content)
+     *
+     * Each value is sanitized + truncated so the backend receives a
+     * predictable payload regardless of post type / theme oddities.
+     */
+    private function extract_page_context($post_id, $url) {
+        $ctx = array(
+            'page_title'       => '',
+            'meta_description' => '',
+            'h1'               => '',
+            'h2_list'          => array(),
+            'body_text'        => '',
+        );
+        if ($post_id <= 0) return $ctx;
+
+        $post = get_post($post_id);
+        if (!$post) return $ctx;
+
+        $ctx['page_title'] = (string) $post->post_title;
+
+        // Meta description: prefer Orchestra-native key, else engine bridge.
+        $meta = (string) get_post_meta($post_id, '_seo_aeo_meta_description', true);
+        if (empty($meta) && class_exists('SEO_AEO_Engine_Bridge')) {
+            try {
+                $bridge_data = SEO_AEO_Engine_Bridge::read_meta($post_id);
+                if (is_array($bridge_data) && !empty($bridge_data['meta_description'])) {
+                    $meta = (string) $bridge_data['meta_description'];
+                }
+            } catch (Throwable $e) {
+                $meta = '';
+            }
+        }
+        if (empty($meta)) {
+            $meta = (string) get_post_meta($post_id, '_yoast_wpseo_metadesc', true);
+        }
+        $ctx['meta_description'] = mb_substr($meta, 0, 300);
+
+        // Resolve content. Use raw post_content; if Elementor / page builder
+        // empties it, fall back to apply_filters('the_content', ...).
+        $raw = (string) $post->post_content;
+        if (strlen($raw) < 200) {
+            // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- the_content is a WordPress core filter, calling it here triggers theme/page-builder rendering.
+            $rendered = apply_filters('the_content', $raw);
+            if (strlen($rendered) > strlen($raw)) $raw = $rendered;
+        }
+
+        // H1 + H2 extraction. Regex over the raw HTML, case-insensitive.
+        $h1_match = array();
+        if (preg_match('#<h1[^>]*>(.*?)</h1>#is', $raw, $h1_match)) {
+            $ctx['h1'] = trim(wp_strip_all_tags($h1_match[1]));
+        }
+        if (empty($ctx['h1'])) {
+            // Fallback to the post title (commonly rendered as H1 by themes).
+            $ctx['h1'] = $ctx['page_title'];
+        }
+
+        $h2_matches = array();
+        preg_match_all('#<h2[^>]*>(.*?)</h2>#is', $raw, $h2_matches);
+        if (!empty($h2_matches[1])) {
+            $h2s = array();
+            foreach ($h2_matches[1] as $h2) {
+                $clean = trim(wp_strip_all_tags($h2));
+                if ($clean !== '') $h2s[] = mb_substr($clean, 0, 200);
+                if (count($h2s) >= 10) break;
+            }
+            $ctx['h2_list'] = $h2s;
+        }
+
+        // Body text — strip tags then trim to 5000 chars.
+        $stripped = wp_strip_all_tags($raw);
+        // Collapse whitespace so token count is realistic.
+        $stripped = preg_replace('/\s+/u', ' ', $stripped);
+        $stripped = trim((string) $stripped);
+        $ctx['body_text'] = mb_substr($stripped, 0, 5000);
+
+        return $ctx;
+    }
+
     public function ajax_orchestrate_single() {
         try {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
@@ -922,8 +1007,16 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             $is_free_first = isset($_POST['is_free_first']) ? (bool) intval(wp_unslash($_POST['is_free_first'])) : false;
             $payload_extra = $is_free_first ? array('is_free_first' => true) : array();
 
-            $seo = $api->api_request('/ai/analyze', array_merge(array('url' => $url, 'keyword' => $keyword), $payload_extra));
-            $aeo = $api->api_request('/ai/aeo-analyze', array_merge(array('url' => $url, 'keyword' => $keyword), $payload_extra));
+            // 3.39.1 — extract rich page context (h1, h2s, body 5000ch) so the
+            // backend AI doesn't have to guess from URL/brand. Anti-hallucination.
+            $page_ctx = $this->extract_page_context($post_id, $url);
+            $base_payload = array_merge(
+                array('url' => $url, 'keyword' => $keyword),
+                $page_ctx,
+                $payload_extra
+            );
+            $seo = $api->api_request('/ai/analyze', $base_payload);
+            $aeo = $api->api_request('/ai/aeo-analyze', $base_payload);
 
         $seo_score = isset($seo['seo_score']) ? intval($seo['seo_score']) : (isset($seo['score']) ? intval($seo['score']) : null);
         $aeo_score = isset($aeo['aeo_score']) ? intval($aeo['aeo_score']) : null;

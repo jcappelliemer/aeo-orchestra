@@ -595,10 +595,36 @@
                 });
             });
 
+            // 3.38.8 Task 3 — toggle the affected-pages list under each problem card.
+            $(document).on('click', '.orch-problem-toggle-pages', function(e) {
+                e.preventDefault();
+                var $btn = $(this);
+                var targetId = $btn.data('target');
+                var $list = $('#' + targetId);
+                var nowHidden = !$list.prop('hidden');
+                $list.prop('hidden', nowHidden);
+                var T = SeoAeoOrchestra.t || function(s){return s;};
+                var count = $list.find('li').length;
+                $btn.html((nowHidden ? '👁 ' + T('Mostra pagine') : '👁 ' + T('Nascondi pagine')) + ' (' + count + ')');
+            });
+
+            // 3.38.8 Task 1 — confirmation modal before restoring cronologia.
+            // Prevents the (formerly direct) restore which was invisible to users
+            // when the legacy fields/outputs selectors didn't match the current
+            // page layout. Also writes ?history_id=<id> for shareable links.
             $(document).on('click', '.history-restore-btn', function(e) {
                 e.stopPropagation();
-                var itemId = $(this).data('item-id');
-                if (itemId) SeoAeoOrchestra.restoreFromHistory(itemId);
+                e.preventDefault();
+                var $btn = $(this);
+                var itemId = $btn.data('item-id');
+                if (!itemId) return;
+                var itemDate = $btn.data('item-date') || '';
+                var itemTitle = $btn.data('item-title') || '';
+                if (SeoAeoOrchestra.showHistoryRestoreConfirm) {
+                    SeoAeoOrchestra.showHistoryRestoreConfirm(itemId, itemDate, itemTitle);
+                } else {
+                    SeoAeoOrchestra.restoreFromHistory(itemId);
+                }
             });
 
             // History re-run (3.31.2: forward params da backend per auto-fill)
@@ -1508,6 +1534,63 @@
 
         // ── Restore from history (3.22.1) ──
         // Fetch full item by id, apply form fields + output HTML, scroll to first output.
+        // 3.38.8 Task 1 — confirmation modal for cronologia "Riapri".
+        showHistoryRestoreConfirm: function(itemId, itemDate, itemTitle) {
+            if (!itemId) return;
+            var $ = jQuery;
+            $('#orch-hist-confirm-modal').remove();
+            var T = SeoAeoOrchestra.t || function(s){return s;};
+            var dateStr = itemDate ? (' ' + T('del') + ' ' + itemDate) : '';
+            var titleLine = itemTitle ? ('<div class="orch-hcm-title">"' + jQuery('<div>').text(itemTitle).html() + '"</div>') : '';
+            var html = '<div class="orch-hcm-backdrop" id="orch-hist-confirm-modal">'
+                + '<div class="orch-hcm-modal">'
+                +   '<div class="orch-hcm-head">'
+                +     '<h3>' + T('Vuoi caricare questa analisi storica?') + '</h3>'
+                +     '<button type="button" class="orch-hcm-close" aria-label="' + T('Chiudi') + '">×</button>'
+                +   '</div>'
+                +   '<div class="orch-hcm-body">'
+                +     titleLine
+                +     '<p>' + T('I risultati e il Piano d\'Azione attuali verranno sostituiti con quelli dell\'analisi') + dateStr + '. ' + T('Le modifiche già applicate al sito non vengono toccate.') + '</p>'
+                +   '</div>'
+                +   '<div class="orch-hcm-foot">'
+                +     '<button type="button" class="button orch-hcm-cancel">' + T('Annulla') + '</button>'
+                +     '<button type="button" class="button button-primary orch-hcm-confirm">→ ' + T('Carica analisi') + '</button>'
+                +   '</div>'
+                + '</div>'
+                + '</div>';
+            if (!$('#orch-hcm-styles').length) {
+                $('head').append(
+                    '<style id="orch-hcm-styles">' +
+                    '.orch-hcm-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.5); display: flex; align-items: center; justify-content: center; z-index: 100001; animation: orchHcmFade 0.15s ease; }' +
+                    '@keyframes orchHcmFade { from { opacity: 0; } to { opacity: 1; } }' +
+                    '.orch-hcm-modal { background: #fff; border-radius: 12px; box-shadow: 0 24px 48px rgba(0,0,0,0.25); max-width: 480px; width: calc(100% - 32px); }' +
+                    '.orch-hcm-head { padding: 18px 22px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e5e7eb; }' +
+                    '.orch-hcm-head h3 { margin: 0; font-size: 17px; font-weight: 600; color: #0F172A; }' +
+                    '.orch-hcm-close { background: none; border: 0; font-size: 24px; line-height: 1; color: #94A3B8; cursor: pointer; padding: 0 4px; }' +
+                    '.orch-hcm-close:hover { color: #475569; }' +
+                    '.orch-hcm-body { padding: 16px 22px; color: #475569; font-size: 14px; line-height: 1.55; }' +
+                    '.orch-hcm-title { font-weight: 600; color: #0F172A; margin-bottom: 8px; }' +
+                    '.orch-hcm-foot { padding: 12px 22px 18px; display: flex; gap: 8px; justify-content: flex-end; }' +
+                    '</style>'
+                );
+            }
+            $('body').append(html);
+            var $modal = $('#orch-hist-confirm-modal');
+            function close() { $modal.remove(); }
+            $modal.on('click', function(ev){ if (ev.target === $modal[0]) close(); });
+            $modal.find('.orch-hcm-close, .orch-hcm-cancel').on('click', close);
+            $modal.find('.orch-hcm-confirm').on('click', function() {
+                close();
+                // Update URL for shareable link (don't reload).
+                try {
+                    var url = new URL(window.location.href);
+                    url.searchParams.set('history_id', itemId);
+                    history.replaceState(null, '', url.toString());
+                } catch (e) {}
+                SeoAeoOrchestra.restoreFromHistory(itemId);
+            });
+        },
+
         restoreFromHistory: function(itemId) {
             if (!itemId) return;
             $.post(seoAeoOrchestra.ajaxUrl, {
@@ -1694,7 +1777,7 @@
                     html += '<span class="hi-credits">' + (item.credits || 0) + ' cr</span>';
                     // Restore button (3.22.1) — riapre form + output dove eri
                     if (item.has_restore && item.id) {
-                        html += '<button class="button button-small button-primary history-restore-btn" title="' + SeoAeoOrchestra.t('Ripristina nel modulo') + '" data-item-id="' + item.id + '" style="background:#7C3AED;border-color:#6b21a8;color:#fff;"><span class="dashicons dashicons-update" style="font-size:14px;width:14px;height:14px;margin-top:2px;"></span> ' + SeoAeoOrchestra.t('Riapri') + '</button>';
+                        html += '<button class="button button-small button-primary history-restore-btn" title="' + SeoAeoOrchestra.t('Ripristina nel modulo') + '" data-item-id="' + item.id + '" data-item-date="' + (item.date || '') + '" data-item-title="' + (item.title || '').replace(/"/g, '&quot;') + '" style="background:#7C3AED;border-color:#6b21a8;color:#fff;"><span class="dashicons dashicons-update" style="font-size:14px;width:14px;height:14px;margin-top:2px;"></span> ' + SeoAeoOrchestra.t('Riapri') + '</button>';
                     }
                     // Re-run button (legacy, per analisi)
                     if (item.type === 'analysis') {
@@ -2427,18 +2510,79 @@
             $('.orch-stat-detail').slideUp(200);
 
             var html = '';
+            // 3.38.8 Task 3 — inline "Come risolvere" + executors under each
+            // unique problem. Duplicate issues across pages collapse to one card
+            // with an N-pages badge; "Mostra pagine" expands the affected list.
+            function escHtml(s) {
+                return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+                    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+                });
+            }
+            function buildProblemCards(issues, kind) {
+                if (!issues || !issues.length) return '<p style="color:#10B981;font-weight:600;padding:8px;">' + SeoAeoOrchestra.t('Nessun problema rilevato!') + '</p>';
+                // Group by issue text.
+                var groups = {};
+                issues.forEach(function(it) {
+                    var key = it.issue || '(senza descrizione)';
+                    if (!groups[key]) groups[key] = { issue: key, pages: [] };
+                    groups[key].pages.push(it.page || '');
+                });
+                var allActions = SeoAeoOrchestra._allActions || [];
+                var out = '<div class="orch-problem-cards">';
+                Object.keys(groups).forEach(function(issueText, idx) {
+                    var g = groups[issueText];
+                    // Find first action whose page_title matches one of the affected pages.
+                    var matchAction = null;
+                    for (var i = 0; i < allActions.length; i++) {
+                        if (g.pages.indexOf(allActions[i].page_title) !== -1) {
+                            matchAction = allActions[i];
+                            break;
+                        }
+                    }
+                    var icon = (kind === 'aeo') ? '🟡' : '🔴';
+                    var cardId = 'orch-prob-' + kind + '-' + idx;
+                    out += '<div class="orch-problem-card" data-card="' + cardId + '">';
+                    out += '<div class="orch-problem-head">';
+                    out += '<span class="orch-problem-icon">' + icon + '</span>';
+                    out += '<span class="orch-problem-title"><strong>' + escHtml(g.issue) + '</strong>';
+                    if (g.pages.length > 1) {
+                        out += ' <span class="orch-problem-count">' + SeoAeoOrchestra.t('su {N} pagine').replace('{N}', g.pages.length) + '</span>';
+                    } else if (g.pages.length === 1) {
+                        out += ' <span class="orch-problem-count">(' + escHtml(g.pages[0]) + ')</span>';
+                    }
+                    out += '</span>';
+                    out += '</div>';
+                    // Solution block
+                    var desc = matchAction
+                        ? SeoAeoOrchestra.getActionDetailDescription(matchAction)
+                        : '<em>' + SeoAeoOrchestra.t('Suggerimento: rivedi manualmente questa pagina o usa il Piano d\'Azione per dettagli specifici.') + '</em>';
+                    out += '<div class="orch-problem-solution"><strong>💡 ' + SeoAeoOrchestra.t('Come risolvere') + ':</strong> ' + desc + '</div>';
+                    // Actions
+                    out += '<div class="orch-problem-actions">';
+                    if (matchAction) {
+                        out += '<button type="button" class="button button-primary orch-execute-btn orch-problem-exec" ';
+                        out += 'data-agent="' + escHtml(matchAction.agent) + '" ';
+                        out += 'data-action-data=\'' + JSON.stringify(matchAction.data || {}).replace(/\'/g, '&apos;') + '\'>';
+                        out += '⚡ ' + SeoAeoOrchestra.t('Esegui automaticamente') + '</button>';
+                    }
+                    out += '<button type="button" class="button orch-problem-toggle-pages" data-target="' + cardId + '-pages">';
+                    out += '👁 ' + SeoAeoOrchestra.t('Mostra pagine') + ' (' + g.pages.length + ')';
+                    out += '</button>';
+                    out += '</div>';
+                    out += '<ul class="orch-problem-pages" id="' + cardId + '-pages" hidden>';
+                    g.pages.forEach(function(p) { out += '<li>' + escHtml(p) + '</li>'; });
+                    out += '</ul>';
+                    out += '</div>';
+                });
+                out += '</div>';
+                return out;
+            }
             if (type === 'seo-issues' && SeoAeoOrchestra._allSeoIssues) {
-                html = '<h4>' + SeoAeoOrchestra.t('Problemi SEO') + ' (' + SeoAeoOrchestra._allSeoIssues.length + ')</h4><ul>';
-                SeoAeoOrchestra._allSeoIssues.forEach(function(item) {
-                    html += '<li><strong>' + item.page + ':</strong> ' + item.issue + '</li>';
-                });
-                html += '</ul>';
+                html = '<h4>' + SeoAeoOrchestra.t('Problemi SEO') + ' (' + SeoAeoOrchestra._allSeoIssues.length + ')</h4>';
+                html += buildProblemCards(SeoAeoOrchestra._allSeoIssues, 'seo');
             } else if (type === 'aeo-issues' && SeoAeoOrchestra._allAeoIssues) {
-                html = '<h4>' + SeoAeoOrchestra.t('Problemi AEO') + ' (' + SeoAeoOrchestra._allAeoIssues.length + ')</h4><ul>';
-                SeoAeoOrchestra._allAeoIssues.forEach(function(item) {
-                    html += '<li><strong>' + item.page + ':</strong> ' + item.issue + '</li>';
-                });
-                html += '</ul>';
+                html = '<h4>' + SeoAeoOrchestra.t('Problemi AEO') + ' (' + SeoAeoOrchestra._allAeoIssues.length + ')</h4>';
+                html += buildProblemCards(SeoAeoOrchestra._allAeoIssues, 'aeo');
             } else if (type === 'actions' && SeoAeoOrchestra._allActions) {
                 html = '<h4>' + SeoAeoOrchestra.t('Azioni Suggerite') + ' (' + SeoAeoOrchestra._allActions.length + ')</h4>';
                 SeoAeoOrchestra._allActions.forEach(function(a) {

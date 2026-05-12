@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.38.7
+Stable tag: 3.38.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,12 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.38.8 =
+* Cronologia "Riapri" — clicking a Riapri button on the analysis history now opens a confirmation modal ("Vuoi caricare questa analisi storica?") before restoring. Previously the click would call restoreFromHistory() directly and the legacy fields/outputs selectors didn't match the current orchestrator output panel, so nothing visibly happened. The modal also writes ?history_id=<id> to the URL via history.replaceState for shareable links.
+* Piano d'Azione — "Mostra completati (N)" toggle in the Prossimi passi card header. Completed TODO tiles are hidden by default; clicking the toggle reveals them with an inline counter. State persisted in localStorage (seo_aeo_orch_todo_show_done_v1). The toggle is hidden when no items are completed.
+* Problemi SEO/AEO — inline "Come risolvere" + action executors under each problem card. Issues are grouped by exact text so duplicates across pages collapse to one card with an "su N pagine" badge. Each card carries the existing getActionDetailDescription() text + "Esegui automaticamente" button (reuses the .orch-execute-btn delegation from Piano d'Azione) + "Mostra pagine (N)" expander showing the affected page list. Issues without a matching action show a fallback "rivedi manualmente" hint.
+* Floating savebar regression — replaced the :visible-gated polling loop that never fired when #orch-identity-form sat inside collapsed details. Now: (1) lazy snapshot on the first input/change/blur event (DOM presence is sufficient, no visibility requirement), (2) ajaxComplete listener seeds the baseline from the identity-get response 50ms after AJAX returns, (3) 4s defensive fallback. The savebar now reliably surfaces "Modifiche non salvate" on Solaris and aeo-orchestra.com when fields change.
 
 = 3.38.7 =
 * Bug fix (P0 launch-blocker) — Keyword Research with max_keywords > 30 was reliably returning "Risposta non valida dal server" instead of refunded results. Root cause was a 3-way convergence: (1) frontend offered a 50-keyword option, (2) backend honored it up to 50, (3) nginx proxy_read_timeout in the API container was 120s — the LLM call for 50 keywords with verbose Italian fields exceeded 120s so nginx closed the upstream connection mid-response, returning HTTP 502 with HTML body that the WP client couldn't parse as JSON.
@@ -240,185 +246,4 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 * Template files receive file-level phpcs:disable for NonPrefixedVariableFound — local-scope variables in templates are not globals despite the static analyzer's heuristic.
 
 
-= 3.35.85.0 =
-* WordPress.org review compliance: removed all client-side license gating. Every feature loads in every build; service-backed flows return a clear upgrade message when no license is present. The standalone "Pro Features" upsell submenu was removed; the same CTA is available inside Settings (admin-facing only).
-* Description rewritten to comply with WP.org guidelines on neutral language and feature presentation.
-* All inline style and script blocks across templates now route through wp_add_inline_style() / wp_add_inline_script() via a new SEO_AEO_Inline_Assets registrar (40 blocks across 23 files).
-* Centralized JSON input sanitizer (SEO_AEO_Input_Sanitizer): every json_decode of $_POST data now walks the decoded leaves through sanitize_text_field. Nonce reads in class-admin-ui pass through sanitize_text_field(wp_unslash()).
-* Schema.org JSON-LD output drops JSON_UNESCAPED_SLASHES so a closing script tag inside any string value cannot break out of the surrounding script tag.
-* "Powered by AEO Orchestra" branding on the public widget is now strictly opt-in (option seo_aeo_orchestra_show_branding, default off). The auto-on-some-plans logic is removed.
-* Chart.js bumped 4.4.0 to 4.4.7.
-* Removed plugin-level overrides of set_time_limit and ini_set in calendar/autopilot AJAX paths.
-
-
-= 3.35.84.5 =
-* 🛡️ Audit M-1: per-user account lockout — 5 login falliti in 15 min → 423 Locked, sblocco automatico dopo 15 min o reset password. Counter atomic via find_one_and_update, clear su login success.
-* 🛡️ Audit M-2: JWT token versioning + POST /auth/logout —  claim nel JWT, get_current_user verifica vs users.token_version. Reset password e logout incrementano il counter → tutti i token precedenti diventano invalidi. Backwards-compat: token pre-tv passano (default 0).
-* 🛡️ Audit M-6: 4 uvicorn workers (era 2) + Docker mem_limit 1.5G + cpus 1.5 + reservations 256m / 0.5cpu. Previene OOM-kill del VPS condiviso con 7 altri container.
-* 🛡️ Sentry release tag: APP_VERSION + REACT_APP_VERSION allineati a 3.35.84.5-beta per attribution corretta in Sentry dashboard.
-
-
-= 3.35.84.4 =
-* 🛠️ Refactor: nuovo modulo `class-admin-notices.php` — pattern centralizzato per ogni banner amministrativo (ID univoco, dismiss transient, expire-by-day, scope per-screen). Sostituisce la rendering ad-hoc inline che produceva banner sopra/dentro le hero card.
-* 🐛 Bug fix banner Profilo Business — il banner ora viene reso correttamente SOPRA la hero card su tutte le pagine plugin (era visualizzato dentro l'hero su `seo-aeo-native-output` per via di `all_admin_notices` + posizionamento custom).
-* 🐛 Bug fix banner stale `Refactor 3.35.49` — rimosso (>4 mesi old). I banner one-shot di nuove release usano ora `SEO_AEO_Admin_Notices` con `expire_days` automatico.
-* 🐛 Bug fix banner update post-install — `maybe_clear_stale_update_state` ora gestisce 3 casi: (a) cache locale stale con `new_version <= current`, (b) cache locale a `update_available=false`, (c) `update_plugins` transient con entry stale anche senza cache locale.
-* ✨ Sezione "Cosa c'è di nuovo" dinamica — legge l'entry corrente da `readme.txt`, mostra fino a 5 bullet, dismiss per-utente per-versione (30gg). Eliminate le 4 voci hardcoded di v3.20.
-
-
-= 3.35.84.3.1 =
-* UX upgrade: card backgrounds saturation 96-98% → 92-94% (medium tint per categoria visualmente più distinta)
-* UX: icon backgrounds bumped +1 shade saturato (#86efac, #93c5fd, #c4b5fd, #fcd34d, #cbd5e1)
-* UX: hover state -3% lightness per visual feedback più intenso
-* Bug fix: stale banner update post-install — guard in check_for_update se cached new_version <= current_version (strip stale response + invalidate local cache)
-* Bug fix: after_update aggressive cache cleanup (delete_site_transient + wp_clean_plugins_cache + bust all md5-keyed cache entries via SQL DELETE)
-
-
-= 3.35.84.3 =
-* Bug A CRITICAL fix: doppio rendering AI Performance — rimosso h2/sub wrapper duplicato in wizard-home.php (heading ora solo da partial ai-crawler-section.php)
-* Bug B+D fix: migration DB v1.1→1.2 backfill canonical bot_name + bot_provider via bot_definitions registry. Plus slug_from_bot_name case-insensitive lookup. Plus Top 5 query GROUP BY bot_name only con COALESCE(MAX(NULLIF(provider,''))) per dedupe rows con provider empty
-* Bug C addressed automaticamente via Bug B fix (slug normalization rende classification colors corretti)
-* UX: section headers per categoria con border-bottom 2px colorato + count strumenti
-* UX: card background tinted leggero (lightness 96-98%) per categoria + hover stato medium
-* Cleanup: orphan ai-performance-section.php deleted (preserved as bing-citation-section.php for .85 Phase 2)
-
-
-= 3.35.84.2 =
-* Dashboard cards refactor: 4 nuove card (Verify-Live, Profilo Business, AI Performance, AI Crawlers)
-* Rename Calendario AI → Pianificazione articoli (consistency con sidebar + marketing site)
-* 5-category color-coding (Foundation green, Analisi blue, Creazione purple, Operations amber, Account gray) con border-left + icon background tinted
-* Reorder cards in customer journey: Foundation → Analisi → Creazione → Operations → Account
-* Constants bump SEO_AEO_AGENTS_COUNT 12→13 + SEO_AEO_TOOLS_COUNT 18→22
-* Badge "⭐ FOUNDATION v3.35.83" su Profilo Business + "🆕 NEW v3.35.82/.84" su Verify-Live + AI Performance
-
-
-= 3.35.84.1 =
-* Hot fix: force-check transient invalidation radical bypass (4th iteration)
-* Bypassa wp_update_plugins() lock 15-min via WP_Upgrader::release_lock + costruisce transient manualmente
-* Direct HTTP fetch backend con cache-buster query param (defeat HTTP layer caches)
-* error_log diagnostic ad ogni step (visibility post-deploy)
-* Bug observed 4× consecutive: click force-check link non triggherava update banner per ~12h TTL natural
-
-
-= 3.35.84 =
-* MAJOR: AI Performance Phase 1 LIVE — tracking AI bot activity in Dashboard (sostituisce Coming soon Bing API)
-* Schema MySQL extended: wp_seo_aeo_ai_crawler_log v1.1 (+url_path +ip_hash +response_status_class) + new wp_seo_aeo_ai_crawler_daily_stats aggregation table
-* 22 bot detection patterns (4 nuovi: GoogleOther, Amazonbot, Bytespider, Diffbot + alias FacebookBot su Meta-ExternalAgent)
-* Classification 🟢🟡🔴 (10 AI engine diretto + 10 multi-purpose + 2 crawler aggregato)
-* Async logging via register_shutdown_function() + fastcgi_finish_request — zero overhead response time
-* GDPR 3-mode IP storage: raw / hash SHA256(IP+wp_salt) / none — admin selectable
-* Daily cron 02:00 UTC aggregation INSERT...ON DUPLICATE KEY UPDATE + cleanup raw>30d + stats>90d
-* Dashboard widgets: 4 stat card (hits/bot/trend/blocked) + bar chart top 5 bot + table top 10 pages + sparkline SVG inline 28gg + compliance check robots.txt
-* 5 nuovi AJAX endpoint (orch_ai_crawler_summary/top_bots/top_pages/trend/compliance) defensive nonce + try/catch + transient cache 5min/15min/1h
-* Empty state primo accesso con CTA Verify-Live + Profilo Business completion
-* Phase 2 (Bing Webmaster Tools API) deferred a v3.35.85 — partial bing-citation-section.php preservato
-
-
-= 3.35.83.1.2 =
-* Bug 1 fix: confirm button JS handler -> event delegation $(document).on(click, '#orch-bp-confirm-btn') + console.log debug + xhr error visibility (resilient to disabled state + DOM re-render)
-* Bug 2 fix: banner positioning sopra hero — render manuale inline in wizard-home.php pre-hero + skip maybe_render_banner su pagina Dashboard (no doppio rendering)
-* Bug 3 fix: 5° stat card else branch ✓ verde + class .orch-wiz-stat--confirmed con color #16a34a
-* Bug 4 fix: Step ⭐ conditional $bp_done — class/num/badge/CTA swap + CSS .orch-wiz-step--done verde gradient + CTA copy '→ Modifica profilo' post-confirm
-
-
-= 3.35.83.1.1 =
-* Hot fix: handle_force_check defensive — manualmente re-popola update_plugins transient post wp_update_plugins() per bypassare race condition WP filter pre_set_site_transient.
-* Plus wp_clean_plugins_cache(true) call per clear plugin metadata cache aggiuntiva.
-* Bug observed: force-check link non triggherava update banner per ~12h finché TTL natural OR confirm profile click invalidava manualmente.
-
-
-= 3.35.83.1 =
-* Patch fix AJAX: defensive check_ajax_referer (no auto-die) + return JSON error explicit
-* error_log() su exception path per visibility post-deploy
-* Uniformato hook banner_snooze nonce a seo_aeo_orchestra_nonce (era 'orch_bp')
-* Transient invalidation post-confirm/save: bp_confirmed_state + bp_dashboard_stats + identity_profile + update_plugins (forza WP refresh)
-* Banner positioning: hook all_admin_notices (priority 1) + CSS .orch-bp-banner-top sopra hero card
-* try/catch su tutti i 6 hook AJAX per error reporting visibile
-
-
-= 3.35.83 =
-* MAJOR: Business Profile pannello sidebar dedicato — foundation feature single source of context per tutti i tool AI
-* 14 user fields (11 public + 3 internal) con visibility scope (public esposti in llms.txt/schema/OG, internal solo admin tool AI)
-* Sidebar item position 15 (post Dashboard)
-* Pannello: 3 sezioni (🌐 Public + 🔒 Internal + 👁 Preview Context AI) con visual distinction approach B
-* Auto-save 800ms debounce, validation real-time, tag chips, repeatable struct cards, anteprima context AI live scope-aware
-* Backend _build_context_block(scope='full'|'public') refactor — Verify-Live + AEO usano scope='full', llms.txt/schema usano scope='public'
-* Migration MongoDB idempotente (added: value_proposition, target_audience, products_services, suppliers_partners, founded_year, competitors, additional_notes, internal_pricing_strategy, field_visibility map, customer_confirmed, prefilled_from_wp)
-* CRITICAL_IDENTITY_FIELDS V2: literal value_proposition + target_audience (no more proxy)
-* Banner persistente top admin (tutte pagine plugin) se customer_confirmed=false, snooze 24h
-* Dashboard wizard: Step ⭐ RICHIESTO + 5° stat card 'Profilo Business %' clickable
-* Verify-Live preview Box 1 button Modifica restored (chiude Patch 0) puntando al nuovo pannello
-* Tab 'Configurazione contenuti' resta backward-compat con info notice link al nuovo pannello
-
-
-= 3.35.82.1 =
-* Patch 0: Rimosso button Modifica Box 1 broken nel pre-verify panel (link puntava a tab Stato invece che editor identity).
-* In attesa di .83-beta Business Profile pannello dedicato. Box 2 Brand Voice + Box 3 Refresh restano funzionanti.
-
-
-= 3.35.82 =
-* Verify-Live Trasparenza Dati: pre-verify preview panel sopra i 2 button (3 box: Profilo identita + Brand Voice + Homepage)
-* Plugin = single source of context: assembla payload con identity_profile + brand_voice + homepage_context, backend riceve dati ricchi
-* Backend prompt enhancement: _build_context_block helper, Premium++ enriched_system con context strutturato per tutte le 5 query Haiku
-* Premium++ Haiku ora ha context reale del business invece di placeholders "this business" / "the website"
-* Transparency footer post-run: stats context_used (identity populated_fields, brand_voice active, homepage chars) + CTA campi mancanti
-* is_complete flag: 4 campi critici check (about_strategic + business_description + differentiators + use_cases). Warning amber se incomplete
-* AJAX preview endpoint: ?action=seo_aeo_verify_live_preview con force=1 per refresh homepage
-* Cache homepage 1h via transient + button "Aggiorna ora"
-
-
-= 3.35.81.1.1 =
-* Bug fix: Premium++ pass-through nel plugin SSE — root cause del wallet -35cr senza refund
-* Defensive: backend _verify_live_premium_plus try/except post-deduct + auto-refund su exception
-* UX: renderErrorReport messaggi user-friendly per HTTP 429/402/403/default
-* Refund note distinct color (verde su sfondo green-tint)
-
-
-= 3.35.81.1 =
-* Verify-Live consolidato: CTA generic AI (no provider names)
-* Premium++ ribilanciato: provider Haiku (was Sonnet) + 35 crediti (was 100)
-* Premium++ multi-query 5x parallel via asyncio.gather (~5-10s totali)
-* Premium++ structured deep suggestions (8-15 con category/severity/problem/fix)
-* Final report Premium: breakdown_by_query, filter severity, export Markdown
-* Credit widget auto-refresh post verification
-* Bug fix: Standard parser silent fallback score=50 -> error_state + auto-refund
-* Distinct status: success / ai_unavailable / parsing_failed in ai_usage_log
-
-
-= 3.35.81 =
-* NEW: Verify-Live UI streaming Phase 2 — animated step pipeline + final citation accuracy report
-* Pattern jQuery DOM ready + event delegation per resilience (lessons learned 3.35.80.2)
-
-
-= 3.35.80.2 =
-* Bug fix robusto: AI Crawlers tab switching ora in dedicated jQuery(document).ready block, indipendente da seoAeoOrchestra global. Expose window.activateTab per debug. Lazy-load AJAX hook via window.orchAiCrawlers proxy.
-
-
-= 3.35.80.1 =
-* Bug fix: AI Crawlers tab switching (id-based + hash deep-link)
-* Bug fix: floating save bar repositioned bottom-right (Yoast/RankMath pattern)
-
-
-= 3.35.80 =
-* NEW: AI Crawler Allowlist (18 bot across 9 providers) + bot logging dashboard
-* NEW: 3-tab section in OPERATIONS menu (Allowlist / Crawler Log / Robots.txt)
-* NEW: robots.txt auto-generation aggregato dalle scelte Allowlist
-* NEW: cleanup cron 30 day retention
-
-
-= 3.35.79.3 =
-* Premium+ generation: max_tokens 1500 → 2500 (margin for verbose outputs)
-* JSON parse guard: friendly error message instead of raw response popup
-* White-label labels: "Standard — Veloce" / "Premium+ — Qualità superiore"
-* Bug fix: status loader now reads about_strategic (Section 5) instead of business_description (Section 1)
-
-
-= 3.35.39 =
-* First public WP.org release
-* Free distribution: native SEO output, sitemap.xml, llms.txt, schema, redirect manager, migration wizard
-* Pro features (AI generation, Brand Voice, Auto-Pilot, Analytics) available via aeo-orchestra.com
-
-== Upgrade Notice ==
-
-= 3.35.39 =
-First WP.org release. Install or upgrade for the full native SEO + AEO stack.
+For older changelog entries (3.35.x and earlier), see the project repository at https://github.com/jcappelliemer/aeo-orchestra .

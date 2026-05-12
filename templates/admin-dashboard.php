@@ -598,6 +598,7 @@ wp_enqueue_style(
                 <p class="orch3-muted"><?php echo esc_html(SEO_AEO_T::t('Azioni prioritarie dall\'ultima analisi. Marca come fatto ciò che hai completato — resteranno nascoste.')); ?></p>
             </div>
             <div class="orch6-todo-counter" id="orch6-todo-counter"></div>
+            <button type="button" class="orch6-todo-toggle-done" id="orch6-todo-toggle-done" hidden>👁 <span data-label><?php echo esc_html(SEO_AEO_T::t('Mostra completati')); ?></span></button>
         </div>
         <div class="orch6-todo-list" id="orch6-todo-list">
             <?php foreach ($priority_meta as $pkey => $pmeta):
@@ -1399,6 +1400,23 @@ wp_enqueue_style(
 .orchestra-v3 .orch3-detail-bad { background: #fef2f2; color: #7f1d1d; }
 .orchestra-v3 .orch3-detail-warn { background: #fffbeb; color: #78350f; }
 .orchestra-v3 .orch3-detail-info { background: #eff6ff; color: #1e3a8a; }
+/* 3.38.8 Task 3 — Inline problem cards with "Come risolvere" + executors. */
+.orchestra-v3 .orch-problem-cards { display: flex; flex-direction: column; gap: 10px; }
+.orchestra-v3 .orch3-detail { max-height: none; }
+.orchestra-v3 .orch-problem-card { background: #fff; border: 1px solid rgba(127,29,29,0.18); border-radius: 8px; padding: 12px 14px; }
+.orchestra-v3 .orch3-detail-warn .orch-problem-card { border-color: rgba(120,53,15,0.20); }
+.orchestra-v3 .orch-problem-head { display: flex; align-items: flex-start; gap: 8px; }
+.orchestra-v3 .orch-problem-icon { font-size: 14px; line-height: 1.6; }
+.orchestra-v3 .orch-problem-title { flex: 1; color: var(--orch-text); font-size: 14px; line-height: 1.5; }
+.orchestra-v3 .orch-problem-count { color: var(--orch-muted); font-weight: 500; font-size: 12px; }
+.orchestra-v3 .orch-problem-solution { margin: 8px 0 10px; padding: 9px 12px; background: #f8fafc; border-left: 3px solid #3b82f6; border-radius: 0 6px 6px 0; font-size: 13px; color: #334155; line-height: 1.55; }
+.orchestra-v3 .orch-problem-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.orchestra-v3 .orch-problem-exec { background: #0055FF; color: #fff; border-color: #0040cc; }
+.orchestra-v3 .orch-problem-exec:hover { background: #0040cc; color: #fff; }
+.orchestra-v3 .orch-problem-toggle-pages { background: #fff; }
+.orchestra-v3 .orch-problem-pages { margin: 10px 0 0; padding: 8px 14px 8px 28px; background: #f9fafb; border-radius: 6px; max-height: 200px; overflow: auto; list-style: disc; font-size: 12px; color: var(--orch-muted); }
+.orchestra-v3 .orch-problem-pages li { margin: 2px 0; }
+.orchestra-v3 .orch-problem-pages[hidden] { display: none; }
 
    2.6.0 — To-do prioritizzato + fix credit badge
    ═══════════════════════════════════════════════════════════════ */
@@ -1445,6 +1463,25 @@ wp_enqueue_style(
     opacity: 0.5;
     background: var(--orch-bg);
 }
+/* 3.38.8 Task 2 — hide completed items unless the user opts in. */
+.orchestra-v3 .orch6-todo-list:not(.show-done) .orch6-todo-item.is-done { display: none !important; }
+.orchestra-v3 .orch6-todo-toggle-done {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    margin-left: 8px;
+    font-size: 12px;
+    border-radius: 14px;
+    border: 1px solid var(--orch-faint);
+    background: #fff;
+    color: var(--orch-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.orchestra-v3 .orch6-todo-toggle-done:hover { color: var(--orch-text); border-color: var(--orch-accent); }
+.orchestra-v3 .orch6-todo-toggle-done.is-on { color: var(--orch-accent); border-color: var(--orch-accent); background: #f0f7ff; }
+.orchestra-v3 .orch6-todo-toggle-done[hidden] { display: none; }
 .orchestra-v3 .orch6-todo-item.is-done .orch6-todo-title strong {
     text-decoration: line-through;
     color: var(--orch-muted);
@@ -3723,6 +3760,18 @@ jQuery(document).ready(function($) {
         var done = $list.find('.orch6-todo-item.is-done').length;
         var pending = total - done;
         var $counter = $('#orch6-todo-counter');
+        // 3.38.8 Task 2 — show toggle only if at least one done item exists.
+        var $toggle = $('#orch6-todo-toggle-done');
+        if (done > 0) {
+            $toggle.prop('hidden', false);
+            var T3 = (window.SeoAeoOrchestra && SeoAeoOrchestra.t) ? SeoAeoOrchestra.t : function(s){return s;};
+            var on = $list.hasClass('show-done');
+            var labelKey = on ? 'Nascondi completati' : 'Mostra completati';
+            $toggle.find('[data-label]').text(T3(labelKey) + ' (' + done + ')');
+            $toggle.toggleClass('is-on', on);
+        } else {
+            $toggle.prop('hidden', true);
+        }
         if (pending === 0 && total > 0) {
             var T = (window.SeoAeoOrchestra && SeoAeoOrchestra.t) ? SeoAeoOrchestra.t : function(s){return s;};
             $counter.text(T('✓ Tutto fatto'));
@@ -3736,10 +3785,27 @@ jQuery(document).ready(function($) {
             $list.find('.orch6-todo-empty').remove();
         }
     }
+    // 3.38.8 Task 2 — toggle Mostra/Nascondi completati, persisted across navigations.
+    var TODO_SHOW_DONE_KEY = 'seo_aeo_orch_todo_show_done_v1';
+    function loadShowDone() {
+        try { return localStorage.getItem(TODO_SHOW_DONE_KEY) === '1'; } catch (e) { return false; }
+    }
+    function saveShowDone(v) {
+        try { localStorage.setItem(TODO_SHOW_DONE_KEY, v ? '1' : '0'); } catch (e) {}
+    }
+    $(document).on('click', '#orch6-todo-toggle-done', function() {
+        var $list = $('#orch6-todo-list');
+        var next = !$list.hasClass('show-done');
+        $list.toggleClass('show-done', next);
+        saveShowDone(next);
+        updateTodoCounter();
+    });
+
     // Init stato dei todo al page-load
     (function initTodos() {
         var $list = $('#orch6-todo-list');
         if (!$list.length) return;
+        if (loadShowDone()) $list.addClass('show-done');
         var doneIds = loadDoneIds();
         $list.find('.orch6-todo-item').each(function() {
             var $it = $(this);

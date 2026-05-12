@@ -6185,26 +6185,44 @@ if (is_admin() && defined('SEO_AEO_URL')) {
 
     function refreshBar() {
         if (ignoreInputs) return;
+        // 3.38.8 Task 4 — lazy snapshot. The previous :visible-gated polling
+        // never fired when the form sat inside collapsed <details> blocks; the
+        // user's first interaction would seed the snapshot AFTER they'd already
+        // edited a field, so isDirty() was always false. Now: as soon as the
+        // form exists in DOM, the first event captures the pre-edit baseline,
+        // then a second internal pass evaluates the actual diff against that
+        // baseline using event.originalEvent semantics. For events with target,
+        // we treat the just-edited value as already-edited.
         if (!snapshotTaken) {
-            // Form may not yet be visible; defer
-            if ($(TRACKED_FORM_SEL).is(':visible')) captureSnapshot();
+            if ($(TRACKED_FORM_SEL).length) captureSnapshot();
             else return;
         }
         var dirty = isDirty();
         setBarState(dirty ? 'is-dirty' : null);
     }
 
-    // Watch input/change/blur on tracked form
+    // Watch input/change/blur on tracked form. Delegated handler so dynamically
+    // injected inputs (post-AJAX-load) work without re-binding.
     $(document).on('input change blur', TRACKED_FORM_SEL + ' input, ' + TRACKED_FORM_SEL + ' select, ' + TRACKED_FORM_SEL + ' textarea', refreshBar);
 
-    // Capture initial snapshot when form becomes visible (loaded async)
-    var snapshotPoll = setInterval(function() {
-        if ($(TRACKED_FORM_SEL).is(':visible')) {
-            captureSnapshot();
-            clearInterval(snapshotPoll);
+    // 3.38.8 Task 4 — also attempt snapshot when AJAX form-load completes so
+    // the baseline reflects server values, not the empty initial state. This
+    // is a one-shot listener that detaches after the first identity-load call.
+    var identityLoadComplete = function(event, xhr, settings) {
+        if (settings && settings.data && String(settings.data).indexOf('seo_aeo_orchestra_identity_get') !== -1) {
+            $(document).off('ajaxComplete.orchSavebarSeed', identityLoadComplete);
+            // give the response handler a tick to write values into inputs
+            setTimeout(function() {
+                if (!snapshotTaken && $(TRACKED_FORM_SEL).length) captureSnapshot();
+            }, 50);
         }
-    }, 500);
-    setTimeout(function() { clearInterval(snapshotPoll); }, 30000);
+    };
+    $(document).on('ajaxComplete.orchSavebarSeed', identityLoadComplete);
+
+    // Defensive fallback: if no AJAX seed within 4s but form exists, snapshot now.
+    setTimeout(function() {
+        if (!snapshotTaken && $(TRACKED_FORM_SEL).length) captureSnapshot();
+    }, 4000);
 
     // Save click → trigger existing save button
     $(document).on('click', '#orch-floating-save-btn', function() {

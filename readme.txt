@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.1
+Stable tag: 3.39.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,14 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.2 =
+* Bug #1 (P0) — Site Context fields appeared to "not save". Root cause was hydration, not save: data was correctly persisted in MongoDB and returned by the GET endpoint, but loadProfile() scalar list was missing the three new site_context_description / value_prop / target_audience keys, so the textareas stayed empty on reload. Extended the hydration list. Extracted hydrateProfile() helper so we can re-run it.
+* Bug #3 (P0 — chip persistence) — same family of issue. Mongo had 7 products_services + 5 suppliers_partners items, GET returned them, setChipValues was correct, yet chips appeared empty on some reloads. Added a defensive setTimeout(0) second pass that re-runs the entire hydration after the first sync pass — covers any rendering-order race where details/collapsibles weren't fully resolved when the first pass walked $form. Also wired chip-repeater re-render into saveProfile success so the DOM matches the backend-cleaned payload after each save (skips chip wrappers whose input has focus to avoid clobbering active typing).
+* Bug #2 (P0 — auto-generate "0 pagine analizzate" on JS-rendered sites) — aeo-orchestra.com is React-rendered: 26 KB HTML strips to 111 chars of body text, well below the v3.39.1 >200 threshold, so the endpoint returned "0 pages" without refunding. Now: User-Agent header identifies the crawler, title + meta description + og:* are captured BEFORE tag stripping (modern SPAs still emit SEO metadata), threshold lowered to 50 chars for homepage / 80 for secondary pages, dynamic slug discovery via anchor parsing for chi-siamo / about / azienda / company / servizi / services / solutions / what-we-do / prodotti / products, per-URL diagnostic log (status + bytes) returned in the 422 error, refund + clear Italian error when 0 pages collected, sanity check on Gemini output (refund if all 4 fields empty).
+* Bug #4 (P1) — wired build_site_context_block into the remaining content-generation AI endpoints: /ai/generate-meta (Meta Tags AI), /ai/generate-content (Content AI), /ai/aeo-content (AEO Content). The site_context_block is prepended to each system message before brand_voice_addition so brand semantics anchor before voice tuning. /ai/analyze + /ai/aeo-analyze already had it from v3.39.1.
+* Backend crawler refactor — split the monolithic _fetch_text into _fetch_html (HTTP) + _extract_meta_and_text (title + meta + og + body) + _format_page_block (delimited LLM-ready blob) + _discover_about_service_slugs (homepage anchor scanner). All testable independently, all reusable for future site-context refresh + multi-tenant scrape jobs.
+* Plugin Check 0/0 on the WP.org ZIP.
 
 = 3.39.1 =
 * CRITICAL P0 — anti-hallucination fix. Verified Chrome MCP on aeo-orchestra.com homepage v3.39.0: AI analysis said the page was "incentrato sull'orchestra musicale, concerti, musicisti" even though it's plugin software with zero music context. Backend prompts received only (url, keyword, content) and guessed semantics from the brand name. Same risk on any business with an ambiguous name.

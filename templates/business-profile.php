@@ -1046,6 +1046,18 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
                 setAutosave('saved');
                 if (resp.data && resp.data.profile) {
                     currentProfile = resp.data.profile;
+                    // 3.39.2 Bug #3 — the backend returns the cleaned/canonical
+                    // version of the profile; re-render so the DOM matches what
+                    // was actually stored (truncation, normalization, etc.).
+                    // We skip scalar re-hydration to avoid clobbering whatever
+                    // the user just typed, but chip/struct/term repeaters get
+                    // refreshed so list views stay in sync.
+                    ['products_services','suppliers_partners','territories','competitors'].forEach(function(f) {
+                        var $c = $form.find('[data-orch-bp-tags="' + f + '"]');
+                        if ($c.length && document.activeElement !== $c.find('input')[0]) {
+                            setChipValues($c, currentProfile[f] || []);
+                        }
+                    });
                     updateCompletion(resp.data.stats);
                 }
                 updatePreview();
@@ -1071,6 +1083,27 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
         });
     }
 
+    // 3.39.2 — extracted hydration so it can run twice (defensive against
+    // any timing race that leaves a chip/struct/term wrapper empty on the
+    // first pass). All setXValues functions are idempotent.
+    function hydrateProfile(profile) {
+        if (!profile) profile = {};
+        ['business_name','industry','business_description','about_strategic','value_proposition','target_audience','additional_notes','internal_pricing_strategy','founded_year','site_context_description','site_context_value_prop','site_context_target_audience'].forEach(function(f) {
+            setFieldValue(f, profile[f]);
+        });
+        ['products_services','suppliers_partners','territories','competitors'].forEach(function(f) {
+            var $c = $form.find('[data-orch-bp-tags="' + f + '"]');
+            if ($c.length) setChipValues($c, profile[f] || []);
+        });
+        ['differentiators','use_cases'].forEach(function(f) {
+            var $l = $form.find('[data-orch-bp-repeat="' + f + '"]');
+            if ($l.length) setStructValues($l, profile[f] || []);
+        });
+        var $sc_terms = $form.find('[data-orch-bp-terms="site_context_ambiguous_terms"]');
+        if ($sc_terms.length) setTermsValues($sc_terms, profile.site_context_ambiguous_terms || []);
+        $form.find('.orch-bp-input, .orch-bp-textarea').each(function() { updateCounter($(this)); });
+    }
+
     function loadProfile() {
         $.post(ajaxurl, {
             action: 'seo_aeo_business_profile_get',
@@ -1082,27 +1115,12 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
             }
             var data = resp.data || {};
             currentProfile = data.profile || {};
-            // Populate scalars
-            ['business_name','industry','business_description','about_strategic','value_proposition','target_audience','additional_notes','internal_pricing_strategy','founded_year'].forEach(function(f) {
-                setFieldValue(f, currentProfile[f]);
-            });
-            // Populate tags
-            ['products_services','suppliers_partners','territories','competitors'].forEach(function(f) {
-                var $c = $form.find('[data-orch-bp-tags="' + f + '"]');
-                if ($c.length) setChipValues($c, currentProfile[f] || []);
-            });
-            // Populate struct
-            ['differentiators','use_cases'].forEach(function(f) {
-                var $l = $form.find('[data-orch-bp-repeat="' + f + '"]');
-                if ($l.length) setStructValues($l, currentProfile[f] || []);
-            });
-            // 3.39.1 — populate site-context ambiguous terms.
-            var $sc_terms = $form.find('[data-orch-bp-terms="site_context_ambiguous_terms"]');
-            if ($sc_terms.length) setTermsValues($sc_terms, currentProfile.site_context_ambiguous_terms || []);
-            // Update counters
-            $form.find('.orch-bp-input, .orch-bp-textarea').each(function() { updateCounter($(this)); });
-            // 3.38.4 — defensive backstop sync (covers any missed per-field path)
-            syncAllCounters();
+            hydrateProfile(currentProfile);
+            // 3.39.2 Bug #3 — defensive second pass one tick later, in case
+            // details/collapsibles weren't fully rendered when the first pass
+            // ran. Idempotent: setChipValues + setStructValues + setTermsValues
+            // all clear-and-rebuild, so a re-run produces the same DOM.
+            setTimeout(function() { hydrateProfile(currentProfile); syncAllCounters(); }, 0);
             updateCompletion(data.stats);
             updatePreview();
             setAutosave('saved');

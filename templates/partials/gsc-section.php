@@ -181,7 +181,13 @@ jQuery(function($) {
             if (!resp.configured_on_server) {
                 $content.html(renderNotConfigured());
             } else if (!resp.connected) {
-                if (resp.system_mode && !resp.is_admin) {
+                // 3.37.2 Module 16 — only show "managed by team" when the
+                // license is ACTUALLY agency-managed (gsc_managed_by_admin=true
+                // on the license doc). The previous condition (system_mode &&
+                // !is_admin) over-fired for normal paying customers and forced
+                // them to contact support even when /auth-url would have served
+                // a self-service OAuth URL.
+                if (resp.is_managed) {
                     $content.html(renderClientWaitingForAdmin());
                 } else {
                     $content.html(renderDisconnected(resp));
@@ -208,14 +214,29 @@ jQuery(function($) {
     }
 
     function renderDisconnected(s) {
+        // 3.37.2 Module 16 — self-service connect UX. Single OAuth flow
+        // tied to the user's own Google account; no central admin needed.
         var adminNote = (s && s.system_mode && s.is_admin)
             ? '<p class="orch3-muted"><strong>' + SeoAeoOrchestra.t('Modalità admin centralizzata:') + '</strong> ' + SeoAeoOrchestra.t('connettendoti qui abiliti GSC per tutti i clienti del team. Una sola autorizzazione necessaria.') + '</p>'
             : '';
         return '<div class="orch-gsc-pitch">' +
-                 '<p><strong>' + SeoAeoOrchestra.t('Collega Search Console') + '</strong> ' + SeoAeoOrchestra.t('per vedere quali pagine ricevono impressioni e clic da Google, e priorizzare le ottimizzazioni dove c\'è già traffico.') + '</p>' +
+                 '<p>📊 <strong>' + SeoAeoOrchestra.t('Connetti Google Search Console') + '</strong> ' + SeoAeoOrchestra.t('per vedere impressioni, click e posizionamento del tuo sito.') + ' ' + SeoAeoOrchestra.t('Autorizzazione one-time tramite il tuo account Google.') + '</p>' +
                  adminNote +
-                 '<p class="orch3-muted">' + SeoAeoOrchestra.t('L\'autorizzazione è in sola lettura (scope') + ' <code>webmasters.readonly</code>).</p>' +
-                 '<button type="button" class="orch3-btn orch3-btn-primary" id="orch-gsc-connect-btn">🔍 ' + SeoAeoOrchestra.t('Connetti Google Search Console') + '</button>' +
+                 '<button type="button" class="orch3-btn orch3-btn-primary" id="orch-gsc-connect-btn">🔗 ' + SeoAeoOrchestra.t('Connetti Google Search Console') + '</button>' +
+                 ' <button type="button" class="orch3-btn orch3-btn-ghost orch3-btn-sm" id="orch-gsc-why-btn" aria-expanded="false">' + SeoAeoOrchestra.t('Perché serve?') + '</button>' +
+                 '<div id="orch-gsc-why-panel" style="display:none;margin-top:12px;padding:12px 14px;background:var(--orch-bg-soft,#f8fafc);border:1px solid var(--orch-line,#e2e8f0);border-radius:8px;font-size:13px;line-height:1.55;">' +
+                   '<p style="margin:0 0 8px;"><strong>' + SeoAeoOrchestra.t('Cosa autorizzi') + '</strong></p>' +
+                   '<ul style="margin:0 0 10px 18px;padding:0;">' +
+                     '<li>' + SeoAeoOrchestra.t('Lettura dati Search Console (impressioni, click, query, pagine, posizione media). Scope:') + ' <code>webmasters.readonly</code></li>' +
+                     '<li>' + SeoAeoOrchestra.t('Email del tuo account Google (per identificare quale account è connesso).') + '</li>' +
+                   '</ul>' +
+                   '<p style="margin:0 0 8px;"><strong>' + SeoAeoOrchestra.t('Cosa NON autorizzi') + '</strong></p>' +
+                   '<ul style="margin:0 0 10px 18px;padding:0;">' +
+                     '<li>' + SeoAeoOrchestra.t('Nessuna modifica al tuo sito o al tuo account Google. Sola lettura.') + '</li>' +
+                     '<li>' + SeoAeoOrchestra.t('Nessun accesso a Gmail, Drive, Calendar o altri servizi Google.') + '</li>' +
+                   '</ul>' +
+                   '<p style="margin:0;"><strong>' + SeoAeoOrchestra.t('Come revocare') + '</strong>: ' + SeoAeoOrchestra.t('vai su') + ' <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a> ' + SeoAeoOrchestra.t('e rimuovi AEO Orchestra dalla lista app autorizzate. La revoca è effettiva immediatamente.') + '</p>' +
+                 '</div>' +
                '</div>';
     }
 
@@ -667,6 +688,20 @@ jQuery(function($) {
                  '<tbody>' + rowsHtml + '</tbody>' +
                '</table>';
     }
+
+    // 3.37.2 Module 16 — toggle the "Perché serve?" expander panel.
+    $(document).on('click', '#orch-gsc-why-btn', function() {
+        var $btn = $(this);
+        var $panel = $('#orch-gsc-why-panel');
+        var open = $panel.is(':visible');
+        if (open) {
+            $panel.slideUp(160);
+            $btn.attr('aria-expanded', 'false');
+        } else {
+            $panel.slideDown(160);
+            $btn.attr('aria-expanded', 'true');
+        }
+    });
 
     $card.on('click', '#orch-gsc-connect-btn', function() {
         var $btn = $(this);

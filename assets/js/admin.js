@@ -1981,7 +1981,18 @@
         },
 
         orchestrateStart: function(e) {
-            e.preventDefault();
+            if (e && typeof e.preventDefault === 'function') e.preventDefault();
+            // 3.37.2 Module 14 — idempotency: prevent re-entry from a double-bound
+            // trigger (the button used to have BOTH an inline onclick AND a jQuery
+            // delegated handler, causing two parallel runs of orchestrateNext()
+            // → duplicate log lines + duplicate AJAX + duplicate credit consumption).
+            // The inline onclick has been removed in v3.37.2 but the guard stays as
+            // defence-in-depth for any future double-bind path.
+            if (SeoAeoOrchestra._orchestrateInFlight) {
+                return;
+            }
+            SeoAeoOrchestra._orchestrateInFlight = true;
+
             var pages = [];
             $('.orch-page-check:checked').each(function() {
                 pages.push({
@@ -1993,6 +2004,7 @@
 
             if (pages.length === 0) {
                 SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Seleziona almeno una pagina da analizzare.'), 'error');
+                SeoAeoOrchestra._orchestrateInFlight = false;
                 return;
             }
 
@@ -2024,6 +2036,9 @@
                     } else {
                         $('#orchestrator-progress').hide();
                         $('#orchestrator-setup').show();
+                        // 3.37.2 Module 14 — also release the latch on the
+                        // cancel-with-zero-results branch.
+                        SeoAeoOrchestra._orchestrateInFlight = false;
                     }
                 }, 1500);
                 return;
@@ -2091,6 +2106,9 @@
         },
 
         orchestrateComplete: function() {
+            // 3.37.2 Module 14 — release the in-flight latch so the user can
+            // start a new analysis.
+            SeoAeoOrchestra._orchestrateInFlight = false;
             $('#orch-progress-bar').css('width', '100%');
             $('#orch-progress-pct').text('100%');
             var elapsed = Math.round((Date.now() - SeoAeoOrchestra.orchestrateStartTime) / 1000);

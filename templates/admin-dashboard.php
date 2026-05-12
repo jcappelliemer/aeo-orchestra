@@ -694,7 +694,7 @@ wp_enqueue_style(
 
         <div class="orch3-runbar">
             <button type="button" class="orch3-btn orch3-btn-primary orch3-btn-large" id="orch-start-analysis"
-                onclick="if(window.SeoAeoOrchestra){SeoAeoOrchestra.orchestrateStart(event);}else{alert('Script non caricato. Svuota la cache del browser e ricarica.');}"
+                data-orch-fallback-msg="Script non caricato. Svuota la cache del browser e ricarica." onclick="if(!window.SeoAeoOrchestra){alert(this.dataset.orchFallbackMsg||'Script non caricato.');return false;}"
                 <?php if (!$license_valid) echo 'disabled'; ?>>
                 <span id="orch-start-label"><?php echo esc_html(SEO_AEO_T::t('Analizza 1 pagina')); ?></span>
             </button>

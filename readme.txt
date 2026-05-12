@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.37.1
+Stable tag: 3.37.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,12 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.37.2 =
+* CRITICAL: Module 14 — fixed double-bind on Orchestratore "Avvia analisi" button that caused 2× AJAX requests + 2× credit consumption per page. Removed redundant inline onclick + added idempotency guard.
+* CRITICAL: Module 13 — credits now only consumed on AI success. New 2-phase commit (reserve → commit/refund) prevents the "empty AI result but credits spent" defect on Keyword Research, Brand Voice, Suggest Keywords, Content Generator, Complete Article. Automatic refund via TypedAPIError 422 "empty_result" with full audit trail.
+* Module 16 — fixed misleading GSC fallback. Self-service "Connect Google Search Console" button now shown to any client license; the "managed by team / contact support" message only appears for licenses with explicit gsc_managed_by_admin=true flag. Added "Perché serve?" expander explaining read-only scope + revocation procedure.
+* Includes audit-trail script scripts/refund_empty_results.py for manual goodwill credits on pre-3.37.2 wastage.
 
 = 3.37.1 =
 * Critical infrastructure: plugin now auto-invalidates OPcache + WP transient cache on update. Future updates propagate fixes reliably without manual server restart or cache flush.

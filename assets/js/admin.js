@@ -1617,6 +1617,28 @@
                         return;
                     }
 
+                    // 3.38.9 — orchestrator-aware restore. When the payload carries the
+                    // full state snapshot (saved since 3.38.9), rehydrate the in-memory
+                    // arrays used by clickable problem cards, fill scalar counters,
+                    // reveal the results container, close the confirm modal, toast,
+                    // and scroll the user to the result section.
+                    if (restore.state && restore.state.results) {
+                        var st = restore.state;
+                        SeoAeoOrchestra._allSeoIssues   = st.allSeoIssues || [];
+                        SeoAeoOrchestra._allAeoIssues   = st.allAeoIssues || [];
+                        SeoAeoOrchestra._allActions     = st.allActions   || [];
+                        SeoAeoOrchestra._results        = st.results      || [];
+                        SeoAeoOrchestra.orchestrateResults = st.results   || [];
+                        SeoAeoOrchestra.orchestratePages   = st.pages     || [];
+                        var c = st.counters || {};
+                        if (c.avgSeo != null)         $('#orch-avg-seo').text(c.avgSeo);
+                        if (c.avgAeo != null)         $('#orch-avg-aeo').text(c.avgAeo);
+                        if (c.pagesCount != null)     $('#orch-pages-analyzed').text(c.pagesCount);
+                        if (c.totalSeoIssues != null) $('#orch-seo-issues-count').text(c.totalSeoIssues);
+                        if (c.totalAeoIssues != null) $('#orch-aeo-issues-count').text(c.totalAeoIssues);
+                        if (c.totalActions != null)   $('#orch-total-actions').text(c.totalActions);
+                    }
+
                     // Restore form fields
                     if (restore.fields) {
                         $.each(restore.fields, function(selector, val) {
@@ -1642,11 +1664,26 @@
                             if (!firstOutputSel) firstOutputSel = selector;
                         });
                     }
-                    // Scroll & toast
+                    // 3.38.9 — orchestrator-specific finalize: ensure the results
+                    // container is visible, close the confirm modal, show a richer
+                    // success toast, and scroll to the start of the result section.
+                    if (restore.state && restore.state.results) {
+                        var $orchResults = $('#orchestrator-results');
+                        if ($orchResults.length) {
+                            $orchResults.show();
+                            firstOutputSel = firstOutputSel || '#orchestrator-results';
+                        }
+                        $('#orch-hist-confirm-modal').remove();
+                        var when = item.date ? (' ' + SeoAeoOrchestra.t('del') + ' ' + item.date) : '';
+                        SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('✓ Analisi') + when + ' ' + SeoAeoOrchestra.t('caricata dalla cronologia'), 'success');
+                    } else {
+                        SeoAeoOrchestra.showNotice('✓ Ripreso dalla cronologia: "' + (item.title || '') + '"', 'success');
+                    }
+
+                    // Scroll
                     if (firstOutputSel && $(firstOutputSel).length) {
                         $('html, body').animate({ scrollTop: $(firstOutputSel).offset().top - 60 }, 350);
                     }
-                    SeoAeoOrchestra.showNotice('✓ Ripreso dalla cronologia: "' + (item.title || '') + '"', 'success');
                 } catch (e) {
                     console.error('[AEO Orchestra] restore parse error:', e);
                     SeoAeoOrchestra.showNotice('Errore nel ripristino', 'error');
@@ -2414,11 +2451,30 @@
                     return {title: r.title, url: r.url, seo_score: r.seo_score, aeo_score: r.aeo_score};
                 })
             };
+            // 3.38.9 — full state snapshot so the new restore path can rehydrate
+            // problem cards + scalar counters, not just paint a few innerHTMLs.
+            // The legacy selectors stay for backward compat with old history
+            // entries; new fields drive the v3.38.9+ render in restoreFromHistory.
             var orchRestore = {
                 outputs: {
                     '#orch-page-results': $('#orch-page-results').html(),
                     '#orch-results-summary': $('#orch-results-summary').html(),
-                    '#orch-action-list': $('#orch-action-list').html()
+                    '#orch-action-plan': $('#orch-action-plan').html()
+                },
+                state: {
+                    allSeoIssues:  allSeoIssues,
+                    allAeoIssues:  allAeoIssues,
+                    allActions:    allActions,
+                    results:       results,
+                    pages:         SeoAeoOrchestra.orchestratePages,
+                    counters: {
+                        avgSeo:        avgSeo,
+                        avgAeo:        avgAeo,
+                        pagesCount:    pagesCount,
+                        totalSeoIssues: totalSeoIssues,
+                        totalAeoIssues: totalAeoIssues,
+                        totalActions:  allActions.length
+                    }
                 }
             };
             SeoAeoOrchestra.saveHistory('orchestrator', 'analysis', SeoAeoOrchestra.t('{N} pagine analizzate').replace('{N}', pagesCount), historyData, pagesCount * 5, orchRestore);

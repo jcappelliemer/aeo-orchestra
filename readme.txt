@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.38.8
+Stable tag: 3.38.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,11 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.38.9 =
+* Cronologia "Riapri" — addendum to the v3.38.8 modal wiring. The confirmation modal opened and the AJAX returned 200, but the underlying restoreFromHistory() only painted three innerHTMLs, never hydrated the in-memory data behind clickable problem cards, never updated scalar counters, and never revealed #orchestrator-results (which is display:none until JS reveals it). Net effect: confirming the modal silently did nothing on the page.
+* orchestrateComplete() now saves a full state snapshot in restore_payload.state (allSeoIssues, allAeoIssues, allActions, results, pages, counters). The legacy outputs map is preserved for backward compat with pre-3.38.9 history entries; the wrong selector #orch-action-list (which never existed on this page) was corrected to #orch-action-plan.
+* restoreFromHistory() detects state-bearing payloads and: (1) hydrates SeoAeoOrchestra._allSeoIssues / _allAeoIssues / _allActions / _results / orchestrateResults / orchestratePages so the v3.38.8 inline problem cards render correctly when the user clicks "Problemi SEO" / "Problemi AEO", (2) fills the six scalar counters (avg_seo, avg_aeo, pages, seo_issues, aeo_issues, total_actions), (3) reveals #orchestrator-results, (4) closes the confirm modal automatically, (5) shows a richer success toast "✓ Analisi del {date} caricata dalla cronologia", (6) scrolls to the result section so the user sees the restored data without manual scrolling.
 
 = 3.38.8 =
 * Cronologia "Riapri" — clicking a Riapri button on the analysis history now opens a confirmation modal ("Vuoi caricare questa analisi storica?") before restoring. Previously the click would call restoreFromHistory() directly and the legacy fields/outputs selectors didn't match the current orchestrator output panel, so nothing visibly happened. The modal also writes ?history_id=<id> to the URL via history.replaceState for shareable links.

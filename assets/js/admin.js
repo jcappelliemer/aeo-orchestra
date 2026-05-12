@@ -1,6 +1,118 @@
 (function($) {
     'use strict';
 
+    // 3.37.0 — Centralized typed-error handler. Backend (FastAPI) returns
+    // {error:"<code>", message:"...", meta:{...}} on license/credit
+    // failures. PHP wp_send_json() passes the JSON through unchanged.
+    // We intercept any AJAX response whose top-level "error" is a string
+    // (typed) and render a banner with the right CTA.
+    var SeoAeoTypedError = {
+
+        codes: {
+            'invalid_license':      { icon: 'shield-alt',  ctaKey: 'contact_url',   ctaLabel: 'Contatta supporto' },
+            'license_expired':      { icon: 'update',      ctaKey: 'renew_url',     ctaLabel: 'Rinnova licenza' },
+            'license_wrong_domain': { icon: 'admin-site',  ctaKey: 'dashboard_url', ctaLabel: 'Gestisci domini' },
+            'insufficient_credits': { icon: 'cart',        ctaKey: 'topup_url',     ctaLabel: 'Ricarica crediti' },
+            'insufficient_tier':    { icon: 'star-filled', ctaKey: 'upgrade_url',   ctaLabel: 'Aggiorna piano' },
+            'daily_cap_exceeded':   { icon: 'clock',       ctaKey: 'upgrade_url',   ctaLabel: 'Aggiorna piano' },
+            'rate_limited':         { icon: 'controls-pause', ctaKey: null, ctaLabel: '' }
+        },
+
+        // Returns true if the response was a typed error and we handled it.
+        // Returns false otherwise (caller continues normal processing).
+        handle: function(response) {
+            if (!response || typeof response !== 'object') return false;
+            if (typeof response.error !== 'string') return false;
+            if (!response.error) return false;
+
+            var code = response.error;
+            var msg  = response.message || 'Operazione non riuscita.';
+            var meta = response.meta || {};
+            var conf = this.codes[code] || { icon: 'warning', ctaKey: null, ctaLabel: '' };
+
+            var ctaUrl = conf.ctaKey ? (meta[conf.ctaKey] || '') : '';
+
+            this.render({
+                code: code,
+                message: msg,
+                meta: meta,
+                icon: conf.icon,
+                ctaUrl: ctaUrl,
+                ctaLabel: conf.ctaLabel
+            });
+            return true;
+        },
+
+        render: function(args) {
+            // Idempotent: keep only one banner per code on screen.
+            var existing = $('#orch-typed-err-' + args.code);
+            if (existing.length) {
+                existing.find('.orch-typed-err-msg').text(args.message);
+                return;
+            }
+
+            var $banner = $(
+                '<div id="orch-typed-err-' + args.code + '" class="notice notice-error orch-typed-err" ' +
+                'style="margin:12px 0;padding:14px 16px;border-left-width:4px;background:#fef6f6;display:flex;align-items:flex-start;gap:12px;">' +
+                  '<span class="dashicons dashicons-' + args.icon + '" style="font-size:24px;color:#b32d2e;flex-shrink:0;margin-top:2px;"></span>' +
+                  '<div style="flex:1;min-width:0;">' +
+                    '<div class="orch-typed-err-msg" style="font-weight:600;color:#111;margin-bottom:4px;"></div>' +
+                    '<div class="orch-typed-err-code" style="font-size:11px;color:#666;font-family:monospace;"></div>' +
+                  '</div>' +
+                  (args.ctaUrl ? '<a class="button button-primary" target="_blank" rel="noopener" style="flex-shrink:0;">' + args.ctaLabel + '</a>' : '') +
+                  '<button type="button" class="notice-dismiss" aria-label="Chiudi"></button>' +
+                '</div>'
+            );
+            $banner.find('.orch-typed-err-msg').text(args.message);
+            $banner.find('.orch-typed-err-code').text('error: ' + args.code);
+            if (args.ctaUrl) $banner.find('a.button').attr('href', args.ctaUrl);
+            $banner.find('.notice-dismiss').on('click', function() { $banner.fadeOut(180, function() { $(this).remove(); }); });
+
+            // Mount: prefer the .wrap container of the current admin page;
+            // fall back to body if not found.
+            var $mount = $('.wrap').first();
+            if (!$mount.length) $mount = $('body');
+            $mount.prepend($banner);
+
+            try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) {}
+        },
+
+        // Bootstrap: wire a global ajaxSuccess listener on admin-ajax.php
+        // responses. Note: wp_send_json() responds HTTP 200 even when the
+        // body carries a typed error, so .fail() handlers never fire.
+        bootstrap: function() {
+            var self = this;
+            $(document).on('ajaxSuccess', function(event, jqXHR, ajaxOptions, data) {
+                try {
+                    if (!ajaxOptions || !ajaxOptions.url) return;
+                    if (ajaxOptions.url.indexOf('admin-ajax.php') === -1) return;
+                    if (!data) return;
+                    // jQuery may give us already-parsed object or raw string.
+                    var payload = data;
+                    if (typeof data === 'string') {
+                        try { payload = JSON.parse(data); } catch (e) { return; }
+                    }
+                    // WP usually wraps with {success:bool, data:...}; raw
+                    // wp_send_json($result) passes through unchanged.
+                    if (payload && typeof payload === 'object') {
+                        if (payload.data && typeof payload.data === 'object') {
+                            self.handle(payload.data);
+                        }
+                        self.handle(payload);
+                    }
+                } catch (e) {
+                    if (window.console && console.warn) console.warn('[SeoAeoTypedError]', e);
+                }
+            });
+        }
+    };
+
+    // Expose for callers who want imperative checking inside their own
+    // success handler (e.g. `if (SeoAeoTypedError.handle(resp)) return;`).
+    window.SeoAeoTypedError = SeoAeoTypedError;
+
+    $(function() { SeoAeoTypedError.bootstrap(); });
+
     var SeoAeoOrchestra = {
 
         // i18n helper (3.25.1): translate string via window.seoAeoOrchestra.i18n map.
@@ -2465,7 +2577,7 @@
                 dialogHtml += '<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#065f46;">✨ ' + SeoAeoOrchestra.t('Prompt derivato automaticamente dal tuo articolo. Modificalo se vuoi.') + '</div>';
             }
             dialogHtml += '<p style="font-size:13px;color:#666;margin-bottom:12px;">' + SeoAeoOrchestra.t('Descrivi l\'immagine che vuoi generare. L\'AI creera un\'immagine unica e la inserira nel tuo articolo.') + '</p>';
-            dialogHtml += '<textarea id="ai-image-prompt" rows="4" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:14px;resize:vertical;" placeholder="Es: Un\'infografica professionale sulle pellicole per vetri antisolari...">' + (derivedPrompt || '') + '</textarea>';
+            dialogHtml += '<textarea id="ai-image-prompt" rows="4" style="width:100%;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:14px;resize:vertical;" placeholder="Es: Un\'infografica professionale per un articolo blog tecnico...">' + (derivedPrompt || '') + '</textarea>';
             dialogHtml += '<div style="display:flex;gap:8px;margin-top:12px;align-items:center;">';
             dialogHtml += '<span class="token-badge" style="font-size:11px;">~5 crediti</span>';
             dialogHtml += '<div style="flex:1;"></div>';

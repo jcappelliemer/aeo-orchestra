@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.36.8
+Stable tag: 3.37.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,22 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.37.1 =
+* Critical infrastructure: plugin now auto-invalidates OPcache + WP transient cache on update. Future updates propagate fixes reliably without manual server restart or cache flush.
+* Hidden admin diagnostic page (?page=seo-aeo-debug-cache) for cache state inspection + manual force-refresh — useful when a hosting provider has an aggressive OPcache configuration.
+* Includes all fixes from 3.37.0 (typed errors, late-emit DOMContentLoaded, AI Crawlers tab switch, cronologia restore, Solaris placeholder cleanup).
+
+= 3.37.0 =
+* Architectural change: AI credit consumption now requires an active license. Trial-expired (status=inactive) accounts cannot consume credits even if the wallet balance is positive.
+* Backend: typed error responses (402 insufficient_credits / 403 license_expired / 401 invalid_license) replace opaque generic errors. Applied to top 5 AI endpoints; the remaining 25 retain raw HTTPException for now (v3.37.1).
+* Plugin: centralized JS error handler with contextual banner + Renew / Top up / Upgrade / Settings CTAs surfaced from any AJAX response.
+* Fix (critical): inline scripts registered late (post-admin_print_scripts) now properly fire DOMContentLoaded callbacks. Previously, autosave and event listeners in Business Profile, SEO+AEO Output toggles, and AI Crawlers logs button were silently broken since the v3.36.0 wp_enqueue refactor.
+* Fix: SEO+AEO Output toggle state now syncs DOM without manual refresh (side-effect of late-emit JS fix).
+* Fix: AI Crawlers "Vedi log" button now opens the log viewer (side-effect of late-emit JS fix).
+* Fix: Business Profile autosave + Context AI preview regeneration now working (side-effect of late-emit JS fix).
+* Polish: removed legacy BETA label from Redirect Manager (feature stable since 3.15.0).
+* Polish: Business Profile placeholder examples cleaned up (Solaris client-specific examples replaced with generic ones). Comma separator support for tag inputs confirmed and documented in help text.
 
 = 3.36.8 =
 * CRITICAL FIX dashboard layout: wp_add_inline_style() called from inside template body buffers (the ob_start/ob_get_clean pattern in 25+ templates) was silently dropped by WordPress because admin_print_styles flushes queued styles in <head> BEFORE the template body runs, marking the handle as done. SEO_AEO_Inline_Assets::add_inline_style() now detects late calls via did_action(admin_print_styles) and defers emission to admin_print_footer_scripts, emitting a <style> tag at footer time. Same fix mirrored for add_inline_script. Restores the .orch-wiz-hero flex header and ~20-50KB of dashboard CSS that had been silently dropped since v3.36.0.

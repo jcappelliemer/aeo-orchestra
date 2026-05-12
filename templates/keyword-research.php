@@ -42,7 +42,7 @@ $_orch_kr_default_lang = in_array($_orch_kr_admin_locale, $_orch_kr_supported, t
         <p class="orch-kr-search-sub"><?php SEO_AEO_T::e('Descrivi nicchia, settore o argomento principale. Piu specifico, migliori i risultati.'); ?></p>
 
         <div class="orch-kr-form">
-            <input type="text" id="orch-kr-niche" placeholder="<?php echo esc_attr(SEO_AEO_T::t('es: Pellicole oscuranti per vetri auto, oppure Energia solare residenziale Bologna, oppure Marketing automation B2B per PMI...')); ?>" class="orch-kr-input">
+            <input type="text" id="orch-kr-niche" placeholder="<?php echo esc_attr(SEO_AEO_T::t('es: Software B2B per PMI, oppure Marketing automation, oppure Plugin SEO WordPress, oppure Consulenza IT...')); ?>" class="orch-kr-input">
             <div class="orch-kr-form-row">
                 <select id="orch-kr-language" class="orch-kr-input-sm">
                     <option value="it" <?php selected($_orch_kr_default_lang, 'it'); ?>><?php SEO_AEO_T::e('Italiano'); ?></option>

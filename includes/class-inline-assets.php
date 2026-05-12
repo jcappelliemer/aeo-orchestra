@@ -102,8 +102,39 @@ class SEO_AEO_Inline_Assets {
         if (did_action('admin_print_scripts') > 0 && did_action('admin_print_footer_scripts') > 0) {
             add_action('admin_footer', function () use ($js) {
                 $tag_id = 'seo-aeo-inline-late-' . substr(md5($js), 0, 8);
+                // 3.37.0 Module 8 — DOMContentLoaded timing fix. The 3.36.8 late-emit
+                // path solved the silent-drop CSS bug but introduced a regression:
+                // user code using document.addEventListener('DOMContentLoaded', cb)
+                // never ran its callback because DOMContentLoaded already fired by
+                // footer time. Wrap with a thin IIFE that, when readyState is past
+                // 'loading', temporarily intercepts document.addEventListener for
+                // the DOMContentLoaded event during user-code execution and fires
+                // the registered callback immediately. Other addEventListener calls
+                // (click/change/etc.) pass through unchanged. The patch is restored
+                // in finally{} so no global side effects survive the wrapper.
+                $wrapper  = "(function(){\n";
+                $wrapper .= "  if (document.readyState === 'loading') {\n";
+                $wrapper .= "    document.addEventListener('DOMContentLoaded', function(){\n";
+                $wrapper .= "      " . $js . "\n";
+                $wrapper .= "    });\n";
+                $wrapper .= "  } else {\n";
+                $wrapper .= "    var __seoAeoOrigAdd = document.addEventListener;\n";
+                $wrapper .= "    document.addEventListener = function(event, handler, options) {\n";
+                $wrapper .= "      if (event === 'DOMContentLoaded' && typeof handler === 'function') {\n";
+                $wrapper .= "        try { handler(new Event('DOMContentLoaded')); } catch(e) { if (window.console) console.error('[SeoAeoLateInit]', e); }\n";
+                $wrapper .= "        return;\n";
+                $wrapper .= "      }\n";
+                $wrapper .= "      return __seoAeoOrigAdd.call(document, event, handler, options);\n";
+                $wrapper .= "    };\n";
+                $wrapper .= "    try {\n";
+                $wrapper .= "      " . $js . "\n";
+                $wrapper .= "    } finally {\n";
+                $wrapper .= "      document.addEventListener = __seoAeoOrigAdd;\n";
+                $wrapper .= "    }\n";
+                $wrapper .= "  }\n";
+                $wrapper .= "})();\n";
                 // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JS is plugin-authored, trusted at framing layer; the only dynamic part is the tag_id (md5-hashed).
-                echo "\n<script id=\"" . esc_attr($tag_id) . "\">\n" . $js . "\n</script>\n";
+                echo "\n<script id=\"" . esc_attr($tag_id) . "\">\n" . $wrapper . "</script>\n";
             }, 999);
             return;
         }

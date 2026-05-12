@@ -479,32 +479,32 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
 
                 <details class="orch-bp-collapse" data-field="products_services">
                     <summary>Prodotti / Servizi (max 15) <span class="orch-bp-collapse-count">[<span data-count>0</span> compilati]</span> 🌐</summary>
-                    <p class="orch-bp-field-help">Catalogo concreto dell'offerta (es. "Pellicole antisolari", "Privacy films").</p>
+                    <p class="orch-bp-field-help">Catalogo concreto dell'offerta (es. "Software B2B", "Servizi consulenza"). Premi Enter o virgola dopo ogni voce.</p>
                     <div class="orch-bp-chips" data-orch-bp-tags="products_services" data-max="15">
-                        <input type="text" class="orch-bp-chip-input" placeholder="Aggiungi prodotto/servizio... (Enter)">
+                        <input type="text" class="orch-bp-chip-input" placeholder="Aggiungi prodotto/servizio... (Enter o ,)">
                     </div>
                 </details>
 
                 <details class="orch-bp-collapse" data-field="use_cases">
                     <summary>Casi d'uso (max 5) <span class="orch-bp-collapse-count">[<span data-count>0</span> compilati]</span> 🌐</summary>
-                    <p class="orch-bp-field-help">Scenari applicativi tipici (es. "Scuole e RSA: adeguamento sicurezza vetri").</p>
+                    <p class="orch-bp-field-help">Scenari applicativi tipici (es. "PMI: migrazione SEO da Yoast", "Agenzie: audit multi-cliente").</p>
                     <div class="orch-bp-repeat-list" data-orch-bp-repeat="use_cases" data-max="5"></div>
                     <button type="button" class="orch-bp-add-btn" data-orch-bp-add="use_cases">+ Aggiungi caso d'uso</button>
                 </details>
 
                 <details class="orch-bp-collapse" data-field="suppliers_partners">
                     <summary>Fornitori e partner (max 5) <span class="orch-bp-collapse-count">[<span data-count>0</span> compilati]</span> 🌐</summary>
-                    <p class="orch-bp-field-help">Brand partner / fornitori chiave (es. "Madico" partner USA).</p>
+                    <p class="orch-bp-field-help">Brand partner / fornitori chiave (es. "Anthropic" provider AI, "Hostinger" hosting). Premi Enter o virgola dopo ogni voce.</p>
                     <div class="orch-bp-chips" data-orch-bp-tags="suppliers_partners" data-max="5">
-                        <input type="text" class="orch-bp-chip-input" placeholder="Aggiungi fornitore... (Enter)">
+                        <input type="text" class="orch-bp-chip-input" placeholder="Aggiungi fornitore... (Enter o ,)">
                     </div>
                 </details>
 
                 <details class="orch-bp-collapse" data-field="territories">
                     <summary>Area di servizio (max 8) <span class="orch-bp-collapse-count">[<span data-count>0</span> compilati]</span> 🌐</summary>
-                    <p class="orch-bp-field-help">Territori coperti (es. "Italia", "Spagna", "Europa").</p>
+                    <p class="orch-bp-field-help">Territori coperti (es. "Italia", "Spagna", "Europa"). Premi Enter o virgola dopo ogni voce.</p>
                     <div class="orch-bp-chips" data-orch-bp-tags="territories" data-max="8">
-                        <input type="text" class="orch-bp-chip-input" placeholder="Aggiungi area... (Enter)">
+                        <input type="text" class="orch-bp-chip-input" placeholder="Aggiungi area... (Enter o ,)">
                     </div>
                 </details>
             </div>
@@ -531,9 +531,9 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
 
                 <div class="orch-bp-field" data-field="competitors">
                     <label class="orch-bp-field-label">Concorrenti diretti (max 10) <span class="orch-bp-field-icon">🔒</span></label>
-                    <p class="orch-bp-field-help">Inserisci concorrenti percepiti per ottenere analisi comparative AI ("come ti posizioni rispetto a loro").</p>
+                    <p class="orch-bp-field-help">Inserisci concorrenti percepiti per ottenere analisi comparative AI ("come ti posizioni rispetto a loro"). Premi Enter o virgola dopo ogni voce.</p>
                     <div class="orch-bp-chips" data-orch-bp-tags="competitors" data-max="10">
-                        <input type="text" class="orch-bp-chip-input" placeholder="Aggiungi concorrente... (Enter)">
+                        <input type="text" class="orch-bp-chip-input" placeholder="Aggiungi concorrente... (Enter o ,)">
                     </div>
                 </div>
 

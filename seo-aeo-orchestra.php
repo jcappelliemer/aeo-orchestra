@@ -4,7 +4,7 @@
  * Plugin Name: AEO Orchestra
  * Plugin URI: https://aeo-orchestra.com
  * Description: Plugin SEO + AEO completo: specialisti AI perfettamente orchestrati per meta tags, content generation, schema, llms.txt, sitemap, redirect manager, brand voice e altro.
- * Version: 3.36.8
+ * Version: 3.37.1
  * Requires at least: 5.8
  * Tested up to: 6.9
  * Requires PHP: 7.4
@@ -27,7 +27,7 @@
  */
 if (!defined('ABSPATH')) exit;
 
-define('SEO_AEO_VERSION', '3.36.8');
+define('SEO_AEO_VERSION', '3.37.1');
 define('SEO_AEO_AGENTS_COUNT', 13);  // 3.35.84.2: +Verify-Live  // mirrors backend/helpers/config.py AGENTS_COUNT — bump on every new agent
 define('SEO_AEO_TOOLS_COUNT', 22);   // 3.35.84.2: +Verify-Live, Profilo Business, AI Performance, AI Crawlers   // mirrors backend/helpers/config.py TOOLS_COUNT — bump on every new tool
 define('SEO_AEO_DIR', plugin_dir_path(__FILE__));
@@ -444,4 +444,222 @@ function seo_aeo_php_version_notice() {
         });
     }
 }
+
+
+/* ═════════════════════════════════════════════════════════════════════
+ * 3.37.1 — Module 15. Self-cache-invalidation on plugin upgrade.
+ *
+ * Why: WordPress fires upgrader_process_complete after a successful plugin
+ * update, BUT the PHP files newly written to disk are NOT yet visible to
+ * the request: PHP OPcache still serves the stale bytecode of the old
+ * version until the OPcache TTL expires (default 2s — but premium hosts
+ * with revalidate_freq=0 and validate_timestamps=0 may need a full
+ * webserver restart). Plus plugin-feature caches (Business Profile,
+ * Identity, AI Performance stats) sit in WP transients and may serve
+ * pre-update output for hours.
+ *
+ * What: file-scoped opcache_invalidate() across the plugin tree (NEVER
+ * global opcache_reset — that would disrupt unrelated plugins/themes),
+ * plus a bulk delete of every transient whose key starts with
+ * `_transient_seo_aeo_` (and its companion `_transient_timeout_`),
+ * plus delete_site_transient('update_plugins') so the WP update-check
+ * banner stops loop-showing "update available" after install.
+ *
+ * Ships in BOTH paid and wporg builds. (class-updater.php — paid only —
+ * still handles its own updater-cache cleanup; the two hooks compose
+ * cleanly: this one focuses on bytecode + feature-transients.)
+ * ════════════════════════════════════════════════════════════════════ */
+
+function seo_aeo_module15_cache_invalidate($upgrader, $hook_extra) {
+    // Only react to plugin updates (not theme / core / translation).
+    if (empty($hook_extra['type']) || $hook_extra['type'] !== 'plugin') {
+        return;
+    }
+    if (empty($hook_extra['plugins']) || !is_array($hook_extra['plugins'])) {
+        return;
+    }
+    $this_plugin = plugin_basename(__FILE__);
+    if (!in_array($this_plugin, $hook_extra['plugins'], true)) {
+        return;
+    }
+
+    // (1) OPcache — invalidate each PHP file under this plugin dir.
+    $opcache_count = 0;
+    if (function_exists('opcache_invalidate') && function_exists('opcache_get_status')) {
+        $status = @opcache_get_status(false);
+        if (!empty($status['opcache_enabled'])) {
+            $plugin_dir = plugin_dir_path(__FILE__);
+            try {
+                $iter = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($plugin_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+                    RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                foreach ($iter as $f) {
+                    if ($f->isFile() && strtolower($f->getExtension()) === 'php') {
+                        if (@opcache_invalidate($f->getPathname(), true)) {
+                            $opcache_count++;
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+                if (defined('WP_DEBUG') && WP_DEBUG && function_exists('seo_aeo_debug_log')) {
+                    seo_aeo_debug_log('Module 15 OPcache invalidate exception: ' . $e->getMessage());
+                }
+            }
+        }
+    }
+
+    // (2) Plugin feature transients — enumerate matching keys, then delete via
+    //     delete_transient() so both the DB row AND the WP_Object_Cache (in-memory
+    //     options group) are invalidated. A raw DELETE FROM {options} would clear
+    //     the table but leave a stale cached value visible to the same request.
+    $deleted_transients = 0;
+    global $wpdb;
+    if (isset($wpdb)) {
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+        $rows = $wpdb->get_col(
+            "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE '_transient_seo_aeo_%'"
+        );
+        // phpcs:enable
+        if (is_array($rows)) {
+            foreach ($rows as $opt_name) {
+                // strip the '_transient_' prefix to get the transient "name"
+                if (strpos($opt_name, '_transient_') === 0 && strpos($opt_name, '_transient_timeout_') !== 0) {
+                    $tname = substr($opt_name, strlen('_transient_'));
+                    if (delete_transient($tname)) {
+                        $deleted_transients++;
+                    }
+                }
+            }
+        }
+        // Also clear the companion _transient_timeout_ rows (delete_transient
+        // normally handles these, but be defensive in case any drifted).
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+        $wpdb->query(
+            "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_timeout_seo_aeo_%'"
+        );
+        // phpcs:enable
+    }
+
+    // (3) Object cache group flush (Redis/Memcached backends).
+    if (function_exists('wp_cache_flush_group')) {
+        @wp_cache_flush_group('seo_aeo_orchestra');
+    }
+
+    // (4) Force WP update-check refresh — stops the "update available" banner
+    //     looping after install on hosts with aggressive object-cache TTLs.
+    delete_site_transient('update_plugins');
+    if (function_exists('wp_clean_plugins_cache')) {
+        wp_clean_plugins_cache(true);
+    }
+
+    // (5) Debug log only under WP_DEBUG (no production spam).
+    if (defined('WP_DEBUG') && WP_DEBUG && function_exists('seo_aeo_debug_log')) {
+        seo_aeo_debug_log(sprintf(
+            'Module 15 cache invalidated on upgrade to %s — opcache_files=%d, transients=%d',
+            SEO_AEO_VERSION,
+            $opcache_count,
+            $deleted_transients
+        ));
+    }
+}
+add_action('upgrader_process_complete', 'seo_aeo_module15_cache_invalidate', 10, 2);
+
+
+/* Hidden diagnostic page: WP Admin → URL `?page=seo-aeo-debug-cache`.
+ * Not in the menu (parent_slug = null) — only reachable by typing the URL or
+ * via the "Cache Debug" link we render at the bottom of Impostazioni.
+ * Lets the user inspect cache state + manually re-run Module 15. */
+
+add_action('admin_menu', function () {
+    add_submenu_page(
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only menu registration
+        null,
+        'AEO Orchestra — Cache Debug',
+        'Cache Debug',
+        'manage_options',
+        'seo-aeo-debug-cache',
+        'seo_aeo_module15_render_debug_page'
+    );
+}, 999);
+
+function seo_aeo_module15_render_debug_page() {
+    if (!current_user_can('manage_options')) {
+        wp_die('Forbidden');
+    }
+
+    // Handle force-refresh action.
+    $did_refresh = false;
+    if (isset($_POST['seo_aeo_action']) && $_POST['seo_aeo_action'] === 'force_refresh') {
+        check_admin_referer('seo_aeo_debug_cache');
+        seo_aeo_module15_cache_invalidate(null, array(
+            'type'    => 'plugin',
+            'plugins' => array(plugin_basename(__FILE__)),
+        ));
+        $did_refresh = true;
+    }
+
+    // State inspection.
+    $version_const = defined('SEO_AEO_VERSION') ? SEO_AEO_VERSION : '(undefined)';
+    $main_file     = __FILE__;
+    $main_mtime    = file_exists($main_file) ? gmdate('Y-m-d H:i:s', filemtime($main_file)) . ' UTC' : '(missing)';
+    $opcache_status = function_exists('opcache_get_status') ? @opcache_get_status(false) : null;
+    $opcache_on    = !empty($opcache_status['opcache_enabled']);
+    $opcache_scripts = $opcache_on ? (int) ($opcache_status['opcache_statistics']['num_cached_scripts'] ?? 0) : 0;
+
+    // Count plugin transients currently in DB.
+    global $wpdb;
+    $transient_count = 0;
+    if (isset($wpdb)) {
+        // phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+        $transient_count = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE '_transient_seo_aeo_%'"
+        );
+        // phpcs:enable
+    }
+    ?>
+    <div class="wrap">
+        <h1>🔧 AEO Orchestra — Cache Debug</h1>
+        <p style="max-width:760px;color:#555;">
+            Pagina diagnostica per investigare lo stato della cache PHP / WordPress quando
+            un aggiornamento del plugin non sembra essere applicato. Normalmente non serve —
+            il plugin invalida la cache automaticamente al momento dell'update.
+        </p>
+
+        <?php if ($did_refresh) : ?>
+            <div class="notice notice-success"><p><strong>✓ Cache invalidata.</strong> Ricarica le pagine admin per vedere il risultato.</p></div>
+        <?php endif; ?>
+
+        <table class="form-table">
+            <tr><th scope="row">Versione (costante)</th><td><code><?php echo esc_html($version_const); ?></code></td></tr>
+            <tr><th scope="row">Main file mtime</th><td><code><?php echo esc_html($main_mtime); ?></code></td></tr>
+            <tr><th scope="row">OPcache attivo</th><td><?php echo $opcache_on ? '✓ Sì' : '✗ No (o non disponibile)'; ?></td></tr>
+            <?php if ($opcache_on) : ?>
+                <tr><th scope="row">Script cachati (OPcache)</th><td><?php echo esc_html((string) $opcache_scripts); ?></td></tr>
+            <?php endif; ?>
+            <tr><th scope="row">Transient plugin in DB</th><td><?php echo esc_html((string) $transient_count); ?></td></tr>
+        </table>
+
+        <form method="post">
+            <?php wp_nonce_field('seo_aeo_debug_cache'); ?>
+            <input type="hidden" name="seo_aeo_action" value="force_refresh" />
+            <p>
+                <button type="submit" class="button button-primary">🔄 Force Cache Refresh</button>
+                <span style="color:#666;margin-left:10px;">
+                    Invalida OPcache di tutti i file PHP del plugin + flush transient + ricarica update-check.
+                </span>
+            </p>
+        </form>
+
+        <hr style="margin-top:30px;" />
+        <p style="font-size:12px;color:#888;">
+            <strong>Quando usarla:</strong> se aggiorni il plugin (manualmente o via WP auto-update)
+            e una modifica annunciata in changelog non sembra propagata sul tuo sito —
+            tipicamente perché il tuo hosting ha un OPcache aggressivo. Prima di contattare il
+            supporto, prova questo pulsante.
+        </p>
+    </div>
+    <?php
+}
+
 

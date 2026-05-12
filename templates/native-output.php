@@ -382,7 +382,7 @@ if (is_admin() && defined('SEO_AEO_URL')) {
                             </div>
 
                             <label class="orch-identity-label">twitter:site (handle azienda)</label>
-                            <input type="text" id="orch-twitter-site" class="orch-identity-input" placeholder="@SolarisFilms" />
+                            <input type="text" id="orch-twitter-site" class="orch-identity-input" placeholder="@yourbrand" />
 
                             <label class="orch-identity-label">twitter:creator</label>
                             <div class="orch-schema-modes">
@@ -4803,10 +4803,10 @@ if (is_admin() && defined('SEO_AEO_URL')) {
     // (whitespace-only between brand and country). Brand (Country) pattern is excluded explicitly.
     var BRAND_COUNTRY_REGEX_PARENS_SAFE = true;
     var COUNTRIES_PATTERN = '(USA|US|Italia|UK|Germany|France|Spain|Spagna|Italy|Stati Uniti|Cina|China|Giappone|Japan)';
-    // 1. Adjacency without separator: "Madico USA" — match if whitespace-only between brand and country
+    // 1. Adjacency without separator: "Acme USA" — match if whitespace-only between brand and country
     //    (excluded if directly preceded by '(' which means the user used the parenthetical disambiguation)
     var BRAND_COUNTRY_RE_ADJACENT = new RegExp('(?<![\\(])\\b([A-Z][A-Za-z0-9&-]{2,})\\s+' + COUNTRIES_PATTERN + '\\b(?!\\))', '');
-    // 2. Middle-dot or comma: "Madico · USA" or "Madico, USA" — match if NOT followed by closing paren
+    // 2. Middle-dot or comma: "Acme · USA" or "Acme, USA" — match if NOT followed by closing paren
     var BRAND_COUNTRY_RE_SEP = new RegExp('\\b([A-Z][A-Za-z0-9&-]{2,})\\s*[·,]\\s*' + COUNTRIES_PATTERN + '\\b(?!\\))', '');
     // Combined matcher used by attachBrandCountryCoach
     function _detectBrandCountryProblem(text) {

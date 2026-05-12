@@ -85,7 +85,7 @@ $seo_aeo_plugin_name_label = $seo_aeo_is_other_seo_active && isset($seo_aeo_labe
         <a id="orch-redirect"></a>
         <div class="orch-native-head">
             <div>
-                <h2 class="orch3-h2"><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Redirect Manager')) : 'Redirect Manager'; ?> <span class="orch-native-beta-badge">Beta</span></h2>
+                <h2 class="orch3-h2"><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Redirect Manager')) : 'Redirect Manager'; ?></h2>
                 <p class="orch3-muted" style="margin:4px 0 0; font-size:13px;"><?php echo class_exists('SEO_AEO_T') ? wp_kses_post(SEO_AEO_T::t('Gestisci redirect 301/302/307/308 con regex e backreferences, importa redirect da Yoast Premium o plugin Redirection, AI 404 suggester.')) : 'Gestisci redirect 301/302/307/308 con regex e backreferences, importa redirect da Yoast Premium o plugin Redirection, AI 404 suggester.'; ?></p>
             </div>
             <button type="button" class="orch3-btn orch3-btn-ghost orch-native-toggle-card" aria-expanded="true"><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Nascondi')) : 'Nascondi'; ?></button>

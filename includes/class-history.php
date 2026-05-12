@@ -73,7 +73,13 @@ class SEO_AEO_Orchestra_History {
             if (is_string($rp_raw) && strlen($rp_raw) <= self::MAX_RESTORE_BYTES) {
                 $decoded = json_decode($rp_raw, true);
                 if (is_array($decoded)) {
-                    $clean = $this->sanitize_recursive($decoded);
+                    // 3.37.0 Module 10 — restore_payload has CSS-selector keys
+                    // (e.g. "#orch-page-results") + HTML string values. The
+                    // generic sanitize_recursive() called sanitize_key() on
+                    // keys which stripped '#' → broken selectors; and
+                    // sanitize_text_field() on values which stripped tags →
+                    // empty restored content. Use the dedicated helper.
+                    $clean = $this->sanitize_restore_payload($decoded);
                     $restore_payload = wp_json_encode($clean);
                     if (!is_string($restore_payload)) $restore_payload = '';
                 }
@@ -174,6 +180,58 @@ class SEO_AEO_Orchestra_History {
         }
         if (is_string($value)) return sanitize_text_field($value);
         if (is_int($value) || is_float($value) || is_bool($value) || is_null($value)) return $value;
+        return '';
+    }
+
+    /**
+     * 3.37.0 Module 10 — sanitize restore_payload tree.
+     *
+     * The payload contains:
+     *   - top-level keys: "fields", "outputs", "view_html", "meta"
+     *   - inside fields/outputs: keys are CSS selectors (e.g. "#orch-page-results",
+     *     "[name=\"meta_title\"]") and values are either form values (strings)
+     *     or HTML markup (strings)
+     *
+     * Generic sanitize_recursive is wrong here because sanitize_key() strips
+     * the leading '#' and other selector chars, and sanitize_text_field() strips
+     * HTML tags. The payload is admin-only (nonce-gated AJAX) and is later
+     * rendered back into the same admin UI that wrote it.
+     *
+     * This helper preserves CSS-selector keys verbatim (when they match a safe
+     * regex) and uses wp_kses_post on string values to safely retain HTML.
+     */
+    private function sanitize_restore_payload($value) {
+        if (is_array($value)) {
+            $out = array();
+            foreach ($value as $k => $v) {
+                if (is_string($k)) {
+                    // Allow CSS-selector chars: letters, digits, _ - # . [ ] = " '  space : , >
+                    // Length cap 200 chars (generous for nested selectors).
+                    if (strlen($k) > 200) continue;
+                    if (preg_match('/^[A-Za-z0-9_\-#.\[\]="\' :,>]+$/u', $k)) {
+                        $clean_key = $k;
+                    } else {
+                        // Fallback: strip-down to a sanitize_key shape so we still
+                        // get a key (but won't match a real DOM selector).
+                        $clean_key = sanitize_key($k);
+                        if ($clean_key === '') continue;
+                    }
+                } else {
+                    $clean_key = (int) $k;
+                }
+                $out[$clean_key] = $this->sanitize_restore_payload($v);
+            }
+            return $out;
+        }
+        if (is_string($value)) {
+            // wp_kses_post: preserves post-allowed HTML, strips <script>, JS event
+            // handlers, javascript: hrefs, etc. Bounds size to MAX_RESTORE_BYTES
+            // is enforced at the outer level (raw $_POST length check).
+            return wp_kses_post($value);
+        }
+        if (is_int($value) || is_float($value) || is_bool($value) || is_null($value)) {
+            return $value;
+        }
         return '';
     }
 

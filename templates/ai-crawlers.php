@@ -251,12 +251,10 @@ $provider_labels = array(
         $.post(ajaxurl, {action: 'orch_ai_crawler_save_privacy', nonce: nonce, log_ip: v});
     });
 
-    $(document).on('click', '.orch-bot-view-log', function(e) {
-        e.preventDefault();
-        var slug = $(this).data('bot-slug');
-        $('#orch-log-bot-filter').val(slug);
-        $('.nav-tab[data-orch-tab="log"]').click();
-    });
+    // 3.37.0 Module 9 — moved to dedicated jQuery(document).ready block below
+    // so the handler is registered even when seoAeoOrchestra global is missing
+    // (Block 1 IIFE bails early on that condition; was the root cause of the
+    // "→ vedi log" click changing URL hash without activating the tab).
 
     // ── Crawler Log ────────────────────────────────────────────
     function loadStats() {
@@ -424,5 +422,34 @@ jQuery(document).ready(function($) {
     } else {
         activateTab('tab-allowlist');
     }
+
+    // 3.37.0 Module 9 — "→ vedi log" buttons per-bot. Sets the log filter,
+    // then activates the log tab via the same activateTab() function used by
+    // the nav-tab click handler above. Independent of seoAeoOrchestra global,
+    // so works even when Block 1 IIFE bails out.
+    $(document).on('click', '.orch-bot-view-log', function(e) {
+        e.preventDefault();
+        var $btn = $(this);
+        var slug = $btn.data('bot-slug') || $btn.attr('data-bot-slug') || '';
+        var $filter = $('#orch-log-bot-filter');
+        if (slug && $filter.length) {
+            $filter.val(slug).trigger('change');
+        }
+        activateTab('tab-log');
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', '#tab-log');
+        }
+    });
+
+    // 3.37.0 Module 9 — hashchange listener for deep-link navigation.
+    // Lets external URLs like ?page=seo-aeo-ai-crawlers#tab-log activate the
+    // right tab even when the URL changes after initial load (e.g. browser
+    // back/forward, or third-party scripts mutating location.hash).
+    $(window).on('hashchange', function() {
+        var h = (window.location.hash || '').replace('#', '');
+        if (h && h.indexOf('tab-') === 0) {
+            activateTab(h);
+        }
+    });
 });
 <?php SEO_AEO_Inline_Assets::add_inline_script(ob_get_clean()); ?>

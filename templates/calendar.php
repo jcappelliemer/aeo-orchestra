@@ -224,11 +224,11 @@ body.orch-cal-modal-lock { overflow:hidden !important; }
         <h2 id="orch-cal-modal-title">&nbsp;</h2>
         <div class="field">
             <label><?php echo esc_html(SEO_AEO_T::t('Topic / Argomento')); ?> *</label>
-            <input type="text" id="orch-cal-f-topic" placeholder="<?php echo esc_html(SEO_AEO_T::t('Es. Come scegliere pellicola controllo solare')); ?>" />
+            <input type="text" id="orch-cal-f-topic" placeholder="<?php echo esc_html(SEO_AEO_T::t('Es. Come scegliere un plugin SEO per WordPress')); ?>" />
         </div>
         <div class="field">
             <label><?php echo esc_html(SEO_AEO_T::t('Keyword target')); ?></label>
-            <input type="text" id="orch-cal-f-keyword" placeholder="<?php echo esc_html(SEO_AEO_T::t('Es. pellicole vetri estate')); ?>" />
+            <input type="text" id="orch-cal-f-keyword" placeholder="<?php echo esc_html(SEO_AEO_T::t('Es. plugin seo wordpress')); ?>" />
             <div class="help"><?php echo esc_html(SEO_AEO_T::t('Lascia vuoto per usare il topic come keyword.')); ?></div>
         </div>
         <div class="row">
@@ -314,7 +314,7 @@ body.orch-cal-modal-lock { overflow:hidden !important; }
             </div>
             <div class="field">
                 <label><?php echo esc_html(SEO_AEO_T::t('Nicchia / settore')); ?> (<?php echo esc_html(SEO_AEO_T::t('opzionale')); ?>)</label>
-                <input type="text" id="orch-cal-bulk-niche" placeholder="<?php echo esc_html(SEO_AEO_T::t('Es. pellicole per vetri, marketing B2B')); ?>" />
+                <input type="text" id="orch-cal-bulk-niche" placeholder="<?php echo esc_html(SEO_AEO_T::t('Es. software b2b, marketing automation')); ?>" />
                 <div class="help"><?php echo esc_html(SEO_AEO_T::t('Aiuta l\'AI a generare topic più rilevanti. Costo: 5 crediti.')); ?></div>
             </div>
         </div>

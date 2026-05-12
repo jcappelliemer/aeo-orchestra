@@ -564,7 +564,7 @@ class SEO_AEO_Output_Renderer {
     public static function get_canonical_settings() {
         $defaults = array(
             'strategy'           => 'auto',          // auto | force_same_domain | custom
-            'canonical_domain'   => '',              // e.g. 'https://www.solarisfilms.it' (empty = home_url)
+            'canonical_domain'   => '',              // e.g. 'https://www.example.com' (empty = home_url)
             'custom_prefix'      => '',
             'trailing_slash'     => 'wp_default',    // wp_default | with | without
             'paginated_first'    => true,            // canonical of /page/2 → page 1

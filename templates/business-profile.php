@@ -649,6 +649,60 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
     }
 
     // Tag chips
+    // 3.38.2 Task 6 — counter sync for chip-input fields. The existing
+    // updateStructCount($list) only walks data-orch-bp-repeat-card children
+    // (used by the text-repeater fields like differentiators/use_cases), so
+    // chip fields (products_services / suppliers_partners / territories /
+    // competitors) always showed "0 compilati" regardless of actual content.
+    function updateChipCount($container) {
+        var n = $container.find('.orch-bp-chip').length;
+        $container.closest('details').find('[data-count]').text(n);
+    }
+
+    // 3.38.6 — Universal counter sync. The previous version iterated
+    // [data-orch-bp-tags] + [data-orch-bp-repeat] separately, which worked
+    // when the chip/struct render paths matched their expected wrappers.
+    // But if a chip is inserted under a different DOM path (e.g. server-
+    // rendered chips that JS doesn't recognize as its own), the per-wrapper
+    // count returns 0 even though the user sees chips on screen.
+    //
+    // This version walks every details.orch-bp-collapse, locates the
+    // [data-count] span in its summary, and counts ANY item-child inside —
+    // .orch-bp-chip OR [data-orch-bp-repeat-card] OR .orch-bp-repeat-card.
+    // Survives all hydration paths since it operates on the visible DOM
+    // after everything has finished rendering.
+    function syncAllCounters() {
+        $form.find('details.orch-bp-collapse').each(function() {
+            var $det = $(this);
+            var $countSpan = $det.find('[data-count]').first();
+            if (!$countSpan.length) return;
+            // Count any item-child regardless of class. Both chip + struct.
+            var n = $det.find('.orch-bp-chip, [data-orch-bp-repeat-card], .orch-bp-repeat-card').length;
+            $countSpan.text(n);
+        });
+    }
+
+    // 3.38.6 — MutationObserver belt-and-braces. Re-run syncAllCounters
+    // whenever ANY DOM change happens inside $form. This catches every
+    // possible mutation source: chip add/remove, struct add/remove, drag-
+    // reorder, autosave-triggered re-render, or future code paths we haven't
+    // anticipated. The observer is throttled to fire at most once per
+    // animation frame to avoid pathological CPU usage.
+    var _syncRaf = null;
+    function _scheduleSync() {
+        if (_syncRaf) return;
+        _syncRaf = requestAnimationFrame(function () {
+            _syncRaf = null;
+            syncAllCounters();
+        });
+    }
+    $(function () {
+        var formEl = $form[0];
+        if (!formEl || typeof MutationObserver === 'undefined') return;
+        var obs = new MutationObserver(_scheduleSync);
+        obs.observe(formEl, { childList: true, subtree: true });
+    });
+
     function addChip($container, value) {
         if (!value || !value.trim()) return;
         value = value.trim();
@@ -663,6 +717,7 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
         if (dup) return;
         var html = '<span class="orch-bp-chip"><span class="orch-bp-chip-label">' + escapeHtml(value) + '</span><button type="button" class="orch-bp-chip-remove" aria-label="Rimuovi">×</button></span>';
         $container.find('.orch-bp-chip-input').before(html);
+        updateChipCount($container);
         triggerSave();
     }
 
@@ -684,6 +739,8 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
                 }
             });
         }
+        // 3.38.2 Task 6 — sync counter after bulk render from saved data.
+        updateChipCount($container);
     }
 
     $(document).on('keydown', '.orch-bp-chip-input', function(e) {
@@ -697,7 +754,10 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
     });
     $(document).on('click', '.orch-bp-chip-remove', function(e) {
         e.preventDefault();
+        var $container = $(this).closest('.orch-bp-chips');
         $(this).closest('.orch-bp-chip').remove();
+        // 3.38.2 Task 6 — sync counter after remove.
+        if ($container.length) updateChipCount($container);
         triggerSave();
     });
 
@@ -862,6 +922,8 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
             });
             // Update counters
             $form.find('.orch-bp-input, .orch-bp-textarea').each(function() { updateCounter($(this)); });
+            // 3.38.4 — defensive backstop sync (covers any missed per-field path)
+            syncAllCounters();
             updateCompletion(data.stats);
             updatePreview();
             setAutosave('saved');

@@ -569,7 +569,11 @@
 }
 
 /* History section */
+.orchestra-history-container { display: block; width: 100%; box-sizing: border-box; }
 .orchestra-history {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
     margin-top: 30px;
     padding: 20px;
     background: #fafafa;
@@ -582,7 +586,14 @@
     color: #333;
 }
 .history-item {
+    /* 3.38.2 Task 7 — force full-width stack regardless of ancestor flex.
+       Some admin shells / themes render the wrap or container as flex,
+       which makes history items flow horizontally with overflow. */
     display: flex;
+    flex: 0 0 100%;
+    width: 100%;
+    box-sizing: border-box;
+    flex-direction: row;
     justify-content: space-between;
     align-items: center;
     padding: 10px 15px;
@@ -777,9 +788,8 @@
     color: #fff !important;
     border-color: #0055FF !important;
 }
+/* 3.38.2 Task 7 — merged into the primary .history-item rule above. */
 .history-item {
-    display: flex;
-    align-items: center;
     gap: 12px;
 }
 

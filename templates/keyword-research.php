@@ -288,15 +288,72 @@ jQuery(function($) {
         }).done(function(resp) {
             $('#orch-kr-loading').slideUp(150);
             $btn.prop('disabled', false);
+            // 3.38.2 Task 8 — distinguish typed empty_result from generic error.
+            // Backend Module 13 returns {error: "empty_result", message, meta:
+            // {refunded: 15}} with HTTP 422; PHP wp_send_json passes the body
+            // through (HTTP 200 from JS perspective). Show GREEN refund banner
+            // + skip history save (no debit to log).
+            if (resp && typeof resp.error === 'string' && resp.error === 'empty_result') {
+                var refunded = (resp.meta && resp.meta.refunded) || 15;
+                $('#orch-kr-results').html(
+                    '<div class="orchestra-notice success" style="background:#dcfce7;border-color:#86efac;color:#065f46;padding:14px 18px;border-radius:8px;">' +
+                    '<strong>✓ ' + (krT.refundedTitle || 'Crediti rimborsati') + '</strong><br>' +
+                    (resp.message || krT.emptyResultMsg || 'Il modello AI non ha generato keyword sufficienti.') +
+                    ' <span style="opacity:0.8;">(' + refunded + ' cr ' + (krT.refundedLabel || 'rimborsati') + ')</span><br>' +
+                    '<span style="font-size:12px;opacity:0.85;">' + (krT.emptyResultSuggest || 'Prova un input più specifico o in inglese.') + '</span>' +
+                    '</div>'
+                );
+                return;
+            }
+            // Other typed errors (license, credits, upstream_unavailable, etc.)
+            // → backend returned JSON with typed error code. Show backend message
+            // with REFUND notice if reservation was refunded (server-side log).
+            if (resp && typeof resp.error === 'string') {
+                var refunded = (resp.meta && resp.meta.refunded) || 0;
+                if (refunded > 0) {
+                    $('#orch-kr-results').html(
+                        '<div class="orchestra-notice success" style="background:#dcfce7;border-color:#86efac;color:#065f46;padding:14px 18px;border-radius:8px;">' +
+                        '<strong>✓ ' + (krT.refundedTitle || 'Crediti rimborsati') + '</strong><br>' +
+                        escapeHtml(resp.message || resp.error) +
+                        ' <span style="opacity:0.8;">(' + refunded + ' cr ' + (krT.refundedLabel || 'rimborsati') + ')</span>' +
+                        '</div>'
+                    );
+                } else {
+                    $('#orch-kr-results').html('<div class="orchestra-notice error">' + escapeHtml(resp.message || resp.error) + '</div>');
+                }
+                return;
+            }
+            // 3.38.7 — WP-side network / nginx failure (error === true bool, NOT a
+            // typed error). Most common cause: LLM call took longer than nginx
+            // proxy_read_timeout (was 120s, now 300s in v3.38.7). Show a
+            // timeout-flavoured banner with retry suggestion. Backend Module 13
+            // refund already triggered server-side when reservation expires
+            // via TTL or when the next reserve call's reconcile loop runs.
             if (!resp || resp.error) {
-                $('#orch-kr-results').html('<div class="orchestra-notice error">' + escapeHtml(resp && (resp.error || resp.message) || krT.genericError) + '</div>');
+                var rawMsg = (resp && (resp.message || resp.error)) || '';
+                var msgStr = String(rawMsg).toLowerCase();
+                var isTimeoutLike = msgStr.indexOf('timeout') !== -1 ||
+                                    msgStr.indexOf('timed out') !== -1 ||
+                                    msgStr.indexOf('risposta non valida') !== -1 ||
+                                    msgStr.indexOf('curl') !== -1;
+                if (isTimeoutLike) {
+                    $('#orch-kr-results').html(
+                        '<div class="orchestra-notice error" style="padding:14px 18px;border-radius:8px;">' +
+                        '<strong>⏱ ' + (krT.timeoutTitle || 'Tempo esaurito') + '</strong><br>' +
+                        (krT.timeoutMsg || 'Il modello AI ha impiegato più tempo del previsto. Riprova con meno keyword (10-20) o un input più specifico.') + '<br>' +
+                        '<span style="font-size:12px;opacity:0.85;">' + (krT.refundDelayed || 'Se i crediti sono stati addebitati erroneamente, verranno rimborsati automaticamente entro 10 minuti.') + '</span>' +
+                        '</div>'
+                    );
+                } else {
+                    $('#orch-kr-results').html('<div class="orchestra-notice error">' + escapeHtml(rawMsg || krT.genericError) + '</div>');
+                }
                 return;
             }
             var html = renderResults(resp);
             $('#orch-kr-results').html(html);
             $('html, body').animate({ scrollTop: $('#orch-kr-results').offset().top - 60 }, 400);
 
-            // Save history
+            // Save history (success path only — typed errors above already returned)
             var krRestore = {
                 fields: { '#orch-kr-niche': niche, '#orch-kr-language': lang, '#orch-kr-max': maxKw },
                 outputs: { '#orch-kr-results': $('#orch-kr-results').html() }

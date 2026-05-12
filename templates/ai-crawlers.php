@@ -42,7 +42,6 @@ $provider_labels = array(
     <h1 style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:28px;">🛡️</span>
         <span>AI Crawlers</span>
-        <span style="font-size:12px;background:#dbeafe;color:#1e40af;padding:2px 10px;border-radius:12px;font-weight:500;">v3.35.80</span>
     </h1>
 
     <p class="orch3-muted" style="margin:8px 0 18px;font-size:13px;line-height:1.55;max-width:780px;">

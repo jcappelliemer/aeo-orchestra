@@ -148,60 +148,6 @@ if ($seo_aeo_bp_stats === false) {
     </div>
     <?php endif; ?>
 
-    <!-- QUICKSTART 4 STEP -->
-    <section class="orch-wiz-section">
-        <h2 class="orch-wiz-section-title"><?php SEO_AEO_T::e('🚀 Per iniziare in 5 mosse'); ?></h2>
-        <p class="orch-wiz-section-sub"><?php SEO_AEO_T::e('Se sei alla prima volta, segui questi passi nell\'ordine. Ogni step è autonomo: puoi fermarti dove vuoi.'); ?></p>
-
-        <div class="orch-wiz-steps">
-            <!-- 3.35.83: Step ⭐ Business Profile -->
-            <?php $bp_done = !empty($seo_aeo_bp_stats['confirmed']); ?>
-            <div class="orch-wiz-step <?php echo $bp_done ? 'orch-wiz-step--done' : 'orch-wiz-step--required'; ?>">
-                <div class="orch-wiz-step-num <?php echo $bp_done ? 'orch-wiz-step-num--done' : 'orch-wiz-step-num--required'; ?>"><?php echo $bp_done ? '✓' : '⭐'; ?></div>
-                <div class="orch-wiz-step-body">
-                    <div class="orch-wiz-step-badge<?php echo $bp_done ? ' orch-wiz-step-badge--done' : ''; ?>"><?php echo $bp_done ? '✓ DONE' : 'RICHIESTO'; ?></div>
-                    <h3><?php SEO_AEO_T::e('Compila il Profilo Business'); ?></h3>
-                    <p><?php SEO_AEO_T::e('I tool AI di Orchestra (Verify-Live, Contenuti AI, Analisi AEO) usano il profilo per generare suggerimenti specifici al tuo business. Senza questi dati, le risposte AI sono generiche. 4 campi critici richiesti — bastano 5 minuti.'); ?></p>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-business-profile')); ?>" class="orch-wiz-step-cta<?php echo $bp_done ? ' orch-wiz-step-cta--done' : ' orch-wiz-step-cta--required'; ?>"><?php echo $bp_done ? esc_html(SEO_AEO_T::t('→ Modifica profilo')) : esc_html(SEO_AEO_T::t('→ Apri Profilo Business')); ?></a>
-                </div>
-            </div>
-            <div class="orch-wiz-step">
-                <div class="orch-wiz-step-num">1</div>
-                <div class="orch-wiz-step-body">
-                    <h3><?php SEO_AEO_T::e('Migra da Yoast / RankMath / AIOSEO (opzionale)'); ?></h3>
-                    <p><?php SEO_AEO_T::e('Hai già un plugin SEO? Il Wizard fa shadow-copy reversibile dei tuoi meta + redirect e attiva lo stack Native — Yoast resta installato e silenziato (Override Mode). Niente perdita di ranking, niente downtime, e puoi tornare indietro in 30 secondi se cambi idea. Se preferisci testare prima senza migrare, salta questo step e prova le altre funzioni: Orchestra coesiste con Yoast.'); ?></p>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-migration-wizard')); ?>" class="orch-wiz-step-cta"><?php SEO_AEO_T::e('→ Apri Migrazione SEO'); ?></a>
-                </div>
-            </div>
-
-            <div class="orch-wiz-step">
-                <div class="orch-wiz-step-num">2</div>
-                <div class="orch-wiz-step-body">
-                    <h3><?php SEO_AEO_T::e('Crea il tuo profilo Brand Voice'); ?></h3>
-                    <p><?php SEO_AEO_T::e('L\'AI analizza i tuoi articoli pubblicati ed estrae il tuo stile. Ogni generazione futura suonerà come te, non come AI.'); ?></p>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-brand-voice')); ?>" class="orch-wiz-step-cta"><?php SEO_AEO_T::e('→ Apri Brand Voice'); ?></a>
-                </div>
-            </div>
-
-            <div class="orch-wiz-step">
-                <div class="orch-wiz-step-num">3</div>
-                <div class="orch-wiz-step-body">
-                    <h3><?php SEO_AEO_T::e('Genera il tuo primo articolo AI'); ?></h3>
-                    <p><?php SEO_AEO_T::e('Scegli un argomento, definisci le keyword e l\'AI scrive un articolo SEO+AEO con la tua voce. Include FAQ e immagine generata.'); ?></p>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-content')); ?>" class="orch-wiz-step-cta"><?php SEO_AEO_T::e('→ Apri Contenuti AI'); ?></a>
-                </div>
-            </div>
-
-            <div class="orch-wiz-step">
-                <div class="orch-wiz-step-num">4</div>
-                <div class="orch-wiz-step-body">
-                    <h3><?php SEO_AEO_T::e('Pubblica e verifica i risultati'); ?></h3>
-                    <p><?php SEO_AEO_T::e('Connetti Google Search Console per vedere posizionamento e CTR. Risolvi cannibalizzazioni con 1 click. Imposta redirect dai 404.'); ?></p>
-                    <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-orchestratore')); ?>" class="orch-wiz-step-cta"><?php SEO_AEO_T::e('→ Apri Orchestratore'); ?></a>
-                </div>
-            </div>
-        </div>
-    </section>
 
     <!-- FEATURE GRID -->
     <section class="orch-wiz-section">
@@ -557,15 +503,6 @@ if ($seo_aeo_bp_stats === false) {
 .orch-wiz-section-sub { color: #6b7280; font-size: 14px; margin: 0 0 20px; }
 
 /* QUICKSTART STEPS */
-.orch-wiz-steps { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-@media (max-width: 900px) { .orch-wiz-steps { grid-template-columns: 1fr; } }
-.orch-wiz-step { display: flex; gap: 16px; padding: 22px 24px; background: #fff; border: 1.5px solid #e5e7eb; border-radius: 12px; transition: border-color 0.15s, transform 0.15s; }
-.orch-wiz-step:hover { border-color: #0055FF; transform: translateY(-2px); }
-.orch-wiz-step-num { width: 42px; height: 42px; flex-shrink: 0; background: linear-gradient(135deg, #0055FF, #00E5FF); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; }
-.orch-wiz-step-body h3 { margin: 4px 0 6px; font-size: 16px; font-weight: 700; color: #0A0E27; }
-.orch-wiz-step-body p { margin: 0 0 10px; font-size: 13px; color: #4b5563; line-height: 1.5; }
-.orch-wiz-step-cta { color: #0055FF; font-weight: 600; font-size: 13px; text-decoration: none; }
-.orch-wiz-step-cta:hover { color: #00E5FF; }
 
 /* FEATURE GRID */
 .orch-wiz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
@@ -608,36 +545,6 @@ if ($seo_aeo_bp_stats === false) {
 .orch-wiz-support-card p { margin: 0; font-size: 13.5px; color: #1e3a8a; line-height: 1.55; }
 .orch-wiz-support-card a { color: #0055FF; font-weight: 600; }
 
-/* 3.35.83: Step ⭐ RICHIESTO visual treatment */
-.orch-wiz-step--required {
-    border: 2px solid #d97706;
-    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-    position: relative;
-}
-.orch-wiz-step-num--required {
-    background: #d97706 !important;
-    color: #fff !important;
-    font-size: 24px !important;
-}
-.orch-wiz-step-badge {
-    display: inline-block;
-    padding: 2px 10px;
-    background: #d97706;
-    color: #ffffff;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    border-radius: 10px;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-}
-.orch-wiz-step-cta--required {
-    background: #d97706 !important;
-    color: #ffffff !important;
-}
-.orch-wiz-step-cta--required:hover {
-    background: #b45309 !important;
-}
 .orch-wiz-stat--clickable {
     cursor: pointer;
     text-decoration: none !important;
@@ -649,28 +556,6 @@ if ($seo_aeo_bp_stats === false) {
     text-decoration: none !important;
 }
 
-/* 3.35.83.1.2: Step ✓ DONE post-confirm */
-.orch-wiz-step--done {
-    border: 2px solid #16a34a;
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    position: relative;
-}
-.orch-wiz-step-num--done {
-    background: #16a34a !important;
-    color: #fff !important;
-    font-size: 24px !important;
-}
-.orch-wiz-step-badge--done {
-    background: #16a34a !important;
-    color: #fff !important;
-}
-.orch-wiz-step-cta--done {
-    background: #16a34a !important;
-    color: #fff !important;
-}
-.orch-wiz-step-cta--done:hover {
-    background: #15803d !important;
-}
 .orch-wiz-stat--confirmed .orch-wiz-stat-value {
     color: #16a34a;
 }

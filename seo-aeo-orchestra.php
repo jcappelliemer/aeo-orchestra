@@ -4,7 +4,7 @@
  * Plugin Name: AEO Orchestra
  * Plugin URI: https://aeo-orchestra.com
  * Description: Plugin SEO + AEO completo: specialisti AI perfettamente orchestrati per meta tags, content generation, schema, llms.txt, sitemap, redirect manager, brand voice e altro.
- * Version: 3.38.1
+ * Version: 3.38.7
  * Requires at least: 5.8
  * Tested up to: 6.9
  * Requires PHP: 7.4
@@ -27,10 +27,83 @@
  */
 if (!defined('ABSPATH')) exit;
 
-define('SEO_AEO_VERSION', '3.38.1');
+// 3.38.5 — Strict PHP version gate. Bail BEFORE any class loading if PHP < 7.4.
+// Renders an admin notice instead of fataling. Plugin appears installed but
+// inert, so WP's broken-plugin recovery never triggers the file-removal path.
+if (version_compare(PHP_VERSION, '7.4', '<')) {
+    add_action('admin_notices', function () {
+        echo '<div class="notice notice-error"><p><strong>AEO Orchestra:</strong> Richiede PHP 7.4 o superiore. Versione rilevata: ' . esc_html(PHP_VERSION) . '. Contatta il tuo hosting per aggiornare.</p></div>';
+    });
+    return;
+}
+
+define('SEO_AEO_VERSION', '3.38.7');
 define('SEO_AEO_AGENTS_COUNT', 13);  // 3.35.84.2: +Verify-Live  // mirrors backend/helpers/config.py AGENTS_COUNT — bump on every new agent
 define('SEO_AEO_TOOLS_COUNT', 22);   // 3.35.84.2: +Verify-Live, Profilo Business, AI Performance, AI Crawlers   // mirrors backend/helpers/config.py TOOLS_COUNT — bump on every new tool
 define('SEO_AEO_DIR', plugin_dir_path(__FILE__));
+
+/**
+ * 3.38.5 — Defensive require. Replaces bare require_once for new (v3.38.0+)
+ * files. file_exists() pre-check, try/catch wrap (catches Error on PHP 8+),
+ * records failures in option seo_aeo_load_failures so an admin_notices hook
+ * can surface a precise diagnostic to the user.
+ *
+ * Returns true on success, false on any failure. Caller can early-return
+ * on false to avoid follow-on errors.
+ */
+function seo_aeo_safe_require($file, $label = '') {
+    if (!file_exists($file) || !is_readable($file)) {
+        seo_aeo_record_load_failure($file, $label, 'file_missing_or_unreadable');
+        return false;
+    }
+    try {
+        require_once $file;
+        return true;
+    } catch (Throwable $e) {
+        seo_aeo_record_load_failure($file, $label, $e->getMessage());
+        return false;
+    }
+}
+
+function seo_aeo_record_load_failure($file, $label, $reason) {
+    $failures = get_option('seo_aeo_load_failures', array());
+    if (!is_array($failures)) $failures = array();
+    $failures[] = array(
+        'file'      => basename($file),
+        'path'      => $file,
+        'label'     => $label,
+        'reason'    => substr((string) $reason, 0, 300),
+        'timestamp' => gmdate('c'),
+    );
+    // Cap to last 20 failures to prevent unbounded growth.
+    if (count($failures) > 20) $failures = array_slice($failures, -20);
+    update_option('seo_aeo_load_failures', $failures, false);
+    if (defined('WP_DEBUG') && WP_DEBUG && function_exists('error_log')) {
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- diagnostic for load-failure path only, gated on WP_DEBUG.
+        @error_log('[SEO_AEO] Load failure: ' . basename($file) . ' — ' . $reason);
+    }
+}
+
+// Surface recorded load failures as admin notices so the user knows which
+// file to recover. Hook on admin_notices priority 1 (early) so it appears
+// above other notices.
+add_action('admin_notices', function () {
+    $failures = get_option('seo_aeo_load_failures', array());
+    if (empty($failures) || !is_array($failures)) return;
+    // Only show on plugin's own pages OR Plugins screen — otherwise too noisy.
+    $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+    $on_plugin_page = $screen && (
+        strpos((string) $screen->id, 'seo-aeo') !== false ||
+        $screen->id === 'plugins'
+    );
+    if (!$on_plugin_page) return;
+    echo '<div class="notice notice-error is-dismissible"><p><strong>AEO Orchestra — load failures detected:</strong></p><ul style="margin:0 0 8px 18px;list-style:disc;">';
+    foreach (array_slice($failures, -5) as $f) {
+        echo '<li><code>' . esc_html($f['file']) . '</code>: ' . esc_html($f['reason']) . '</li>';
+    }
+    echo '</ul><p>Re-install the plugin from a known-good ZIP to recover. Diagnostic: <a href="' . esc_url(admin_url('admin.php?page=seo-aeo-debug-cache')) . '">Cache Debug</a>.</p></div>';
+}, 1);
+
 define('SEO_AEO_URL', plugin_dir_url(__FILE__));
 define('SEO_AEO_PLUGIN_DIR', SEO_AEO_DIR);
 define('SEO_AEO_PLUGIN_URL', SEO_AEO_URL);
@@ -186,8 +259,8 @@ try {
     // wraps wp_add_inline_{style,script} on a deps-only registered handle.
     require_once SEO_AEO_DIR . 'includes/class-inline-assets.php';
     require_once SEO_AEO_DIR . 'includes/class-business-profile.php'; // 3.35.83: foundation feature
-    require_once SEO_AEO_DIR . 'includes/class-setup-progress.php'; // 3.38.0: Onboarding 3.0 state machine
-    require_once SEO_AEO_DIR . 'includes/class-setup-widget.php'; // 3.38.0: sticky widget on every admin page
+    seo_aeo_safe_require(SEO_AEO_DIR . 'includes/class-setup-progress.php', 'class-setup-progress'); // 3.38.0
+    seo_aeo_safe_require(SEO_AEO_DIR . 'includes/class-setup-widget.php', 'class-setup-widget'); // 3.38.0
     require_once SEO_AEO_DIR . 'includes/class-admin-ui.php';
     require_once SEO_AEO_DIR . 'includes/class-ajax-handlers.php';
     require_once SEO_AEO_DIR . 'includes/class-widget.php';
@@ -240,6 +313,24 @@ try {
 } catch (Throwable $e) {
     return;
 }
+
+// 3.38.5 — If we reached this point without any load failure being recorded
+// in this request, clear the historical failures option (self-healing once
+// the user re-uploads a complete plugin ZIP). Wrapped in an anonymous closure
+// so the local vars never leak to the global scope (Plugin Check compliance).
+( function () {
+    if ( empty( get_option( 'seo_aeo_load_failures' ) ) ) return;
+    $seo_aeo_critical_classes = array(
+        'SEO_AEO_API_Client',
+        'SEO_AEO_Inline_Assets',
+        'SEO_AEO_Setup_Progress',
+        'SEO_AEO_Setup_Widget',
+    );
+    foreach ( $seo_aeo_critical_classes as $seo_aeo_cls ) {
+        if ( ! class_exists( $seo_aeo_cls ) ) return;
+    }
+    delete_option( 'seo_aeo_load_failures' );
+} )();
 
 // Initialize components TOP-LEVEL (no plugins_loaded wrap) - ensures classes are loaded before admin-ajax.php
 global $seo_aeo_api, $seo_aeo_admin, $seo_aeo_ajax, $seo_aeo_widget, $seo_aeo_history, $seo_aeo_tracker;

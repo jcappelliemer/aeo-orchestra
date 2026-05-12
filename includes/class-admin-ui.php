@@ -105,6 +105,7 @@ class SEO_AEO_Orchestra_Admin_UI {
         // the original $submenu (e.g. free-build SKUs) are simply skipped.
         $sequence = array(
             'seo-aeo-orchestra',              // Dashboard
+            'seo-aeo-setup-guidato',          // 3.38.2 — moved to position 2 (was buried at tail)
             'seo-aeo-native-output',          // SEO + AEO Output
             '__SEP__:📊 ANALISI',
             'seo-aeo-orchestratore',          // Orchestratore (was 100→38, now in ANALISI)
@@ -131,6 +132,13 @@ class SEO_AEO_Orchestra_Admin_UI {
             'seo-aeo-usage',
             'seo-aeo-settings',
         );
+
+        // 3.38.2 hotfix — Don't UNSET slugs from $submenu; that breaks WP's
+        // page routing too (the admin.php?page=X lookup uses $_registered_pages
+        // which add_submenu_page also populates, but some hosts/themes only
+        // route pages present in the rendered $submenu). The safe pattern is to
+        // keep the submenu entry registered + use CSS to hide its sidebar
+        // anchor. See output_menu_styles() — 3.38.2 "hidden submenu" rule.
 
         // Build slug -> item lookup from current $submenu
         $by_slug = array();
@@ -192,6 +200,11 @@ class SEO_AEO_Orchestra_Admin_UI {
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 220px;
+        }
+        /* 3.38.2 hotfix — hide Profilo Business sidebar entry while keeping
+           its route accessible (Setup Guidato Step 2 link still works). */
+        #adminmenu .wp-submenu li a[href*="page=seo-aeo-business-profile"] {
+            display: none !important;
         }
         </style>
         <?php ob_start(); ?>

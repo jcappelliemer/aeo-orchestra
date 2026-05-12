@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.38.1
+Stable tag: 3.38.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,45 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.38.7 =
+* Bug fix (P0 launch-blocker) — Keyword Research with max_keywords > 30 was reliably returning "Risposta non valida dal server" instead of refunded results. Root cause was a 3-way convergence: (1) frontend offered a 50-keyword option, (2) backend honored it up to 50, (3) nginx proxy_read_timeout in the API container was 120s — the LLM call for 50 keywords with verbose Italian fields exceeded 120s so nginx closed the upstream connection mid-response, returning HTTP 502 with HTML body that the WP client couldn't parse as JSON.
+* Backend cap — max_keywords is now hard-capped server-side at 30 regardless of the requested value (was: min(50, requested)). Combined with the Gemini Flash 8192-token output ceiling, 30 keywords fits comfortably with margin.
+* nginx — proxy_read_timeout bumped 120s → 300s in the API container, giving slower LLM calls more breathing room before the upstream-closed-prematurely path triggers.
+* Observability — keyword_research endpoint now logs the LLM call elapsed time and parsed keyword count for every request. Helps trend-detect future timeout regressions.
+* Sentry release tag — .env APP_VERSION + REACT_APP_VERSION bumped to 3.38.7. Previous cycles ran on the backend with .env still set to 3.38.1, so 3.38.3-6 observability logs were misattributed in Sentry.
+* Frontend wiring — Keyword Research now renders three distinct banner variants instead of the generic "Risposta non valida dal server": (1) typed empty_result or any backend typed error with refunded > 0 → green "✓ Crediti rimborsati" banner showing backend message + refund amount, (2) WP-side timeout (nginx upstream closed, response not JSON) → orange "⏱ Tempo esaurito" banner with retry suggestion + 10-min auto-refund notice, (3) other typed errors → red banner with backend message. Survives the residual cases where the request never reaches the FastAPI handler.
+* Plugin Check 0/0 — WP.org compliance final sweep. Wrapped the v3.38.5 self-healing class-presence check in an anonymous closure so its locals ($critical_classes, $all_loaded, $cls) never reach global scope, and gated the load-failure error_log() diagnostic on WP_DEBUG. Plugin Check 1.9.0 against the WP.org ZIP now reports 0 errors and 0 warnings.
+
+= 3.38.6 =
+* Bug fix — Business Profile chip counters "[N compilati]" now sync correctly for ALL 5 collapsible fields uniformly. The v3.38.2 + v3.38.4 fixes worked for Differenziatori, Casi d'uso, and Area di servizio but Prodotti/Servizi + Fornitori e partner still showed 0 on Solaris. Replaced the per-wrapper count with a universal walker that iterates every details.orch-bp-collapse element and counts ANY item-child (.orch-bp-chip OR [data-orch-bp-repeat-card]) regardless of which class is used. Added a MutationObserver inside the form wrapper that re-runs the universal sync on any DOM change (throttled to one animation frame), so future code paths or async hydration races can never leave counters stale.
+
+= 3.38.5 =
+* Defensive hardening — Added a strict PHP version gate at the top of the main plugin file. If PHP < 7.4, an admin notice is rendered instead of fataling. Plugin appears installed but inert, so WordPress's broken-plugin recovery never triggers the file-removal path.
+* Defensive hardening — New seo_aeo_safe_require() helper used for the v3.38.0+ class loads (class-setup-progress, class-setup-widget). file_exists() pre-check + try/catch wrap (catches Error on PHP 8+). Failures are recorded in option seo_aeo_load_failures with file path, reason, timestamp.
+* Defensive hardening — New admin_notices hook surfaces recorded load failures as a precise diagnostic ("AEO Orchestra — load failures detected: class-X — file missing") visible on plugin pages and the Plugins screen, so a user with a half-extracted ZIP knows exactly which file to recover.
+* Self-healing — If the critical class set loads cleanly and the load_failures option still has stale entries from a previous broken state, the option is cleared automatically. No manual intervention needed once the plugin is re-uploaded clean.
+* Context — The v3.38.3 fatal on aeo-orchestra.com was traced to a transient filesystem race during WP's plugin upgrader file-swap step, not a code defect. The main plugin file went missing mid-update, PHP fataled, and WP recovery removed the main file permanently. This release ships defenses so a similar race can no longer self-destruct the install.
+
+= 3.38.4 =
+* Hotfix — Defensive backstop for Business Profile chip counters. The v3.38.2 Task 6 + v3.38.3 fixes resolved differentiators/use_cases (struct repeater) and territories (chip), but Prodotti/Servizi + Fornitori e partner still showed "[0 compilati]" with chips visually rendered. Added syncAllCounters() that iterates ALL collapsible fields uniformly (both struct + chip) at the end of loadProfile() so missed hydration paths never leave a counter stale.
+* Hotfix — Verified the CSS attribute selector quoting on the Profilo Business sidebar-hide rule. Rule now reads a[href*="page=seo-aeo-business-profile"] (quotes around the equals-containing value, per CSS3 spec) — without quotes the browser parser silently discarded the rule.
+
+= 3.38.3 =
+* CRITICAL P0 — Keyword Research feature was unusable on Gemini Flash since 3.23.x. Gemini 2.5/2.0/1.5 Flash all silently cap output at 8192 tokens regardless of requested max_output_tokens. For 30 keywords x 6 verbose fields, the JSON was frequently truncated mid-array, strict json.loads failed, and the user saw a generic error even though 20+ valid keywords were produced. Module 13 reservation refund worked correctly (no credit waste) but the feature returned no results.
+* Fix — New _tolerant_extract_keywords() partial parser that walks balanced-brace entries one at a time, returning the prefix of complete entries when the JSON is truncated. Strict json.loads still runs first (happy path unchanged); tolerant fallback only kicks in when strict fails AND at least 5 valid entries can be recovered.
+* Fix — Replaced legacy add_credits + HTTPException 502 refund paths in /keyword-research (Module 13's commit/refund patch had missed these specific branches). Both gemini exception path AND parse-failure path now use proper TypedAPIError + refund_reservation, consistent with the rest of Module 13.
+* Observability — Added structured logging on every keyword_research call: raw_len, first_pass_count, tolerant_count, niche. Helps detect future LLM truncation trends + Sentry signal-to-noise.
+* Layer A — 7/7 unit tests passed against synthetic + realistic truncated payloads. Realistic case (22 complete entries + 1 truncated at character level) recovers exactly 22.
+
+= 3.38.2 =
+* Cleanup — Removed the legacy "Per iniziare in 5 mosse" quickstart section from Dashboard (wizard-home.php). Setup Guidato + the Dashboard ambassador banner are now the single source of truth for onboarding. ~70 lines of dead CSS removed.
+* Menu reorder — Setup Guidato moved to submenu position 2 (right after Dashboard), no longer buried at the tail. Profilo Business removed from the submenu (page route stays alive, accessed via Setup Guidato Step 2 link).
+* BETA badge cleanup — Removed "Beta" badge from SEO Output Nativo header (feature is stable since 3.13.x).
+* Removed hardcoded "v3.35.80" sub-component version label from AI Crawlers hero (only the plugin global version is shown now).
+* Bug fix — Business Profile collapsible counters "[N compilati]" now stay in sync for chip-input fields (Prodotti/Servizi, Fornitori, Aree, Concorrenti). Counter previously walked only data-orch-bp-repeat-card children and showed 0 for chip fields regardless of actual content. New updateChipCount() helper invoked on add, remove, and initial render-from-DB.
+* Cronologia layout fix — Keyword Research (and other history-rendering pages) showed entries flowing horizontally with overflow when an ancestor became a flex container. Forced .history-item to width:100% + flex:0 0 100% + .orchestra-history-container to display:block so entries always stack vertically full-width regardless of theme/ancestor styling.
+* Empty-result UX — Keyword Research now distinguishes the typed empty_result 422 (Module 13 backend refund) from generic errors. Shows a green "✓ Crediti rimborsati" inline banner with the refund amount + suggestion to retry with more specific input. Skips history save in this case so the cronologia doesn't show a paid entry for an analysis that was refunded.
 
 = 3.38.1 =
 * Task 2 hotfix — Ambassador banner relocated to the correct template (wizard-home.php / Dashboard page). It was wrongly placed in admin-dashboard.php (Orchestratore page) in 3.38.0 and therefore never visible to users landing on Dashboard. Plus added a "Setup completato" celebration variant when all 7 steps done.

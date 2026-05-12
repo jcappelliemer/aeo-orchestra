@@ -116,7 +116,7 @@ if (is_admin() && defined('SEO_AEO_URL')) {
         <a id="orch-schema"></a>
         <div class="orch-native-head">
             <div>
-                <h2 class="orch3-h2"><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('SEO Output Nativo')) : 'SEO Output Nativo'; ?> <span class="orch-native-beta-badge">Beta</span></h2>
+                <h2 class="orch3-h2"><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('SEO Output Nativo')) : 'SEO Output Nativo'; ?></h2>
                 <p class="orch3-muted" style="margin:4px 0 0; font-size:13px;"><?php echo class_exists('SEO_AEO_T') ? wp_kses_post(SEO_AEO_T::t('Genera direttamente <code>&lt;title&gt;</code>, meta description, OpenGraph, Twitter Cards e canonical, senza dipendere da Yoast/RankMath/AIOSEO.')) : 'Genera direttamente <code>&lt;title&gt;</code>, meta description, OpenGraph, Twitter Cards e canonical, senza dipendere da Yoast/RankMath/AIOSEO.'; ?></p>
             </div>
             <button type="button" class="orch3-btn orch3-btn-ghost orch-native-toggle-card" aria-expanded="true"><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Nascondi')) : 'Nascondi'; ?></button>

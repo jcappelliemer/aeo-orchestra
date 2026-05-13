@@ -3171,6 +3171,14 @@
                 try {
                     resp._sourceBtn = $btn.get(0);
                     SeoAeoOrchestra.showPreviewModal(resp);
+                    // 3.40.3 — verify modal node landed in DOM; otherwise toast
+                    // a fallback so the user knows preview rendering bailed
+                    // silently. The .always() handler below restores the button.
+                    var modalEl = document.getElementById('orch-action-preview-modal');
+                    console.log('[PREVIEW] modal open', !!modalEl, 'agent=', resp.agent);
+                    if (!modalEl) {
+                        SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Preview generato ma modal non visibile. Apri la console per dettagli.'), 'warning');
+                    }
                 } catch (renderErr) {
                     console.error('[PREVIEW] showPreviewModal threw', renderErr);
                     SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Errore rendering preview') + ': ' + (renderErr && renderErr.message ? renderErr.message : ''), 'error');

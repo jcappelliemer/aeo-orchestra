@@ -202,7 +202,60 @@ class SEO_AEO_Site_Scanner {
             'name'    => 'REST API enabled',
             'weight'  => 10,
             'matched' => (bool) $rest_enabled,
-            'note'    => $rest_enabled ? 'WP REST API esposto (richiesto per modalita\' headless)' : 'REST API disabilitato',
+            'note'    => $rest_enabled ? 'WP REST API esposto (richiesto per modalità\' headless)' : 'REST API disabilitato',
+        );
+
+        // (6) 3.40.3 — Home URL HTML probe for React/Next.js/Nuxt/Frontity
+        // markers. Catches the common pattern: WP backend on one origin,
+        // React/Next.js frontend on a different origin (Vercel/Netlify)
+        // consuming REST/GraphQL, where the plugin runs server-side and
+        // never sees the React output. GET home_url('/') with a 4s timeout
+        // and look for canonical SSR/SSG hydration markers.
+        $react_marker = false;
+        $react_note = 'Nessun marker React/Next.js/Nuxt rilevato nella home HTML';
+        if (function_exists('wp_remote_get') && function_exists('home_url')) {
+            $home = home_url('/');
+            $resp = wp_remote_get($home, array(
+                'timeout'     => 4,
+                'redirection' => 3,
+                'sslverify'   => false,
+                'user-agent'  => 'AEO-Orchestra-Site-Scanner/1.0',
+                'headers'     => array('Accept' => 'text/html,application/xhtml+xml'),
+            ));
+            if (!is_wp_error($resp) && function_exists('wp_remote_retrieve_response_code')) {
+                $code = (int) wp_remote_retrieve_response_code($resp);
+                if ($code >= 200 && $code < 400) {
+                    $body = function_exists('wp_remote_retrieve_body') ? wp_remote_retrieve_body($resp) : '';
+                    if (is_string($body) && $body !== '') {
+                        $body = substr($body, 0, 30000);
+                        $patterns = array(
+                            '__NEXT_DATA__'            => 'Next.js __NEXT_DATA__ payload',
+                            '/_next/static/'           => 'Next.js _next/static asset path',
+                            '/static/chunks/'          => 'webpack /static/chunks asset path',
+                            '/_nuxt/'                  => 'Nuxt /_nuxt asset path',
+                            'window.__NUXT__'          => 'Nuxt window.__NUXT__ hydration',
+                            'data-frontity'            => 'Frontity data-frontity attribute',
+                            'id="__next"'              => 'Next.js root element __next',
+                            'data-reactroot'           => 'React data-reactroot SSR marker',
+                            'window.__INITIAL_STATE__' => 'React/Vue __INITIAL_STATE__ hydration',
+                            'gatsby-app-script'        => 'Gatsby app script tag',
+                        );
+                        foreach ($patterns as $needle => $note_text) {
+                            if (stripos($body, $needle) !== false) {
+                                $react_marker = true;
+                                $react_note = 'Marker rilevato nella home HTML: ' . $note_text;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        $signals[] = array(
+            'name'    => 'React/Next.js/Nuxt markers in home HTML',
+            'weight'  => 25,
+            'matched' => (bool) $react_marker,
+            'note'    => $react_note,
         );
 
         // Confidence aggregation.
@@ -272,7 +325,38 @@ class SEO_AEO_Site_Scanner {
             'scanned_at'          => current_time('mysql'),
         );
 
+        // 3.40.3 — Apply manual override if the user saved one in
+        // Impostazioni → Compatibilità Sito. Overrides take precedence
+        // over detection but the original detection result stays in
+        // _detected_* fields so the UI can show "auto-detected vs
+        // overridden" diff if needed.
+        $override = get_option('aeo_site_override', array());
+        if (is_array($override) && !empty($override)) {
+            $profile['_detected_builder']      = $profile['builder'];
+            $profile['_detected_is_headless']  = $profile['is_headless'];
+            $profile['_detected_headless_mode'] = $profile['headless_mode'];
+            if (!empty($override['builder']) && $override['builder'] !== 'auto') {
+                $profile['builder'] = $override['builder'];
+                $profile['builder_confidence'] = 100;
+                $profile['override_builder'] = true;
+            }
+            if (isset($override['is_headless'])) {
+                $is_h = (bool) $override['is_headless'];
+                $profile['is_headless'] = $is_h;
+                $profile['headless_confidence'] = 100;
+                $profile['override_headless'] = true;
+                if ($is_h && !empty($override['headless_mode'])) {
+                    $profile['headless_mode'] = $override['headless_mode'];
+                }
+                $primary = $is_h ? 'headless' : 'standard';
+                $profile['primary'] = $primary;
+            }
+        }
+
         update_option('aeo_site_profile', $profile, false);
+        // Back-compat options consumed by SEO_AEO_Capability_Matrix
+        // (must reflect post-override values).
+        update_option('aeo_site_builder', $profile['builder'], false);
         // Back-compat options consumed by SEO_AEO_Capability_Matrix.
         update_option('aeo_site_is_headless', $primary === 'headless', false);
         if ($primary === 'headless') {

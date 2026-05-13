@@ -163,7 +163,7 @@ if ($seo_aeo_bp_stats === false) {
             </div>
             <div class="orch-wiz-grid orch-wiz-grid--foundation">
 <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-business-profile')); ?>" class="orch-wiz-card orch-wiz-card--foundation" data-category="foundation">
-                <span class="orch-wiz-card-badge">⭐ FOUNDATION v3.35.83</span>
+                <span class="orch-wiz-card-badge">⭐ FOUNDATION v<?php echo esc_html(SEO_AEO_VERSION); ?></span>
                 <div class="orch-wiz-card-icon">🏢</div>
                 <div class="orch-wiz-card-title"><?php SEO_AEO_T::e('Profilo Business'); ?></div>
                 <div class="orch-wiz-card-desc"><?php SEO_AEO_T::e('14 campi compilabili (11 public + 3 internal) usati da tutti i tool AI. Anteprima context AI live + visibility scope public/internal + zero leak in llms.txt.'); ?></div>

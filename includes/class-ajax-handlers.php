@@ -60,7 +60,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
 
     /**
      * Safe wrapper for API requests. Catches timeouts and errors.
-     * Auto-inietta `language` per endpoint AI (/ai/*) se non gia' presente,
+     * Auto-inietta `language` per endpoint AI (/ai/*) se non già' presente,
      * cosi' i contenuti generati seguono la lingua dell'admin WP.
      */
     private function safe_api_call($endpoint, $data = array()) {
@@ -107,6 +107,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             add_action('wp_ajax_seo_aeo_orchestra_mark_manual_applied', array($this, 'ajax_mark_manual_applied'));
             // 3.40.2 — re-scan site environment + return fresh profile.
             add_action('wp_ajax_seo_aeo_orchestra_rescan_site', array($this, 'ajax_rescan_site'));
+            // 3.40.3 - save manual override for Compatibilita Sito.
+            add_action('wp_ajax_seo_aeo_orchestra_save_compat_override', array($this, 'ajax_save_compat_override'));
 
             // Pages, Keywords, Content
             add_action('wp_ajax_seo_aeo_orchestra_get_pages', array($this, 'ajax_get_pages'));
@@ -787,7 +789,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'agent' => 'aeo_content',
                 'type'  => 'ADD_FAQ_SECTION',
                 'title' => 'Genera sezione FAQ con domande tipo per questo argomento',
-                'desc'  => 'Estraggo le 5-7 domande piu\' frequenti sul tuo argomento dal contesto Brand Voice + Profilo Business e genero una sezione FAQ con risposte concise. Riduce significativamente il gap AEO. ~5 minuti.',
+                'desc'  => 'Estraggo le 5-7 domande più\' frequenti sul tuo argomento dal contesto Brand Voice + Profilo Business e genero una sezione FAQ con risposte concise. Riduce significativamente il gap AEO. ~5 minuti.',
                 'cr'    => 10,
             ),
             array(
@@ -843,7 +845,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'agent' => 'meta_tags',
                 'type'  => 'OPTIMIZE_KEYWORDS',
                 'title' => 'Ottimizza keyword targeting + LSI',
-                'desc'  => 'Identifico le keyword secondarie (LSI) piu\' rilevanti per questa pagina e aggiorno meta + suggerisco integrazione naturale nel contenuto. ~2 minuti.',
+                'desc'  => 'Identifico le keyword secondarie (LSI) più\' rilevanti per questa pagina e aggiorno meta + suggerisco integrazione naturale nel contenuto. ~2 minuti.',
                 'cr'    => 3,
             ),
             array(
@@ -885,7 +887,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             'agent'             => 'manual_review',
             'priority'          => 'bassa',
             'label'             => 'Rivedi: ' . $this->truncate_text($issue_text, 80),
-            'description'       => 'Questo problema richiede una valutazione manuale. Apri la pagina nell\'editor WordPress e rivedi il punto segnalato. Suggerimento: configura Brand Voice e Profilo Business per ricevere azioni piu\' specifiche alla prossima analisi.',
+            'description'       => 'Questo problema richiede una valutazione manuale. Apri la pagina nell\'editor WordPress e rivedi il punto segnalato. Suggerimento: configura Brand Voice e Profilo Business per ricevere azioni più\' specifiche alla prossima analisi.',
             'action_type'       => 'MANUAL_REVIEW',
             'auto_executable'   => false,
             'executor_agent'    => null,
@@ -1186,6 +1188,56 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             ));
         } catch (Throwable $e) {
             wp_send_json_error(array('message' => 'rescan_exception: ' . $e->getMessage()), 500);
+        }
+    }
+
+    /**
+     * 3.40.3 - Save manual builder + headless override. Stored in
+     * option aeo_site_override. SiteScanner::scan_full() picks it up
+     * and applies over the auto-detection result.
+     */
+    public function ajax_save_compat_override() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(array('message' => 'forbidden'), 403);
+            }
+            $allowed_builders = array('classic', 'gutenberg', 'elementor', 'divi', 'wpbakery', 'beaver_builder', 'bricks', 'oxygen', 'other');
+            $allowed_modes    = array('rest', 'gql', 'ssg');
+
+            $builder_raw  = isset($_POST['builder']) ? sanitize_key(wp_unslash($_POST['builder'])) : 'auto';
+            $headless_raw = isset($_POST['is_headless']) ? sanitize_key(wp_unslash($_POST['is_headless'])) : 'auto';
+            $mode_raw     = isset($_POST['headless_mode']) ? sanitize_key(wp_unslash($_POST['headless_mode'])) : '';
+
+            $override = array();
+            if ($builder_raw !== '' && $builder_raw !== 'auto' && in_array($builder_raw, $allowed_builders, true)) {
+                $override['builder'] = $builder_raw;
+            }
+            if ($headless_raw === '0' || $headless_raw === '1') {
+                $override['is_headless'] = ($headless_raw === '1');
+                if ($override['is_headless'] && in_array($mode_raw, $allowed_modes, true)) {
+                    $override['headless_mode'] = $mode_raw;
+                }
+            }
+
+            if (empty($override)) {
+                delete_option('aeo_site_override');
+            } else {
+                update_option('aeo_site_override', $override, false);
+            }
+            $profile = class_exists('SEO_AEO_Site_Scanner') ? SEO_AEO_Site_Scanner::force_rescan() : array();
+            $env_label = '';
+            if (class_exists('SEO_AEO_Capability_Matrix')) {
+                $summary = SEO_AEO_Capability_Matrix::get_capability_summary();
+                $env_label = isset($summary['environment_label']) ? $summary['environment_label'] : '';
+            }
+            wp_send_json_success(array(
+                'override'  => $override,
+                'profile'   => $profile,
+                'env_label' => $env_label,
+            ));
+        } catch (Throwable $e) {
+            wp_send_json_error(array('message' => 'override_save_exception: ' . $e->getMessage()), 500);
         }
     }
 
@@ -1543,7 +1595,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     'builder'         => $builder_now,
                     'action_type'     => $action_type,
                     'reason'          => 'surgical_apply_failed',
-                    'message'         => 'Surgical editor non e\' riuscito ad applicare le modifiche. Suggerisci modalita\' manuale.',
+                    'message'         => 'Surgical editor non e\' riuscito ad applicare le modifiche. Suggerisci modalità\' manuale.',
                 ));
                 return;
             }
@@ -3568,7 +3620,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
      * Bug originale (auto-draft): WP rifiuta serve preview di post in stato 'auto-draft'
      * (sono placeholder, ritornano 404 quando ci si naviga). Fix: usiamo 'draft' standard
      * + marker meta `_seo_aeo_preview_only=1`. Pulizia: il garbage collector
-     * (`maybe_cleanup_preview_drafts`) cancella i draft con quel marker piu' vecchi di 24h.
+     * (`maybe_cleanup_preview_drafts`) cancella i draft con quel marker più' vecchi di 24h.
      */
     public function ajax_create_preview_draft() {
         try {
@@ -3598,7 +3650,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 return;
             }
 
-            // Attach featured image se passata: preferisci attachment_id (gia' caricato in
+            // Attach featured image se passata: preferisci attachment_id (già' caricato in
             // libreria via complete-article), fallback a download da URL esterno.
             if ($attachment_id > 0 && get_post($attachment_id)) {
                 set_post_thumbnail($post_id, $attachment_id);
@@ -3643,7 +3695,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
     }
 
     /**
-     * Cancella le bozze marcate come "preview only" piu' vecchie di 24h.
+     * Cancella le bozze marcate come "preview only" più' vecchie di 24h.
      * Limite di sicurezza: max 50 cancellazioni per chiamata.
      */
     public static function cleanup_preview_drafts() {
@@ -3991,12 +4043,36 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 $authors[] = array('id' => (int) $u->ID, 'name' => $u->display_name);
             }
 
-            // Page builders
+            // Page builders - 3.40.3 sourced from SiteScanner profile.
+            // Legacy register_block_type check unconditionally added Gutenberg
+            // on every modern WP install, masking headless sites.
             $page_builders = array();
-            if (defined('ELEMENTOR_VERSION')) $page_builders[] = 'Elementor';
-            if (function_exists('et_setup_theme') || defined('ET_BUILDER_VERSION')) $page_builders[] = 'Divi';
-            if (defined('FL_BUILDER_VERSION')) $page_builders[] = 'Beaver Builder';
-            if (function_exists('register_block_type')) $page_builders[] = 'Gutenberg';
+            if (class_exists('SEO_AEO_Site_Scanner')) {
+                $aeo_profile = SEO_AEO_Site_Scanner::get_profile();
+                $builder_labels = array(
+                    'elementor'      => 'Elementor',
+                    'divi'           => 'Divi',
+                    'wpbakery'       => 'WPBakery Page Builder',
+                    'beaver_builder' => 'Beaver Builder',
+                    'bricks'         => 'Bricks',
+                    'oxygen'         => 'Oxygen',
+                    'gutenberg'      => 'Gutenberg',
+                    'classic'        => 'Classic Editor',
+                    'other'          => 'Altro builder',
+                );
+                if (!empty($aeo_profile['is_headless'])) {
+                    $mode = isset($aeo_profile['headless_mode']) ? $aeo_profile['headless_mode'] : 'rest';
+                    $page_builders[] = 'Headless (' . strtoupper($mode) . ')';
+                } elseif (!empty($aeo_profile['builder']) && isset($builder_labels[$aeo_profile['builder']])) {
+                    $page_builders[] = $builder_labels[$aeo_profile['builder']];
+                }
+            }
+            if (empty($page_builders)) {
+                if (defined('ELEMENTOR_VERSION')) $page_builders[] = 'Elementor';
+                if (function_exists('et_setup_theme') || defined('ET_BUILDER_VERSION')) $page_builders[] = 'Divi';
+                if (defined('FL_BUILDER_VERSION')) $page_builders[] = 'Beaver Builder';
+                if (empty($page_builders) && function_exists('register_block_type')) $page_builders[] = 'Gutenberg';
+            }
 
             // Saved settings
             $saved = array(
@@ -4730,7 +4806,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
 
     /**
      * 3.33.3 — Ri-inietta immagine featured come blocco inline nel post_content (per articoli pre-3.33.2).
-     * Idempotente: skippa se l'immagine featured e' gia' presente nel content.
+     * Idempotente: skippa se l'immagine featured e' già' presente nel content.
      */
     public function ajax_calendar_inject_image() {
         try {
@@ -4745,7 +4821,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             $img_url = wp_get_attachment_url($thumb_id);
             if (!$img_url) { wp_send_json(array('error' => 'URL immagine non trovato')); return; }
             $content = (string) $post->post_content;
-            // Idempotency: skip se l'attachment id e' gia' nel content
+            // Idempotency: skip se l'attachment id e' già' nel content
             if (strpos($content, 'wp-image-' . $thumb_id) !== false || strpos($content, 'wp:image {"id":' . $thumb_id) !== false) {
                 wp_send_json(array('success' => true, 'already_present' => true));
                 return;

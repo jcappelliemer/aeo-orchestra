@@ -23,7 +23,7 @@ $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)
     <?php endif; ?>
 
     <div class="orchestra-tool-card">
-        <h2><span class="dashicons dashicons-visibility" style="color:#8B5CF6"></span> <?php echo esc_html(SEO_AEO_T::t('Analizza visibilita AI delle tue pagine')); ?></h2>
+        <h2><span class="dashicons dashicons-visibility" style="color:#8B5CF6"></span> <?php echo esc_html(SEO_AEO_T::t('Analizza visibilità AI delle tue pagine')); ?></h2>
         <p><?php echo esc_html(SEO_AEO_T::t('Seleziona una pagina del sito per scoprire come viene percepita dai motori AI.')); ?></p>
 
         <div style="margin-bottom:15px;">

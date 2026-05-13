@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.2
+Stable tag: 3.40.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,12 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.3 =
+* P0 — Preview modal stuck (v3.40.0 regression). The "👁 Mostra modifiche" button fired the propose AJAX (status 200 OK) but the modal never opened and the button stayed disabled showing "Sto generando…". Root cause: a capture-phase click listener in admin-dashboard.php intercepted ALL `.orch-action-btn` clicks (including `.orch-preview-btn`) and routed them through the legacy propose + inline review-panel flow, preempting the v3.39.6 preview modal (`previewAction` in admin.js). The legacy renderer's silent failure left the button disabled.
+* Fix: capture-phase listener now skips `.orch-preview-btn` so admin.js previewAction handles preview buttons → `seo_aeo_orchestra_preview_action` AJAX → modal with side-by-side diff (current vs proposed) + 3 CTAs (Annulla / Rigenera / Applica modifiche). Esegui (`.orch-execute-btn`) buttons keep the legacy propose flow.
+* Hardening on the Esegui path: showReview() wrapped in try/catch so a render exception toasts + restores the button instead of leaving it stuck. Explicit 60s timeout on the propose AJAX. timeout vs xhr-fail distinguished in the toast text.
+* admin.js: added `console.log('[PREVIEW] modal open', !!modalEl, agent=…)` after showPreviewModal returns, plus a fallback toast if the modal node never lands in the DOM. The always() handler already restores the button text in every code path.
 
 = 3.40.2 =
 * P0a — Multi-signal builder + headless detection. v3.40.0 lightweight scanner mis-classified aeo-orchestra.com (React/Next.js headless) as "Gutenberg" because some blog posts use block markup. New SEO_AEO_Site_Scanner::detect_headless() aggregates 5 signals: WPGraphQL plugin (30%), siteurl != home (25%), env constants VERCEL/NETLIFY/NEXT/NUXT (20%), theme stem matches /headless|api|stub|null|frontity/i (15%), REST API enabled (10%). Threshold 40% to flag headless. scan_full() combines builder + headless with confidence scores and writes the full profile to option aeo_site_profile + back-compat aeo_site_builder / aeo_site_is_headless / aeo_headless_mode options. When headless confidence >= builder confidence the environment promotes to headless_<mode> in the capability matrix.

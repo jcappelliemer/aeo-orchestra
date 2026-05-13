@@ -39,8 +39,8 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
                     <select name="seo_aeo_orchestra_language">
                         <option value="it" <?php selected($seo_aeo_cur_lang, 'it'); ?>>Italiano</option>
                         <option value="en" <?php selected($seo_aeo_cur_lang, 'en'); ?>>English</option>
-                        <option value="es" <?php selected($seo_aeo_cur_lang, 'es'); ?>>Espanol</option>
-                        <option value="fr" <?php selected($seo_aeo_cur_lang, 'fr'); ?>>Francais</option>
+                        <option value="es" <?php selected($seo_aeo_cur_lang, 'es'); ?>>Español</option>
+                        <option value="fr" <?php selected($seo_aeo_cur_lang, 'fr'); ?>>Français</option>
                         <option value="de" <?php selected($seo_aeo_cur_lang, 'de'); ?>>Deutsch</option>
                     </select>
                     <p class="description">
@@ -75,13 +75,13 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
                 </td>
             </tr>
             <tr>
-                <th scope="row"><?php echo esc_html(SEO_AEO_T::t('Visibilita')); ?></th>
+                <th scope="row"><?php echo esc_html(SEO_AEO_T::t('Visibilità')); ?></th>
                 <td>
                     <select name="seo_aeo_orchestra_widget_visibility">
                         <option value="admin_only" <?php selected(get_option('seo_aeo_orchestra_widget_visibility'), 'admin_only'); ?>><?php echo esc_html(SEO_AEO_T::t('Solo Admin (loggato)')); ?></option>
                         <option value="everyone" <?php selected(get_option('seo_aeo_orchestra_widget_visibility'), 'everyone'); ?>><?php echo esc_html(SEO_AEO_T::t('Tutti i visitatori')); ?></option>
                     </select>
-                    <p class="description"><?php echo esc_html(SEO_AEO_T::t('Scegli chi puo vedere il widget. "Solo Admin" e utile per monitorare senza mostrarlo ai visitatori.')); ?></p>
+                    <p class="description"><?php echo esc_html(SEO_AEO_T::t('Scegli chi può vedere il widget. "Solo Admin" e utile per monitorare senza mostrarlo ai visitatori.')); ?></p>
                 </td>
             </tr>
             <tr>
@@ -170,7 +170,7 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
         ?>
         <h2 style="margin-top:24px;">🧩 <?php echo esc_html(SEO_AEO_T::t('Compatibilita\' Sito')); ?></h2>
         <p class="description">
-            <?php echo esc_html(SEO_AEO_T::t('Come AEO Orchestra interagisce con il tuo ambiente WordPress: page builder rilevato, modalita\' headless, e mappa delle capacita\' per ogni tipo di azione AI.')); ?>
+            <?php echo esc_html(SEO_AEO_T::t('Come AEO Orchestra interagisce con il tuo ambiente WordPress: page builder rilevato, modalità\' headless, e mappa delle capacità\' per ogni tipo di azione AI.')); ?>
         </p>
         <table class="form-table aeo-compat-table">
             <tr>
@@ -210,7 +210,7 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
                 <th scope="row"><?php echo esc_html(SEO_AEO_T::t('Ambiente effettivo')); ?></th>
                 <td>
                     <strong id="aeo-compat-env"><?php echo esc_html($aeo_env_label); ?></strong>
-                    <p class="description"><?php echo esc_html(SEO_AEO_T::t('Determina quali azioni AI verranno applicate automaticamente vs in modalita\' manuale.')); ?></p>
+                    <p class="description"><?php echo esc_html(SEO_AEO_T::t('Determina quali azioni AI verranno applicate automaticamente vs in modalità\' manuale.')); ?></p>
                 </td>
             </tr>
             <tr>
@@ -246,6 +246,74 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><?php echo esc_html(SEO_AEO_T::t('Override manuale')); ?></th>
+                <td>
+                    <?php
+                    $aeo_override_saved = get_option('aeo_site_override', array());
+                    $aeo_override_builder = isset($aeo_override_saved['builder']) ? $aeo_override_saved['builder'] : 'auto';
+                    $aeo_override_is_headless = isset($aeo_override_saved['is_headless']) ? ($aeo_override_saved['is_headless'] ? '1' : '0') : 'auto';
+                    $aeo_override_mode = isset($aeo_override_saved['headless_mode']) ? $aeo_override_saved['headless_mode'] : '';
+                    $builder_options = array(
+                        'auto'           => SEO_AEO_T::t('Auto (rilevato)'),
+                        'classic'        => 'Classic Editor',
+                        'gutenberg'      => 'Gutenberg',
+                        'elementor'      => 'Elementor',
+                        'divi'           => 'Divi',
+                        'wpbakery'       => 'WPBakery Page Builder',
+                        'beaver_builder' => 'Beaver Builder',
+                        'bricks'         => 'Bricks',
+                        'oxygen'         => 'Oxygen',
+                        'other'          => SEO_AEO_T::t('Altro builder'),
+                    );
+                    $headless_options = array(
+                        'auto' => SEO_AEO_T::t('Auto (rilevato)'),
+                        '0'    => SEO_AEO_T::t('No'),
+                        '1'    => SEO_AEO_T::t('Si, sito headless'),
+                    );
+                    $mode_options = array(
+                        ''    => SEO_AEO_T::t('Auto'),
+                        'rest' => 'REST API',
+                        'gql'  => 'WPGraphQL',
+                        'ssg'  => 'SSG / ISR',
+                    );
+                    ?>
+                    <p class="description" style="margin-top:0;margin-bottom:10px;">
+                        <?php echo esc_html(SEO_AEO_T::t('L\'auto-rilevamento non e\' infallibile. Sovrascrivi manualmente se sai che il tuo sito usa un builder/headless che il rilevatore non ha riconosciuto.')); ?>
+                    </p>
+                    <div id="aeo-compat-override" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;max-width:680px;margin-bottom:10px;">
+                        <label style="display:flex;flex-direction:column;font-size:12px;color:#475569;">
+                            <span style="margin-bottom:4px;font-weight:600;"><?php echo esc_html(SEO_AEO_T::t('Page builder')); ?></span>
+                            <select id="aeo-override-builder" style="font-size:13px;">
+                                <?php foreach ($builder_options as $val => $label): ?>
+                                <option value="<?php echo esc_attr($val); ?>" <?php selected($aeo_override_builder, $val); ?>><?php echo esc_html($label); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label style="display:flex;flex-direction:column;font-size:12px;color:#475569;">
+                            <span style="margin-bottom:4px;font-weight:600;"><?php echo esc_html(SEO_AEO_T::t('Sito headless')); ?></span>
+                            <select id="aeo-override-headless" style="font-size:13px;">
+                                <?php foreach ($headless_options as $val => $label): ?>
+                                <option value="<?php echo esc_attr($val); ?>" <?php selected($aeo_override_is_headless, $val); ?>><?php echo esc_html($label); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label style="display:flex;flex-direction:column;font-size:12px;color:#475569;" id="aeo-override-mode-wrap" <?php if ($aeo_override_is_headless !== '1') echo 'style="display:none;flex-direction:column;font-size:12px;color:#475569;"'; ?>>
+                            <span style="margin-bottom:4px;font-weight:600;"><?php echo esc_html(SEO_AEO_T::t('Modalita\' headless')); ?></span>
+                            <select id="aeo-override-mode" style="font-size:13px;">
+                                <?php foreach ($mode_options as $val => $label): ?>
+                                <option value="<?php echo esc_attr($val); ?>" <?php selected($aeo_override_mode, $val); ?>><?php echo esc_html($label); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                    </div>
+                    <button type="button" class="button" id="aeo-compat-override-save"><?php echo esc_html(SEO_AEO_T::t('Salva override')); ?></button>
+                    <span id="aeo-compat-override-status" style="margin-left:8px;color:#64748b;font-size:12px;"></span>
+                    <p class="description" style="margin-top:6px;font-size:11px;color:#94a3b8;">
+                        <?php echo esc_html(SEO_AEO_T::t('Le modalità\' per ogni azione si aggiornano automaticamente dopo il salvataggio.')); ?>
+                    </p>
                 </td>
             </tr>
             <tr>
@@ -285,6 +353,31 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
                 }).always(function () {
                     $btn.prop('disabled', false);
                 });
+            });
+            $('#aeo-override-headless').on('change', function () {
+                $('#aeo-override-mode-wrap').css('display', $(this).val() === '1' ? 'flex' : 'none');
+            });
+            $('#aeo-compat-override-save').on('click', function () {
+                var $btn = $(this);
+                var $status = $('#aeo-compat-override-status');
+                $btn.prop('disabled', true);
+                $status.css('color', '#64748b').text('<?php echo esc_js(SEO_AEO_T::t('Salvataggio in corso...')); ?>');
+                $.post(ajaxurl, {
+                    action: 'seo_aeo_orchestra_save_compat_override',
+                    nonce: (window.seoAeoOrchestra && window.seoAeoOrchestra.nonce) || '',
+                    builder: $('#aeo-override-builder').val(),
+                    is_headless: $('#aeo-override-headless').val(),
+                    headless_mode: $('#aeo-override-mode').val()
+                }).done(function (resp) {
+                    if (resp && resp.success) {
+                        $status.css('color', '#065f46').text('Salvato. Ricarico...');
+                        setTimeout(function () { window.location.reload(); }, 600);
+                    } else {
+                        $status.css('color', '#991b1b').text('X Salvataggio fallito.');
+                    }
+                }).fail(function (xhr) {
+                    $status.css('color', '#991b1b').text('X HTTP ' + (xhr ? xhr.status : '?'));
+                }).always(function () { $btn.prop('disabled', false); });
             });
         });
         </script>

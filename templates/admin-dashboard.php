@@ -4183,6 +4183,10 @@ jQuery(document).ready(function($) {
             var btn = e.target.closest && e.target.closest('.orch-action-btn');
             if (!btn) return;
             if (btn.disabled || btn.classList.contains('executing')) return;
+            // 3.40.3 — .orch-preview-btn falls through to admin.js previewAction
+            // (modal flow, v3.39.6+). This legacy capture-phase listener only
+            // owns Esegui-style buttons now.
+            if (btn.classList.contains('orch-preview-btn')) return;
             var rawAgent = btn.getAttribute('data-agent') || '';
             var agent = mapAgent(rawAgent);
             if (SUPPORTED_AGENTS.indexOf(agent) === -1) {
@@ -4192,6 +4196,8 @@ jQuery(document).ready(function($) {
             // Blocca il click legacy e apri flow propose
             e.preventDefault();
             e.stopImmediatePropagation();
+            // 3.40.3 — diagnostic trace for the legacy capture-phase flow.
+            try { console.log('[PROPOSE] click', {agent: agent, rawAgent: rawAgent, dataActionData: btn.getAttribute('data-action-data')}); } catch(_) {}
             startPropose(btn, agent);
         }, true); // capture phase
 
@@ -4221,24 +4227,47 @@ jQuery(document).ready(function($) {
 
             // Se non abbiamo post_id valido, prima cerchiamo con get_pages
             var proposeCall = function(pid) {
-                $.post(ajaxurl, {
-                    action: 'seo_aeo_orchestra_propose',
-                    nonce: seoAeoOrchestra.nonce,
-                    agent: agent,
-                    post_id: pid,
-                    url: url,
-                    keywords: keyword
+                // 3.40.3 — explicit 60s timeout + comprehensive diagnostic trace.
+                // Without this an SSE-stalled backend leaves the button in
+                // "Sto generando…" forever.
+                try { console.log('[PROPOSE] ajax sent', {agent: agent, post_id: pid, url: url, keywords: keyword}); } catch(_) {}
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    timeout: 60000,
+                    data: {
+                        action: 'seo_aeo_orchestra_propose',
+                        nonce: seoAeoOrchestra.nonce,
+                        agent: agent,
+                        post_id: pid,
+                        url: url,
+                        keywords: keyword
+                    }
                 }).done(function(resp) {
+                    try { console.log('[PROPOSE] ajax done', resp ? Object.keys(resp) : 'null'); } catch(_) {}
                     if (resp && resp.error) {
                         restoreBtn(btn, originalHtml);
                         toast('Errore: ' + resp.error);
                         return;
                     }
                     if (resp && typeof resp === 'object') resp.post_id = pid;
-                    showReview($item, btn, resp, originalHtml);
-                }).fail(function(xhr) {
+                    try {
+                        try { console.log('[PROPOSE] modal about to render', {proposalId: resp && resp.proposal_id, hasProposedState: !!(resp && resp.proposed_state)}); } catch(_) {}
+                        showReview($item, btn, resp, originalHtml);
+                        try { console.log('[PROPOSE] modal rendered', true); } catch(_) {}
+                    } catch (renderErr) {
+                        // 3.40.3 — never let a render exception leave the button stuck.
+                        try { console.error('[PROPOSE] error caught (showReview threw)', renderErr); } catch(_) {}
+                        restoreBtn(btn, originalHtml);
+                        toast('Errore rendering proposta: ' + (renderErr && renderErr.message ? renderErr.message : 'sconosciuto'));
+                    }
+                }).fail(function(xhr, status) {
                     restoreBtn(btn, originalHtml);
-                    toast('Errore rete (' + xhr.status + ')');
+                    if (status === 'timeout') {
+                        toast('Proposta impiega troppo tempo (>60s). Riprova tra qualche secondo.');
+                    } else {
+                        toast('Errore rete (' + (xhr ? xhr.status : '?') + ')');
+                    }
                 });
             };
 

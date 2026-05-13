@@ -97,7 +97,8 @@ jQuery(function($) {
         'image_generation': 'Immagine AI',
         'complete_article': 'Articolo Completo',
         'orchestrator': 'Orchestratore',
-        'keyword_suggestions': 'Suggerimenti Keyword'
+        'keyword_suggestions': 'Suggerimenti Keyword',
+        'keyword_research': 'Keyword Research'
     };
 
     var agentColors = {

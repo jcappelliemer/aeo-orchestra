@@ -13,7 +13,7 @@ $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)
 
     <div class="orchestra-header">
         <h2><?php SEO_AEO_T::e('Local SEO'); ?></h2>
-        <p class="description"><?php SEO_AEO_T::e('Genera pagine ottimizzate per la ricerca locale e posizionati nelle citta target.'); ?></p>
+        <p class="description"><?php SEO_AEO_T::e('Genera pagine ottimizzate per la ricerca locale e posizionati nelle città target.'); ?></p>
     </div>
 
     <?php
@@ -33,8 +33,8 @@ $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)
     <?php endif; ?>
 
     <div class="orchestra-tool-card">
-        <h2><span class="dashicons dashicons-location" style="color:#EF4444"></span> <?php echo esc_html(SEO_AEO_T::t('Genera pagine ottimizzate per citta')); ?></h2>
-        <p><?php echo esc_html(SEO_AEO_T::t('Crea pagine local SEO per i tuoi servizi in diverse citta.')); ?></p>
+        <h2><span class="dashicons dashicons-location" style="color:#EF4444"></span> <?php echo esc_html(SEO_AEO_T::t('Genera pagine ottimizzate per città')); ?></h2>
+        <p><?php echo esc_html(SEO_AEO_T::t('Crea pagine local SEO per i tuoi servizi in diverse città.')); ?></p>
 
         <table class="form-table">
             <tr>
@@ -45,7 +45,7 @@ $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)
                 <th><?php echo esc_html(SEO_AEO_T::t('Citta')); ?></th>
                 <td>
                     <input type="text" id="local-city" class="regular-text" placeholder="<?php echo esc_attr(SEO_AEO_T::t('es. Milano')); ?>" />
-                    <p class="description"><?php echo esc_html(SEO_AEO_T::t('Per piu citta, separale con virgola')); ?></p>
+                    <p class="description"><?php echo esc_html(SEO_AEO_T::t('Per più città, separale con virgola')); ?></p>
                 </td>
             </tr>
             <tr>
@@ -75,7 +75,7 @@ $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)
     <!-- Local Keyword Suggestions -->
     <div class="orchestra-tool-card" id="local-keyword-suggestions">
         <h2><span class="dashicons dashicons-lightbulb" style="color:#EF4444"></span> <?php echo esc_html(SEO_AEO_T::t('Suggerimenti Local SEO')); ?></h2>
-        <p><?php echo esc_html(SEO_AEO_T::t('Inserisci il tuo settore e la zona per scoprire le keyword locali piu efficaci.')); ?></p>
+        <p><?php echo esc_html(SEO_AEO_T::t('Inserisci il tuo settore e la zona per scoprire le keyword locali più efficaci.')); ?></p>
 
         <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:15px;">
             <div style="flex:1;">

@@ -340,7 +340,7 @@ class SEO_AEO_Autopilot {
             try {
                 $alt_for_image = !empty($kwText) ? ($topic . ' — ' . $kwText) : $topic;
                 SEO_AEO_AI_Helpers::attach_featured_image($post_id, $resp['image_base64'], $topic, $alt_for_image, 'autopilot');
-                // 3.33.2: inline prepend per visibilita' frontend su tutti i theme
+                // 3.33.2: inline prepend per visibilità' frontend su tutti i theme
                 $thumb_id = get_post_thumbnail_id($post_id);
                 if ($thumb_id) {
                     $img_url = wp_get_attachment_url($thumb_id);

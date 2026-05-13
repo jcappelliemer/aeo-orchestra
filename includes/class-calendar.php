@@ -188,7 +188,7 @@ class SEO_AEO_Calendar {
         SEO_AEO_AI_Helpers::mark_ai_generated($post_id, 'calendar', 0);
         update_post_meta($post_id, '_seo_aeo_calendar_slot_id', $slot_id);
 
-        // Featured image + 3.33.2: inline prepend per visibilita' su tutti i theme (incluso Elementor che non renderizza featured)
+        // Featured image + 3.33.2: inline prepend per visibilità' su tutti i theme (incluso Elementor che non renderizza featured)
         if (!empty($resp['image_base64'])) {
             try {
                 $alt_for_image = !empty($kw) ? ($topic . ' — ' . $kw) : $topic;
@@ -376,7 +376,7 @@ class SEO_AEO_Calendar {
         if (!$slot) {
             return array('success' => false, 'error' => 'Slot non trovato (id=' . substr($slot_id, 0, 12) . '...). Aggiorna la pagina e riprova.');
         }
-        // Bypass se status non planned (es. gia generato): logga ma non ri-genera
+        // Bypass se status non planned (es. già generato): logga ma non ri-genera
         $cur_status = (string) ($slot['status'] ?? 'planned');
         if ($cur_status !== 'planned') {
             seo_aeo_debug_log('[SEO_AEO Calendar] generate_now: slot status=' . $cur_status . ' (skip re-gen, return current state)');
@@ -522,7 +522,7 @@ class SEO_AEO_Calendar {
 
     /**
      * Commit della preview: legge transient → wp_insert_post → meta → notifica backend.
-     * Idempotente: skip se transient gia consumato (status=generated).
+     * Idempotente: skip se transient già consumato (status=generated).
      */
     public static function commit_preview_for_slot($slot_id) {
         $payload = get_transient(self::PREVIEW_TRANSIENT_PREFIX . $slot_id);
@@ -554,7 +554,7 @@ class SEO_AEO_Calendar {
                 if ((string) ($s['slot_id'] ?? '') === (string) $slot_id) {
                     $sched_iso = (string) ($s['scheduled_at_utc'] ?? '');
                     $cat = (int) ($s['category_id'] ?? 0);
-                    // Idempotency: gia generato → skip wp_insert_post
+                    // Idempotency: già generato → skip wp_insert_post
                     $existing_status = (string) ($s['status'] ?? '');
                     $existing_post_id = (int) ($s['post_id'] ?? 0);
                     if ($existing_status === 'generated' && $existing_post_id > 0 && get_post($existing_post_id)) {
@@ -701,7 +701,7 @@ class SEO_AEO_Calendar {
 
     /**
      * Cleanup transient orfani: chiamato da cron. Itera tutti gli slot status=preview
-     * del backend e rimuove transient di slot che non esistono piu.
+     * del backend e rimuove transient di slot che non esistono più.
      */
     public static function cleanup_orphan_previews() {
         global $wpdb;

@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.2
+Stable tag: 3.39.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,12 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.3 =
+* CRITICAL UX FIX — anti-hallucination calibration. v3.39.2 introduced REGOLE CRITICHE that were too restrictive: the LLM applied rule "se un'informazione non e' presente, dichiarala NON DETERMINABILE" to NORMATIVE SEO/AEO gaps too, not just factual claims. Verified Chrome MCP on aeo-orchestra.com v3.39.2: fresh analysis returned 0 SEO problems, 0 AEO problems, seo_score=null, aeo_score=null. Zero hallucinations (correct) but also zero analysis (useless). User saw "SEO MEDIO --" and "AEO MEDIO --" with 0 problems and concluded the plugin was broken.
+* Prompt revision — replaced the single REGOLE CRITICHE block in routes/ai.py + helpers/site_context.py with three clearly delimited sections: (1) REGOLE PER CLAIM FATTUALI applies only to claims about WHAT the page sells / IS / CONTAINS — still strict, never invent products / topics / prices, mark factual gaps as NON DETERMINABILE; (2) REGOLE PER ANALISI NORMATIVA explicitly licenses the AI to identify SEO/AEO best-practice gaps even when the missing element is not mentioned in the text (FAQ schema, structured data, intro-as-direct-answer, H1 keyword targeting, meta description length, keyword density, internal linking, conversational tone for AEO, thin content < 500 words, E-E-A-T signals), with a curated list of legitimate gap categories; (3) REGOLE DI SCORING mandates a numeric 0-100 value for every score field (never null, never "--", never skipped — poor content yields a low specific score like 25 or 35, not nothing).
+* Target output guidance added to the prompt: 3-7 problems per page is the expected range. Pages with 0 problems are flagged as a rare case requiring the normative rules to be re-applied.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.39.2 =
 * Bug #1 (P0) — Site Context fields appeared to "not save". Root cause was hydration, not save: data was correctly persisted in MongoDB and returned by the GET endpoint, but loadProfile() scalar list was missing the three new site_context_description / value_prop / target_audience keys, so the textareas stayed empty on reload. Extended the hydration list. Extracted hydrateProfile() helper so we can re-run it.

@@ -1145,6 +1145,75 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
      * render a current-vs-proposed diff for the user before they
      * commit via "Applica modifiche".
      */
+    /**
+     * 3.40.0 — Lookup the capability mode for an action_type using
+     * SEO_AEO_Capability_Matrix. Falls back to 'full' if the matrix
+     * class isn't loaded (defensive — we never want to break the
+     * existing automatic path).
+     */
+    private function get_action_mode($action_type) {
+        if (!class_exists('SEO_AEO_Capability_Matrix')) return 'full';
+        return SEO_AEO_Capability_Matrix::get_mode_for_action((string) $action_type);
+    }
+
+    /**
+     * 3.40.0 — Per-builder manual-mode instructions. Returns an array
+     * of step strings the frontend renders as a numbered list.
+     */
+    private function get_manual_instructions_for_builder($builder) {
+        $map = array(
+            'classic' => array(
+                'Apri la pagina nell\'editor WordPress classico.',
+                'Trova il testo originale evidenziato sotto.',
+                'Sostituiscilo con il testo proposto (Copia testo).',
+                'Salva la pagina.',
+            ),
+            'gutenberg' => array(
+                'Apri la pagina nell\'editor Gutenberg.',
+                'Localizza il blocco contenente il testo originale.',
+                'Sostituisci con il testo proposto (Copia testo).',
+                'Clicca Aggiorna.',
+            ),
+            'elementor' => array(
+                'Apri Elementor cliccando "Modifica con Elementor" nell\'editor pagina.',
+                'Clicca sul widget contenente il testo originale evidenziato.',
+                'Nel pannello a sinistra, sostituisci il contenuto con il testo proposto.',
+                'Clicca Aggiorna.',
+            ),
+            'divi' => array(
+                'Apri Divi Builder cliccando "Usa il Divi Builder" nell\'editor.',
+                'Clicca sul modulo testuale contenente il testo originale.',
+                'Sostituisci con il testo proposto.',
+                'Salva e Pubblica.',
+            ),
+            'wpbakery' => array(
+                'Apri WPBakery / Visual Composer.',
+                'Clicca sul Text Block contenente il testo originale.',
+                'Sostituisci con il testo proposto.',
+                'Aggiorna la pagina.',
+            ),
+            'beaver' => array(
+                'Apri Beaver Builder.',
+                'Clicca sul Text Editor contenente il testo originale.',
+                'Sostituisci con il testo proposto.',
+                'Pubblica.',
+            ),
+            'bricks' => array(
+                'Apri Bricks Builder.',
+                'Localizza l\'elemento contenente il testo originale.',
+                'Sostituisci con il testo proposto.',
+                'Salva.',
+            ),
+            'oxygen' => array(
+                'Apri Oxygen Editor su questa pagina.',
+                'Clicca sull\'elemento contenente il testo originale.',
+                'Sostituisci con il testo proposto.',
+                'Salva.',
+            ),
+        );
+        return isset($map[$builder]) ? $map[$builder] : $map['classic'];
+    }
+
     public function ajax_preview_action() {
         try {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
@@ -1156,6 +1225,13 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             if (!$api) return;
             $agent = isset($_POST['agent']) ? sanitize_text_field(wp_unslash($_POST['agent'])) : '';
             $data = isset($_POST['action_data']) ? (array) $_POST['action_data'] : array();
+            // 3.40.0 — capability-matrix mode dispatch.
+            $action_type = isset($_POST['action_type']) ? sanitize_text_field(wp_unslash($_POST['action_type'])) : '';
+            $mode = $this->get_action_mode($action_type);
+            $builder = get_option('aeo_site_builder', 'unknown');
+            $manual_instructions = (class_exists('SEO_AEO_Capability_Matrix') && SEO_AEO_Capability_Matrix::is_manual_mode($mode))
+                ? $this->get_manual_instructions_for_builder($builder)
+                : array();
 
             // Collect "current" page state so the modal can show before/after.
             $current = array();
@@ -1192,10 +1268,14 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'tier'     => 'standard', // 3.39.7 — cheap preview tier
                     ));
                     wp_send_json(array(
-                        'preview'        => true,
-                        'agent'          => $agent,
-                        'current'        => $current,
-                        'proposed'       => $result,
+                        'preview'           => true,
+                        'mode'              => $mode,
+                        'builder'           => $builder,
+                        'manual_instructions' => $manual_instructions,
+                        'action_type'       => $action_type,
+                        'agent'             => $agent,
+                        'current'           => $current,
+                        'proposed'          => $result,
                         'estimated_credits' => 3,
                     ));
                     break;
@@ -1212,10 +1292,14 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'tier'            => 'standard', // 3.39.7 — cheap preview tier
                     ));
                     wp_send_json(array(
-                        'preview'        => true,
-                        'agent'          => $agent,
-                        'current'        => $current,
-                        'proposed'       => $result,
+                        'preview'           => true,
+                        'mode'              => $mode,
+                        'builder'           => $builder,
+                        'manual_instructions' => $manual_instructions,
+                        'action_type'       => $action_type,
+                        'agent'             => $agent,
+                        'current'           => $current,
+                        'proposed'          => $result,
                         'estimated_credits' => 10,
                     ));
                     break;
@@ -1232,10 +1316,14 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'tier'        => 'standard', // 3.39.7 — cheap preview tier
                     ));
                     wp_send_json(array(
-                        'preview'        => true,
-                        'agent'          => $agent,
-                        'current'        => $current,
-                        'proposed'       => $result,
+                        'preview'           => true,
+                        'mode'              => $mode,
+                        'builder'           => $builder,
+                        'manual_instructions' => $manual_instructions,
+                        'action_type'       => $action_type,
+                        'agent'             => $agent,
+                        'current'           => $current,
+                        'proposed'          => $result,
                         'estimated_credits' => 15,
                     ));
                     break;
@@ -1250,10 +1338,14 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'tier'     => 'standard', // 3.39.7 — cheap preview tier
                     ));
                     wp_send_json(array(
-                        'preview'        => true,
-                        'agent'          => $agent,
-                        'current'        => $current,
-                        'proposed'       => $result,
+                        'preview'           => true,
+                        'mode'              => $mode,
+                        'builder'           => $builder,
+                        'manual_instructions' => $manual_instructions,
+                        'action_type'       => $action_type,
+                        'agent'             => $agent,
+                        'current'           => $current,
+                        'proposed'          => $result,
                         'estimated_credits' => 5,
                     ));
                     break;
@@ -1284,6 +1376,24 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             if (!$api) return;
             $agent = isset($_POST['agent']) ? sanitize_text_field(wp_unslash($_POST['agent'])) : '';
             $data = isset($_POST['action_data']) ? (array)$_POST['action_data'] : array();
+            // 3.40.0 — capability-matrix dispatch. When mode is manual/low for
+            // this action_type + builder, refuse the automatic apply and tell
+            // the frontend to surface the manual-mode UX. The AI proposal was
+            // already shown in the preview modal; the user copies the text and
+            // pastes it into their builder, then clicks "Ho applicato
+            // manualmente" (tracker endpoint lands in v3.40.1).
+            $action_type = isset($_POST['action_type']) ? sanitize_text_field(wp_unslash($_POST['action_type'])) : '';
+            $mode = $this->get_action_mode($action_type);
+            if (class_exists('SEO_AEO_Capability_Matrix') && SEO_AEO_Capability_Matrix::is_manual_mode($mode)) {
+                wp_send_json(array(
+                    'manual_mode'    => true,
+                    'mode'           => $mode,
+                    'builder'        => get_option('aeo_site_builder', 'unknown'),
+                    'action_type'    => $action_type,
+                    'message'        => 'Questa azione richiede applicazione manuale per il builder rilevato. Usa la preview e copia il testo proposto.',
+                ));
+                return;
+            }
 
             switch ($agent) {
                 case 'meta_tags':

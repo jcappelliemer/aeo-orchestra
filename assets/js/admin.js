@@ -3147,6 +3147,10 @@
 
             // 3.39.10 — explicit 60s timeout + better diagnostics + always-
             // restore guard. No button can hang in loading state forever.
+            // 3.40.0 — action_type is needed for capability-matrix dispatch.
+            // The data-action-type attribute is set by the renderer when the
+            // action carries an action_type from build_action_from_issue.
+            var actionType = $btn.data('action-type') || (actionData && actionData.action_type) || '';
             jQuery.ajax({
                 url: seoAeoOrchestra.ajaxUrl,
                 type: 'POST',
@@ -3156,6 +3160,7 @@
                     nonce: seoAeoOrchestra.nonce,
                     agent: agent,
                     action_data: actionData,
+                    action_type: actionType,
                 },
             }).done(function(resp) {
                 console.log('[PREVIEW] response', resp);
@@ -3212,8 +3217,50 @@
 
             var bodyHtml = '';
             var canApply = true;
+            // 3.40.0 — manual-mode variant takes precedence over all per-agent
+            // branches when the capability matrix says we can't apply
+            // automatically. The user gets the proposed text + copy button +
+            // builder-specific instructions instead of an Apply button.
+            var isManualMode = (payload.mode === 'manual' || payload.mode === 'low' || payload.manual_mode === true);
 
-            if (proposed && proposed.error) {
+            if (isManualMode) {
+                canApply = false;
+                var builderLabel = payload.builder ? escHtml(payload.builder) : 'WordPress';
+                bodyHtml += '<div class="orch-apv-manual-banner">' +
+                    '<strong>\u270F\uFE0F ' + T('Modalita\' Manuale richiesta') + '</strong> &mdash; ' +
+                    T('Il tuo sito usa') + ' <strong>' + builderLabel + '</strong>. ' +
+                    T('AEO Orchestra non puo\' modificare automaticamente questo tipo di contenuto, ma genera il testo per te.') +
+                    '</div>';
+                // Original text (best-effort: pull from current snapshot).
+                var origText = '';
+                if (current.meta_description) origText = current.meta_description;
+                else if (current.meta_title) origText = current.meta_title;
+                else if (current.page_title) origText = current.page_title;
+                bodyHtml += '<div class="orch-apv-section"><h4>' + T('Testo originale') + '</h4>';
+                bodyHtml += '<div class="orch-apv-orig-text">' + (origText ? escHtml(origText) : '<em>' + T('Vedi il contenuto attuale della pagina nell\'editor.') + '</em>') + '</div></div>';
+                // Proposed text (varies by agent).
+                var proposedText = '';
+                if (proposed) {
+                    if (proposed.title) proposedText = proposed.title;
+                    else if (proposed.description) proposedText = proposed.description;
+                    else if (proposed.content) proposedText = proposed.content;
+                    else if (typeof proposed === 'string') proposedText = proposed;
+                }
+                bodyHtml += '<div class="orch-apv-section"><h4>' + T('Testo proposto AEO') + '</h4>';
+                bodyHtml += '<div class="orch-apv-proposed-text" id="orch-apv-proposed-text">' + (proposedText ? escHtml(proposedText) : '<em>' + T('Nessun testo generato.') + '</em>') + '</div>';
+                if (proposedText) {
+                    bodyHtml += '<button type="button" class="button orch-apv-copy" data-copy-target="orch-apv-proposed-text">\uD83D\uDCCB ' + T('Copia testo proposto') + '</button>';
+                }
+                bodyHtml += '</div>';
+                // Builder-specific instructions.
+                if (Array.isArray(payload.manual_instructions) && payload.manual_instructions.length) {
+                    bodyHtml += '<div class="orch-apv-section"><h4>' + T('Istruzioni per') + ' ' + builderLabel + '</h4><ol class="orch-apv-instructions">';
+                    payload.manual_instructions.forEach(function(step) {
+                        bodyHtml += '<li>' + escHtml(step) + '</li>';
+                    });
+                    bodyHtml += '</ol></div>';
+                }
+            } else if (proposed && proposed.error) {
                 bodyHtml = '<p class="orch-apv-err">' + T('Backend ha restituito un errore') + ': ' + escHtml(proposed.error || proposed.message || '') + '</p>';
                 canApply = false;
             } else if (payload.message || (proposed && proposed.manual_review)) {
@@ -3265,6 +3312,9 @@
             ctaHtml += '<button type="button" class="button orch-apv-regen">' + T('Rigenera') + '</button>';
             if (canApply) {
                 ctaHtml += '<button type="button" class="button button-primary orch-apv-apply">' + T('Applica modifiche') + (credits ? ' (' + credits + ' cr)' : '') + '</button>';
+            } else if (isManualMode) {
+                // 3.40.0 — tracker (real AJAX lands in v3.40.1).
+                ctaHtml += '<button type="button" class="button button-primary orch-apv-applied-manual">\u2713 ' + T('Ho applicato manualmente') + '</button>';
             }
 
             if (!$('#orch-apv-styles').length) {
@@ -3316,6 +3366,31 @@
             function close() { $modal.remove(); }
             $modal.on('click', function(ev) { if (ev.target === $modal[0]) close(); });
             $modal.find('.orch-apv-close, .orch-apv-cancel').on('click', close);
+            // 3.40.0 — manual-mode interactions.
+            $modal.find('.orch-apv-copy').on('click', function() {
+                var targetId = $(this).data('copy-target');
+                var text = $('#' + targetId).text();
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(function() {
+                        SeoAeoOrchestra.showNotice(T('Testo copiato negli appunti'), 'success');
+                    });
+                } else {
+                    // Fallback: textarea + execCommand.
+                    var ta = document.createElement('textarea');
+                    ta.value = text;
+                    document.body.appendChild(ta);
+                    ta.select();
+                    try { document.execCommand('copy'); SeoAeoOrchestra.showNotice(T('Testo copiato negli appunti'), 'success'); }
+                    catch (e) { SeoAeoOrchestra.showNotice(T('Copia fallita — seleziona manualmente'), 'error'); }
+                    document.body.removeChild(ta);
+                }
+            });
+            $modal.find('.orch-apv-applied-manual').on('click', function() {
+                close();
+                // v3.40.1 — call seo_aeo_orchestra_mark_manual_applied AJAX.
+                // For now show a confirmation toast.
+                SeoAeoOrchestra.showNotice(T('Modifica registrata come applicata manualmente.'), 'success');
+            });
             $modal.find('.orch-apv-regen').on('click', function() {
                 close();
                 if (payload._sourceBtn) jQuery(payload._sourceBtn).trigger('click');

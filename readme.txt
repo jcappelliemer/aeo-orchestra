@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.10
+Stable tag: 3.40.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,15 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.0 =
+* NEW FEATURE — Universal compat foundation: capability matrix + lightweight builder detection + per-action mode dispatch + manual-mode UX. This is the architecture that distinguishes AEO Orchestra from Yoast/RankMath (which do 0% body edits across the WP ecosystem) by exposing what we CAN modify automatically per builder, and gracefully falling back to manual-paste mode where we CANNOT.
+* Part 1 — capability matrix (includes/class-capability-matrix.php). 10 environments × 3 dimensions (surgical_text, block_append, schema) × 5 reliability levels (full / high / medium / low / manual). Maps every action_type to its capability dimension. ACTION_TYPE_MAP + ENVIRONMENT key resolution + is_manual_mode / is_verify_mode helpers + get_capability_summary for UI rendering.
+* Part 2 — lightweight builder detection (includes/class-site-scanner.php). detect_builder() scans the active-plugins list for known builder slugs (Elementor, Divi, WPBakery, Bricks, Oxygen, Beaver, Breakdance), checks the active theme for Divi/Extra, and falls back to gutenberg/classic based on a sample of the 10 most-recent posts using has_blocks(). Result cached in option aeo_site_builder, re-scanned via force_rescan(). Runs once on activation.
+* Part 4 — per-action mode dispatch wired into ajax_preview_action + ajax_execute_action. Each request now carries action_type. PHP looks up the mode via SEO_AEO_Capability_Matrix::get_mode_for_action(). Preview responses tag mode + builder + manual_instructions so the frontend can render the right variant. Execute path short-circuits when mode is manual/low — never writes to DB, returns a manual_mode payload directing the user to the preview modal.
+* Part 6 — manual-mode UX in preview modal. New branch in showPreviewModal renders: amber banner ("Modalita\' Manuale richiesta — Il tuo sito usa Elementor..."), original text in red, proposed text in green with "📋 Copia testo proposto" button, numbered builder-specific instructions list ("Apri Elementor cliccando..."), and "✓ Ho applicato manualmente" CTA (real tracker AJAX lands in v3.40.1).
+* DEFERRED to v3.40.1+: (3) Full 3-stage Setup Wizard with capability summary table, (5) per-builder surgical editors (ClassicEditor DOMDocument, Gutenberg parse_blocks walker, Elementor JSON walker, HeadlessREST direct write), (7) full headless mode handling (REST + WPGraphQL + SSG webhook), (8) deep cache integration (WP Rocket / Super Cache / Cloudflare / Elementor / Divi). Foundation in v3.40.0 makes each of these incremental additions instead of architectural changes.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.39.10 =
 * Task 1 — ETA baseline calibration. Default 25s underestimate of real ~50s p50 caused the ETA to reach 0 and freeze on "Quasi finito..." for 25-30s while the LLM completed. Bumped _ORCH_DEFAULT_ETA from 25 to 50 (matches observed median). The rolling-localStorage median continues to override this as soon as 1+ successful analyses are recorded.

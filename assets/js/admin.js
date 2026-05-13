@@ -2204,24 +2204,12 @@
             }
 
             var page = pages[idx];
-            var pct = Math.round(((idx) / pages.length) * 100);
-            $('#orch-progress-bar').css('width', pct + '%');
-            $('#orch-progress-pct').text(pct + '%');
             $('#orch-progress-counter').text((idx + 1) + ' / ' + pages.length);
             $('#orch-progress-text').text(SeoAeoOrchestra.t('Analizzando:') + ' ' + page.title);
 
-            // ETA calculation
-            if (idx > 0) {
-                var elapsed = (Date.now() - SeoAeoOrchestra.orchestrateStartTime) / 1000;
-                var avgPerPage = elapsed / idx;
-                var remaining = Math.round(avgPerPage * (pages.length - idx));
-                var min = Math.floor(remaining / 60);
-                var sec = remaining % 60;
-                var etaText = min > 0 ? min + ' min ' + sec + ' sec' : sec + ' sec';
-                $('#orch-progress-eta').text('Tempo stimato rimanente: ~' + etaText);
-            } else {
-                $('#orch-progress-eta').text('Tempo stimato: calcolo...');
-            }
+            // 3.39.7 — record page-start timestamp + start the 500ms tick.
+            SeoAeoOrchestra._orchPageStartedAt = Date.now();
+            SeoAeoOrchestra._startOrchEtaTick(idx, pages.length);
 
             $('#orch-progress-log').prepend('<div>&#9654; Analizzando pagina ' + (idx + 1) + '/' + pages.length + ': ' + page.title + '...</div>');
 
@@ -2246,6 +2234,14 @@
                 if (result && result.generation_id) {
                     SeoAeoOrchestra._orchestratePendingGenId = result.generation_id;
                 }
+                // 3.39.7 — stop ETA tick + record this page's duration for
+                // future median ETA. Capped to a sensible window so a single
+                // outlier doesn't poison the rolling list.
+                SeoAeoOrchestra._stopOrchEtaTick();
+                if (SeoAeoOrchestra._orchPageStartedAt) {
+                    var _dur = Math.round((Date.now() - SeoAeoOrchestra._orchPageStartedAt) / 1000);
+                    if (_dur > 0 && _dur < 600) SeoAeoOrchestra._recordOrchPageDuration(_dur);
+                }
                 if (result && !result.error) {
                     SeoAeoOrchestra.orchestrateResults.push(result);
                     var seo = result.seo_score !== null ? result.seo_score : '?';
@@ -2262,6 +2258,7 @@
                 // Small delay to not overwhelm server
                 setTimeout(function() { SeoAeoOrchestra.orchestrateNext(); }, 500);
             }).fail(function() {
+                SeoAeoOrchestra._stopOrchEtaTick();
                 $('#orch-progress-log').prepend('<div style="color:#EF4444;">&#10007; ' + page.title + ' - ' + SeoAeoOrchestra.t('Connessione fallita') + '</div>');
                 SeoAeoOrchestra.orchestrateResults.push({
                     url: page.url, title: page.title, post_id: page.post_id,
@@ -2276,6 +2273,8 @@
             // 3.37.2 Module 14 — release the in-flight latch so the user can
             // start a new analysis.
             SeoAeoOrchestra._orchestrateInFlight = false;
+            // 3.39.7 — kill the ETA tick before jumping the bar to 100%.
+            SeoAeoOrchestra._stopOrchEtaTick();
             $('#orch-progress-bar').css('width', '100%');
             $('#orch-progress-pct').text('100%');
             var elapsed = Math.round((Date.now() - SeoAeoOrchestra.orchestrateStartTime) / 1000);
@@ -3135,7 +3134,10 @@
             var html = '<div class="orch-apv-backdrop" id="orch-action-preview-modal">' +
                 '<div class="orch-apv-modal">' +
                   '<div class="orch-apv-head">' +
-                    '<h3>' + T('Anteprima modifiche') + ' — ' + escHtml(payload.agent || '') + '</h3>' +
+                    '<div>' +
+                      '<h3 style="margin:0;">' + T('Anteprima modifiche') + ' — ' + escHtml(payload.agent || '') + '</h3>' +
+                      '<div class="orch-apv-subtitle" style="font-size:11px;color:#94A3B8;margin-top:3px;">' + T('Preview con tier veloce (1cr). Applica usa il tier configurato.') + '</div>' +
+                    '</div>' +
                     '<button type="button" class="orch-apv-close" aria-label="' + T('Chiudi') + '">×</button>' +
                   '</div>' +
                   '<div class="orch-apv-body">' + bodyHtml + '</div>' +

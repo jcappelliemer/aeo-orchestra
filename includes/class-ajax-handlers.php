@@ -1189,6 +1189,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'content'  => substr(wp_strip_all_tags(get_post_field('post_content', $post_id)), 0, 3000),
                         'keyword'  => $keyword,
                         'language' => $this->get_ai_language(),
+                        'tier'     => 'standard', // 3.39.7 — cheap preview tier
                     ));
                     wp_send_json(array(
                         'preview'        => true,
@@ -1208,6 +1209,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'include_schema'  => true,
                         'include_faq'     => true,
                         'language'        => $this->get_ai_language(),
+                        'tier'            => 'standard', // 3.39.7 — cheap preview tier
                     ));
                     wp_send_json(array(
                         'preview'        => true,
@@ -1227,6 +1229,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'length'      => 'medium',
                         'include_faq' => true,
                         'language'    => $this->get_ai_language(),
+                        'tier'        => 'standard', // 3.39.7 — cheap preview tier
                     ));
                     wp_send_json(array(
                         'preview'        => true,
@@ -1244,6 +1247,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'url'      => $url,
                         'keyword'  => $keyword,
                         'language' => $this->get_ai_language(),
+                        'tier'     => 'standard', // 3.39.7 — cheap preview tier
                     ));
                     wp_send_json(array(
                         'preview'        => true,

@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.6
+Stable tag: 3.39.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,11 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.7 =
+* UX FIX — Animated ETA + progress bar during analysis. v3.39.6 showed "Tempo stimato: calcolo..." for the entire run and the progress bar stayed at 0% until completion. Now a 500ms-tick interval drives both fields based on a rolling-median historical duration per page (kept in localStorage, last 10 successful pages) with a 25s fallback if no history exists. Bar grows linearly toward 95% per page slice and only jumps to 100% on actual response. ETA counts down in seconds (e.g. "~ 18 sec rimanenti"); shows "Quasi finito..." if the LLM takes longer than the median. Tick auto-stops on success / fail / cancel.
+* Cheap-LLM preview tier — v3.39.6 preview used the same agent + tier as the apply call, so a Premium++ user paid full credits to preview and again to apply. Now ajax_preview_action forces tier=standard (Gemini Flash) on the 4 wired agents regardless of the user's apply-tier setting. UX hint added to the preview modal subtitle: "Preview con tier veloce (1cr). Applica usa il tier configurato." User reviews cheap, applies at their selected quality tier.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.39.6 =
 * UX FIX — preview-before-apply on Piano d'Azione and Problemi cards. Clicking "Esegui automaticamente" used to apply destructive AI agent modifications (meta tags, schema, FAQ section, content rewrite) to the page in a single click, with no opportunity for the user to review what would change. Especially risky for first-time users.
@@ -225,33 +230,4 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 * New menu entry: 🎯 Setup Guidato (position 12, between Dashboard and Profilo Business).
 * Pure client-side state for now (WP option seo_aeo_setup_progress). No backend changes required.
 
-= 3.37.3 =
-* Module 12 (Path C) — Cancel button on Orchestratore now actually aborts the in-flight AJAX request and triggers an automatic credit refund via /api/ai/refund-generation with reason="cancelled". The 3/day refund cap is bypassed for user cancellations within the 5-minute window. Toast "Analisi annullata. Crediti rimborsati." confirms the action.
-* Module 12 — Wired generation_log audit entries into 4 endpoints that previously had no refund path: keyword-research, brand-voice-analyze, suggest-keywords, generate-content. Each now returns a generation_id usable with /refund-generation.
-* Module 16.2 — Deprecated the managed-by-admin GSC mode. All licenses now use per-tenant OAuth regardless of the (now-ignored) gsc_managed_by_admin flag. Removed the "Search Console gestito centralmente dal team Orchestra — contatta supporto" dead-end UI; every client license can self-connect via the standard OAuth flow.
-* Module 16.2 — Google OAuth URL now always uses prompt=select_account so users see the account picker and can switch identities.
-* Module 16.2 — New "⚙ Disconnetti / Cambia account" button label + dedicated "Cambia account ↗" link that disconnects and re-triggers OAuth.
-
-= 3.37.2 =
-* CRITICAL: Module 14 — fixed double-bind on Orchestratore "Avvia analisi" button that caused 2× AJAX requests + 2× credit consumption per page. Removed redundant inline onclick + added idempotency guard.
-* CRITICAL: Module 13 — credits now only consumed on AI success. New 2-phase commit (reserve → commit/refund) prevents the "empty AI result but credits spent" defect on Keyword Research, Brand Voice, Suggest Keywords, Content Generator, Complete Article. Automatic refund via TypedAPIError 422 "empty_result" with full audit trail.
-* Module 16 — fixed misleading GSC fallback. Self-service "Connect Google Search Console" button now shown to any client license; the "managed by team / contact support" message only appears for licenses with explicit gsc_managed_by_admin=true flag. Added "Perché serve?" expander explaining read-only scope + revocation procedure.
-* Includes audit-trail script scripts/refund_empty_results.py for manual goodwill credits on pre-3.37.2 wastage.
-
-= 3.37.1 =
-* Critical infrastructure: plugin now auto-invalidates OPcache + WP transient cache on update. Future updates propagate fixes reliably without manual server restart or cache flush.
-* Hidden admin diagnostic page (?page=seo-aeo-debug-cache) for cache state inspection + manual force-refresh — useful when a hosting provider has an aggressive OPcache configuration.
-* Includes all fixes from 3.37.0 (typed errors, late-emit DOMContentLoaded, AI Crawlers tab switch, cronologia restore, Solaris placeholder cleanup).
-
-= 3.37.0 =
-* Architectural change: AI credit consumption now requires an active license. Trial-expired (status=inactive) accounts cannot consume credits even if the wallet balance is positive.
-* Backend: typed error responses (402 insufficient_credits / 403 license_expired / 401 invalid_license) replace opaque generic errors. Applied to top 5 AI endpoints; the remaining 25 retain raw HTTPException for now (v3.37.1).
-* Plugin: centralized JS error handler with contextual banner + Renew / Top up / Upgrade / Settings CTAs surfaced from any AJAX response.
-* Fix (critical): inline scripts registered late (post-admin_print_scripts) now properly fire DOMContentLoaded callbacks. Previously, autosave and event listeners in Business Profile, SEO+AEO Output toggles, and AI Crawlers logs button were silently broken since the v3.36.0 wp_enqueue refactor.
-* Fix: SEO+AEO Output toggle state now syncs DOM without manual refresh (side-effect of late-emit JS fix).
-* Fix: AI Crawlers "Vedi log" button now opens the log viewer (side-effect of late-emit JS fix).
-* Fix: Business Profile autosave + Context AI preview regeneration now working (side-effect of late-emit JS fix).
-* Polish: removed legacy BETA label from Redirect Manager (feature stable since 3.15.0).
-* Polish: Business Profile placeholder examples cleaned up (Solaris client-specific examples replaced with generic ones). Comma separator support for tag inputs confirmed and documented in help text.
-
-For older changelog entries (3.36.x and earlier), see the project repository at https://github.com/jcappelliemer/aeo-orchestra .
+For older changelog entries (3.37.2 and earlier), see the project repository at https://github.com/jcappelliemer/aeo-orchestra .

@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.4
+Stable tag: 3.39.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,15 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.5 =
+* CRITICAL FIX — silent backend 500 since v3.39.1 producing "Risposta non valida dal server". Chrome MCP XHR interceptor on aeo-orchestra.com v3.39.4 captured response 412 bytes with seo_score=null + aeo_score=null + seo_detail.error="Risposta non valida dal server" + total time ~9ms (impossible for any LLM call, let alone 3 retries).
+* Root cause — helpers/site_context.py (added in v3.39.1) had `from helpers.database import db` but this project uses `helpers.config`. The import raised ModuleNotFoundError before any retry/fallback code ever ran. The v3.39.4 structured fallback lived INSIDE ai_analyze_seo / ai_aeo_analysis and never got a chance to execute because the exception escaped one frame above, hitting FastAPI's generic 500 handler.
+* Fix #1 — corrected import in helpers/site_context.py to `from helpers.config import db`.
+* Fix #2 — endpoint-level absolute failsafe. api_analyze_seo + api_aeo_analyze pipelines wrapped in try/except. ANY exception (import error, Gemini outage, schema rejection, retry exhaustion that escapes the inner fallback, anything) is caught and replaced by HARDCODED_SEO_FALLBACK / HARDCODED_AEO_FALLBACK module-level constants. User never sees "Risposta non valida" again.
+* Fix #3 — hardcoded fallback structure mirrors the v3.39.4 SEOAnalysisOutput / AEOAnalysisOutput schemas exactly: numeric score (50), 2 normative issues each (Schema.org Organization + E-E-A-T for SEO; FAQ section + conversational tone for AEO), severity / action_type / action_description all populated. The JS buildProblemCards + PHP build_action_from_issue mappers handle these dicts uniformly.
+* Logging — _validated_analysis now logs at INFO/WARNING/ERROR every step (attempt number, schema name, Gemini raw response first 400 chars, Pydantic validation error if any, final permanent-failure summary). Future failures land in Sentry / docker logs with enough context to diagnose without Chrome MCP repro.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.39.4 =
 * CRITICAL FIX — LLM structured output enforcement. v3.39.3 calibrated the prompt rules (FACTUAL vs NORMATIVE vs SCORING) but free-text prompt revision proved insufficient against cautious Gemini Flash behavior: Chrome MCP on aeo-orchestra.com v3.39.3 still returned seo_score=null, aeo_score=null, 0 issues. The model interpreted ambiguity as "decline to answer".

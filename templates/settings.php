@@ -168,9 +168,15 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
         $aeo_summary = class_exists('SEO_AEO_Capability_Matrix') ? SEO_AEO_Capability_Matrix::get_capability_summary() : array('rows' => array(), 'environment_label' => 'sconosciuto');
         $aeo_env_label = isset($aeo_summary['environment_label']) ? $aeo_summary['environment_label'] : 'sconosciuto';
         ?>
-        <h2 style="margin-top:24px;">🧩 <?php echo esc_html(SEO_AEO_T::t('Compatibilita\' Sito')); ?></h2>
+        <h2 style="margin-top:24px;">🧩 <?php echo esc_html(SEO_AEO_T::t('Compatibilità Sito')); ?></h2>
+        <?php if (!empty($aeo_profile['is_hybrid'])): ?>
+        <div style="background:#fffbeb;border-left:4px solid #d97706;padding:12px 16px;border-radius:6px;margin:12px 0 4px;font-size:13px;color:#78350f;">
+            <strong>⚠ <?php echo esc_html(SEO_AEO_T::t('Sito hybrid rilevato')); ?>:</strong>
+            <?php echo esc_html(SEO_AEO_T::t('WordPress server-side con componenti React/JS. Le modifiche AI verranno applicate al backend WP ma potrebbero non essere visibili se il frontend renderizza override custom. Raccomandato: verifica le modifiche sulla pagina pubblica dopo apply.')); ?>
+        </div>
+        <?php endif; ?>
         <p class="description">
-            <?php echo esc_html(SEO_AEO_T::t('Come AEO Orchestra interagisce con il tuo ambiente WordPress: page builder rilevato, modalità\' headless, e mappa delle capacità\' per ogni tipo di azione AI.')); ?>
+            <?php echo esc_html(SEO_AEO_T::t('Come AEO Orchestra interagisce con il tuo ambiente WordPress: page builder rilevato, modalità headless, e mappa delle capacità per ogni tipo di azione AI.')); ?>
         </p>
         <table class="form-table aeo-compat-table">
             <tr>
@@ -185,7 +191,15 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
             <tr>
                 <th scope="row"><?php echo esc_html(SEO_AEO_T::t('Sito headless')); ?></th>
                 <td>
-                    <strong id="aeo-compat-headless"><?php echo !empty($aeo_profile['is_headless']) ? esc_html(SEO_AEO_T::t('Si')) . ' (' . esc_html(isset($aeo_profile['headless_mode']) ? $aeo_profile['headless_mode'] : 'rest') . ')' : esc_html(SEO_AEO_T::t('No')); ?></strong>
+                    <strong id="aeo-compat-headless"><?php
+                        if (!empty($aeo_profile['is_headless'])) {
+                            echo esc_html(SEO_AEO_T::t('Si')) . ' (' . esc_html(isset($aeo_profile['headless_mode']) ? $aeo_profile['headless_mode'] : 'rest') . ')';
+                        } elseif (!empty($aeo_profile['is_hybrid'])) {
+                            echo esc_html(SEO_AEO_T::t('Parziale (hybrid)'));
+                        } else {
+                            echo esc_html(SEO_AEO_T::t('No'));
+                        }
+                    ?></strong>
                     <span class="aeo-compat-confidence" id="aeo-compat-headless-conf">
                         (<?php echo (int) (isset($aeo_profile['headless_confidence']) ? $aeo_profile['headless_confidence'] : 0); ?>%)
                     </span>
@@ -210,7 +224,7 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
                 <th scope="row"><?php echo esc_html(SEO_AEO_T::t('Ambiente effettivo')); ?></th>
                 <td>
                     <strong id="aeo-compat-env"><?php echo esc_html($aeo_env_label); ?></strong>
-                    <p class="description"><?php echo esc_html(SEO_AEO_T::t('Determina quali azioni AI verranno applicate automaticamente vs in modalità\' manuale.')); ?></p>
+                    <p class="description"><?php echo esc_html(SEO_AEO_T::t('Determina quali azioni AI verranno applicate automaticamente vs in modalità manuale.')); ?></p>
                 </td>
             </tr>
             <tr>
@@ -312,7 +326,7 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
                     <button type="button" class="button" id="aeo-compat-override-save"><?php echo esc_html(SEO_AEO_T::t('Salva override')); ?></button>
                     <span id="aeo-compat-override-status" style="margin-left:8px;color:#64748b;font-size:12px;"></span>
                     <p class="description" style="margin-top:6px;font-size:11px;color:#94a3b8;">
-                        <?php echo esc_html(SEO_AEO_T::t('Le modalità\' per ogni azione si aggiornano automaticamente dopo il salvataggio.')); ?>
+                        <?php echo esc_html(SEO_AEO_T::t('Le modalità per ogni azione si aggiornano automaticamente dopo il salvataggio.')); ?>
                     </p>
                 </td>
             </tr>

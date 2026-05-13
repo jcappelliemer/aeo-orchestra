@@ -145,6 +145,7 @@ class SEO_AEO_Capability_Matrix {
             'headless_rest' => 'Headless (WP REST API)',
             'headless_gql'  => 'Headless (WPGraphQL)',
             'headless_ssg'  => 'Headless (Static Site Generator)',
+            'hybrid'        => 'Sito hybrid (WP + React/JS islands)',
             'unknown'       => 'Ambiente sconosciuto',
         );
 

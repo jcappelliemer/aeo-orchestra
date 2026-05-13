@@ -202,7 +202,7 @@ class SEO_AEO_Site_Scanner {
             'name'    => 'REST API enabled',
             'weight'  => 10,
             'matched' => (bool) $rest_enabled,
-            'note'    => $rest_enabled ? 'WP REST API esposto (richiesto per modalità\' headless)' : 'REST API disabilitato',
+            'note'    => $rest_enabled ? 'WP REST API esposto (richiesto per modalità headless)' : 'REST API disabilitato',
         );
 
         // (6) 3.40.3 — Home URL HTML probe for React/Next.js/Nuxt/Frontity
@@ -265,7 +265,19 @@ class SEO_AEO_Site_Scanner {
         }
         if ($confidence > 100) $confidence = 100;
 
-        $is_headless = $confidence >= 40;
+        // 3.40.4 - 3-tier classification. Hybrid (25-40%) catches WP
+        // sites with React/JS widgets/islands where modifications go to the
+        // WP backend but the visible frontend may render custom overrides.
+        if ($confidence >= 40) {
+            $tier = 'yes';
+            $is_headless = true;
+        } elseif ($confidence >= 25) {
+            $tier = 'hybrid';
+            $is_headless = false;
+        } else {
+            $tier = 'no';
+            $is_headless = false;
+        }
         // Mode inference: prefer gql when graphql active, else rest, else ssg.
         $mode = 'rest';
         if ($gql_active) {
@@ -278,6 +290,7 @@ class SEO_AEO_Site_Scanner {
 
         return array(
             'is_headless' => $is_headless,
+            'tier'        => $tier,
             'confidence'  => $confidence,
             'mode'        => $mode,
             'signals'     => $signals,
@@ -314,14 +327,22 @@ class SEO_AEO_Site_Scanner {
             $primary = 'headless';
         }
 
+        $tier = isset($head['tier']) ? $head['tier'] : ($head['is_headless'] ? 'yes' : 'no');
+        $is_hybrid = ($tier === 'hybrid');
+        if ($is_hybrid && $primary === 'standard') {
+            $primary = 'hybrid';
+        }
         $profile = array(
             'builder'             => $builder,
             'builder_confidence'  => $builder_conf,
             'is_headless'         => $head['is_headless'],
+            'is_hybrid'           => $is_hybrid,
+            'headless_tier'       => $tier,
             'headless_confidence' => $head['confidence'],
             'headless_mode'       => $head['mode'],
             'headless_signals'    => $head['signals'],
             'primary'             => $primary,
+            'signals_version'     => 6,
             'scanned_at'          => current_time('mysql'),
         );
 
@@ -357,6 +378,7 @@ class SEO_AEO_Site_Scanner {
         // Back-compat options consumed by SEO_AEO_Capability_Matrix
         // (must reflect post-override values).
         update_option('aeo_site_builder', $profile['builder'], false);
+        update_option('aeo_site_is_hybrid', !empty($profile['is_hybrid']), false);
         // Back-compat options consumed by SEO_AEO_Capability_Matrix.
         update_option('aeo_site_is_headless', $primary === 'headless', false);
         if ($primary === 'headless') {
@@ -386,7 +408,13 @@ class SEO_AEO_Site_Scanner {
      */
     public static function get_profile() {
         $cached = get_option('aeo_site_profile', null);
-        if (is_array($cached) && !empty($cached)) return $cached;
-        return self::scan_full(false);
+        // 3.40.4 - auto-invalidate when schema is outdated. v3.40.3
+        // upgrades silently kept the v3.40.2 cached profile with only 5
+        // signals; this forces a rescan so the new React-markers signal
+        // (#6) shows up in the breakdown UI.
+        if (is_array($cached) && !empty($cached) && (int) (isset($cached['signals_version']) ? $cached['signals_version'] : 0) >= 6) {
+            return $cached;
+        }
+        return self::scan_full(true);
     }
 }

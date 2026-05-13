@@ -207,12 +207,12 @@ $tt = function ($s) { return class_exists('SEO_AEO_T') ? SEO_AEO_T::t($s) : $s; 
 
     <div class="iseo-hero">
         <div>
-            <h1>🖼 <?php echo esc_html($tt('Image SEO Manager')); ?></h1>
+            <h1>🖼 <?php echo esc_html($tt('Gestore Immagini SEO')); ?></h1>
             <p><?php echo esc_html($tt('Audit + ottimizzazione metadata immagini con AI')); ?></p>
         </div>
         <div style="display:flex; gap:10px;">
             <button class="iseo-btn iseo-btn-secondary" id="iseo-export-csv">📊 <?php echo esc_html($tt('Esporta CSV')); ?></button>
-            <button class="iseo-btn iseo-btn-primary" id="iseo-bulk-selected" disabled>⚡ <?php echo esc_html($tt('Bulk fix selezionati')); ?></button>
+            <button class="iseo-btn iseo-btn-primary" id="iseo-bulk-selected" disabled>⚡ <?php echo esc_html($tt('Correggi selezionati in massa')); ?></button>
         </div>
     </div>
 
@@ -438,7 +438,7 @@ $tt = function ($s) { return class_exists('SEO_AEO_T') ? SEO_AEO_T::t($s) : $s; 
 <!-- Modal Bulk Progress -->
 <div class="iseo-modal-backdrop" id="iseo-bulk-progress">
     <div class="iseo-modal" style="max-width:600px;">
-        <h2>⏳ <?php echo esc_html($tt('Bulk fix in corso')); ?>...</h2>
+        <h2>⏳ <?php echo esc_html($tt('Correzione di massa in corso')); ?>...</h2>
         <div class="iseo-progress-bar">
             <div class="iseo-progress-fill" id="iseo-bp-fill" style="width:0%"></div>
             <div class="iseo-progress-text" id="iseo-bp-text">0/0</div>
@@ -476,7 +476,7 @@ $tt = function ($s) { return class_exists('SEO_AEO_T') ? SEO_AEO_T::t($s) : $s; 
         save_ok: <?php echo wp_json_encode($tt('Salvato.')); ?>,
         ai_fail: <?php echo wp_json_encode($tt('Errore AI:')); ?>,
         confirm_cancel: <?php echo wp_json_encode($tt('Annullare il bulk job in corso?')); ?>,
-        bulk_done: <?php echo wp_json_encode($tt('Bulk fix completato!')); ?>,
+        bulk_done: <?php echo wp_json_encode($tt('Correzione di massa completata!')); ?>,
         bulk_running_warn: <?php echo wp_json_encode($tt('Bulk job già in esecuzione.')); ?>,
         none_selected: <?php echo wp_json_encode($tt('Nessuna immagine selezionata.')); ?>,
         ai_use: <?php echo wp_json_encode($tt('Usa')); ?>,
@@ -484,7 +484,7 @@ $tt = function ($s) { return class_exists('SEO_AEO_T') ? SEO_AEO_T::t($s) : $s; 
         unknown: <?php echo wp_json_encode($tt('sconosciuto')); ?>,
         already_complete: <?php echo wp_json_encode($tt('Immagine già completa, nessuna modifica necessaria.')); ?>,
         ai_applied: <?php echo wp_json_encode($tt('Modifiche applicate')); ?>,
-        bulk_done_apply: <?php echo wp_json_encode($tt('Bulk fix completato:')); ?>,
+        bulk_done_apply: <?php echo wp_json_encode($tt('Correzione di massa completata:')); ?>,
         bulk_done_preview: <?php echo wp_json_encode($tt('Anteprima generata:')); ?>,
         view_changelog: <?php echo wp_json_encode($tt('Vedi cosa è cambiato')); ?>,
         view_preview: <?php echo wp_json_encode($tt('Rivedi e applica')); ?>,

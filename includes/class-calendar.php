@@ -188,7 +188,7 @@ class SEO_AEO_Calendar {
         SEO_AEO_AI_Helpers::mark_ai_generated($post_id, 'calendar', 0);
         update_post_meta($post_id, '_seo_aeo_calendar_slot_id', $slot_id);
 
-        // Featured image + 3.33.2: inline prepend per visibilità' su tutti i theme (incluso Elementor che non renderizza featured)
+        // Featured image + 3.33.2: inline prepend per visibilità su tutti i theme (incluso Elementor che non renderizza featured)
         if (!empty($resp['image_base64'])) {
             try {
                 $alt_for_image = !empty($kw) ? ($topic . ' — ' . $kw) : $topic;

@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.3
+Stable tag: 3.40.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,15 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.4 =
+* P1.1 - Accent residues with apostrophe-as-accent surrogate (Compatibilita', modalita', capacita', Possibilita') cleaned up across 7 PHP files. The v3.40.3 word-boundary regex missed the trailing apostrophe in these spellings; v3.40.4 strips it explicitly so the UI now reads "Compatibilitaà Sito", "modalitaà", "capacitaà" with proper UTF-8 accents.
+* P1.2 - Signal #6 (React/Next.js hydration markers) now visible in the Compatibilita Sito breakdown UI. v3.40.3 added the signal to detect_headless() but existing installations kept the cached 5-signal profile. SEO_AEO_Site_Scanner::get_profile() now auto-invalidates when signals_version < 6 and forces a rescan.
+* P1.3 - Hybrid "Parziale" tier (25-40% confidence band) for sites that mix WP server-side rendering with React/JS islands. New SEO_AEO_Capability_Matrix entry "hybrid" with surgical_text/block_append in "high" mode (auto + verify) and schema in "full". Compatibilita Sito section shows a yellow warning banner when hybrid is detected: "Sito hybrid rilevato: WordPress server-side con componenti React/JS. Le modifiche AI verranno applicate al backend WP ma potrebbero non essere visibili se il frontend renderizza override custom". Headless row renders "Parziale (hybrid)" instead of "No".
+* P1.5 - Polylang locale suffix in category dropdowns. "Uncategorized x 5" duplicates on multi-language sites now disambiguate as "Uncategorized (it)", "Uncategorized (en)", etc. Helper  wired into Layout articoli AI and Calendar default category dropdowns. Falls back to plain name when Polylang isn't active.
+* P1.7 - Brand Voice CTA link in Auto-Pilot hero warning. "Nessuna Brand Voice attiva" badge now includes a clickable "-> Configura Brand Voice ora" link to admin.php?page=seo-aeo-brand-voice.
+* P2.1 - IT translations: "Image SEO Manager" -> "Gestore Immagini SEO", "Bulk Generation" -> "Generazione di massa", "Bulk fix selezionati" -> "Correggi selezionati in massa", "Bulk fix in corso/completato" -> "Correzione di massa".
+* DEFERRED to v3.40.5: Setup Wizard step 6 (P1.4 - Impostazioni Compat covers the configuration use case for now), completed-step inline summaries (P1.9), chart bar value separators (P1.6), Premium upgrade CTAs (P1.8), singular plurals audit (P2.2), Pesca da Research dynamic ID (P2.3), Cannibalizzazione H1/H2 duplicate (P2.4), Pianificazione cadence clarification (P2.5), Registro URL linkify (P2.6).
 
 = 3.40.3 =
 * P0 — Preview modal stuck (v3.40.0 regression). The "👁 Mostra modifiche" button fired the propose AJAX (status 200 OK) but the modal never opened and the button stayed disabled showing "Sto generando…". Root cause: a capture-phase click listener in admin-dashboard.php intercepted ALL `.orch-action-btn` clicks (including `.orch-preview-btn`) and routed them through the legacy propose + inline review-panel flow, preempting the v3.39.6 preview modal (`previewAction` in admin.js). The legacy renderer's silent failure left the button disabled.

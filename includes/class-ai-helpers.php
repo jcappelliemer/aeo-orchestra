@@ -101,7 +101,7 @@ class SEO_AEO_AI_Helpers {
     /**
      * Build Gutenberg `<!-- wp:image -->` block HTML con CSS constrain.
      *
-     * 3.33.2 — inline prepend per visibilità' frontend su tutti i theme (incluso Elementor che non renderizza featured image).
+     * 3.33.2 — inline prepend per visibilità frontend su tutti i theme (incluso Elementor che non renderizza featured image).
      *
      * Output: max-width 780, aspect-ratio 16/9, object-fit cover, border-radius 8px, margin 0 auto 24px.
      * className="orch-ai-cover" per styling override custom.

@@ -59,7 +59,7 @@ $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)
     <hr>
 
     <div class="orchestra-tool-card">
-        <h2><span class="dashicons dashicons-admin-page" style="color:#0055FF"></span> <?php echo esc_html(SEO_AEO_T::t('Bulk Generation')); ?></h2>
+        <h2><span class="dashicons dashicons-admin-page" style="color:#0055FF"></span> <?php echo esc_html(SEO_AEO_T::t('Generazione di massa')); ?></h2>
         <p><?php echo esc_html(SEO_AEO_T::t('Genera meta tags per piu pagine contemporaneamente.')); ?></p>
         <div id="bulk-meta-list">
             <?php foreach ($posts as $post):

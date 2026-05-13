@@ -33,7 +33,7 @@ $bv_active = class_exists('SEO_AEO_Brand_Voice') ? SEO_AEO_Brand_Voice::get_acti
                 <?php if ($bv_active): ?>
                     <div class="orch-ap-hero-badge"><?php SEO_AEO_T::e('🎙️ Brand Voice attiva: '); ?><?php echo esc_html($bv_active['_name']); ?></div>
                 <?php else: ?>
-                    <div class="orch-ap-hero-badge orch-ap-hero-badge-warn"><?php SEO_AEO_T::e('⚠️ Nessuna Brand Voice attiva — gli articoli useranno il tono predefinito'); ?></div>
+                    <div class="orch-ap-hero-badge orch-ap-hero-badge-warn"><?php SEO_AEO_T::e('⚠️ Nessuna Brand Voice attiva — gli articoli useranno il tono predefinito.'); ?> <a href="<?php echo esc_url(admin_url('admin.php?page=seo-aeo-brand-voice')); ?>" style="margin-left:6px;font-weight:600;text-decoration:underline;color:#7c2d12;">→ <?php SEO_AEO_T::e('Configura Brand Voice ora'); ?></a></div>
                 <?php endif; ?>
             </div>
         </div>

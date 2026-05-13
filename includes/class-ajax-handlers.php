@@ -1165,7 +1165,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
     /**
      * 3.40.2 — Force a fresh scan of the WordPress environment and
      * return the updated profile + capability summary. Called by the
-     * "Re-scansiona sito" button in Impostazioni → Compatibilita\' Sito.
+     * "Re-scansiona sito" button in Impostazioni → Compatibilità Sito.
      */
     public function ajax_rescan_site() {
         try {
@@ -1595,7 +1595,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     'builder'         => $builder_now,
                     'action_type'     => $action_type,
                     'reason'          => 'surgical_apply_failed',
-                    'message'         => 'Surgical editor non e\' riuscito ad applicare le modifiche. Suggerisci modalità\' manuale.',
+                    'message'         => 'Surgical editor non e\' riuscito ad applicare le modifiche. Suggerisci modalità manuale.',
                 ));
                 return;
             }
@@ -4034,7 +4034,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             // Categorie (solo per post)
             $categories = array(array('id' => 0, 'name' => __('— Nessuna —', 'aeo-orchestra')));
             foreach (get_categories(array('hide_empty' => false)) as $cat) {
-                $categories[] = array('id' => (int) $cat->term_id, 'name' => $cat->name);
+                $categories[] = array('id' => (int) $cat->term_id, 'name' => $this->aeo_polylang_term_label($cat));
             }
 
             // Autori
@@ -4660,7 +4660,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             $cats = get_categories(array('hide_empty' => false, 'number' => 200));
             $out = array();
             foreach ($cats as $c) {
-                $out[] = array('id' => (int) $c->term_id, 'name' => $c->name);
+                $out[] = array('id' => (int) $c->term_id, 'name' => $this->aeo_polylang_term_label($c));
             }
             wp_send_json(array('success' => true, 'categories' => $out));
         } catch (Throwable $e) {

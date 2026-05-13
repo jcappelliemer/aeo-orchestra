@@ -42,7 +42,7 @@ $T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t($s)
                 <td><input type="text" id="local-service" class="regular-text" placeholder="<?php echo esc_attr(SEO_AEO_T::t('es. Installazione caldaie')); ?>" /></td>
             </tr>
             <tr>
-                <th><?php echo esc_html(SEO_AEO_T::t('Citta')); ?></th>
+                <th><?php echo esc_html(SEO_AEO_T::t('Città')); ?></th>
                 <td>
                     <input type="text" id="local-city" class="regular-text" placeholder="<?php echo esc_attr(SEO_AEO_T::t('es. Milano')); ?>" />
                     <p class="description"><?php echo esc_html(SEO_AEO_T::t('Per più città, separale con virgola')); ?></p>

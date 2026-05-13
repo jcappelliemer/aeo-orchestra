@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.4
+Stable tag: 3.40.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,14 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.5 =
+* P0 - AEO silent fallback (UI banner + auto-refund + retry log + per-tier metric). Symptom verified Chrome MCP on v3.40.3: SEO analysis succeeded (78 score + 5 problems) but AEO analysis silently returned the hardcoded fallback (-- score, 0 issues) with no error banner. User paid 5cr but got half the result.
+* Frontend (admin.js displayAEOResults): renders a red banner above the scores when the response carries _llm_failed:true. Banner shows the fallback reason (schema_validation / json_parse_failed / empty_response / llm_call_failed / pipeline_exception:<type>) and whether credits were refunded. Auto-refreshes the wallet UI so the user sees the refund immediately.
+* Backend (/api/ai/aeo-analyze in routes/ai.py): when the response is the hardcoded fallback (_llm_failed:true) AND the call was not a free-first analysis, auto-refunds credit_cost to the user via wallet.add_credits with source="aeo_fallback_refund". credit_transactions logs the refund.
+* Backend (_validated_analysis): gained a retry_log out-parameter. Each retry now records {attempt, error_type, error excerpt, raw response excerpt} so api_logs has the full forensic trail for every failed AEO call.
+* Backend api_logs new fields: aeo_fallback (bool), aeo_refunded (bool), aeo_tier (string, default "standard"), aeo_retry_log (array of attempt dicts), aeo_fallback_reason (last error_type). credits_consumed records 0 when refunded so /admin/clients credit usage stays accurate.
+* Sentry alert configuration deferred to ops (not code). The query  is sufficient to monitor failure rate by tier; once the data accumulates, set an alert rule on standard-tier fallback ratio.
 
 = 3.40.4 =
 * P1.1 - Accent residues with apostrophe-as-accent surrogate (Compatibilita', modalita', capacita', Possibilita') cleaned up across 7 PHP files. The v3.40.3 word-boundary regex missed the trailing apostrophe in these spellings; v3.40.4 strips it explicitly so the UI now reads "Compatibilitaà Sito", "modalitaà", "capacitaà" with proper UTF-8 accents.

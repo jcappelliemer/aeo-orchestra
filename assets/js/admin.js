@@ -1220,6 +1220,26 @@
         displayAEOResults: function(data) {
             var html = '<div class="analysis-results">';
 
+            // 3.40.5 - surface LLM fallback. When the backend exhausted
+            // retries the response carries _llm_failed:true; render a red
+            // banner explaining the failure + refund + Premium tier hint.
+            if (data && data._llm_failed) {
+                var refunded = data._refunded ? (data._refunded_credits || 0) : 0;
+                var reason = (data._fallback_reason || 'unknown').replace(/_/g, ' ');
+                var refundLine = refunded > 0
+                    ? '<strong>' + refunded + ' crediti rimborsati automaticamente.</strong>'
+                    : 'Crediti NON rimborsati (verifica wallet).';
+                html += '<div style="background:#fef2f2;border-left:4px solid #b91c1c;padding:14px 18px;border-radius:8px;margin-bottom:16px;color:#7f1d1d;font-size:13px;line-height:1.5;">'
+                     + '<strong>⚠ Analisi AEO non completata</strong> &mdash; '
+                     + 'l’AI non ha rispettato lo schema dopo 5 tentativi (motivo: <code>' + reason + '</code>). '
+                     + refundLine
+                     + ' Riprova tra qualche minuto. Per pagine complesse considera la modalità Premium quando disponibile.'
+                     + '</div>';
+                if (typeof SeoAeoOrchestra.fetchCredits === 'function') {
+                    try { SeoAeoOrchestra.fetchCredits(); } catch(_) {}
+                }
+            }
+
             // AEO Scores
             html += '<div class="aeo-scores-grid">';
             html += '<div class="aeo-score-box"><span class="score-value">' + (data.aeo_score || 0) + '</span><span class="score-label">AEO Score</span></div>';

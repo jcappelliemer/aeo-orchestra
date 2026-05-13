@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.0
+Stable tag: 3.40.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,17 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.1 =
+* P0 — Keyword Research hardened. Verified Chrome MCP on v3.40.0: 4 of 6 cronologia runs failed with "L'AI ha risposto con un formato non valido, crediti rimborsati" (~67% fail rate). Credits were correctly refunded but the user saw raw error + no result.
+* gemini_generate() — new json_mode=False kwarg. When True, sets response_mime_type=application/json + temperature=0.3 on the Gemini call. Explicit flag instead of overloading response_schema (which would trigger Gemini's "too many states for serving" rejection on rich schemas).
+* /seo/keyword-research — switched to json_mode=True. Added explicit ONE retry on first-pass parse failure with a hardened prompt that quotes the broken response back to the model. When BOTH attempts fail AND the tolerant parser also fails, emit a structured fallback of niche-aware generic keywords (informational + commercial + transactional + navigational clusters) instead of raising TypedAPIError. Refund credits but return success + fallback_used=true + credits_refunded so the UI can surface a banner.
+* New _build_keyword_fallback(niche, max_kw) helper produces up to N templated keywords with same shape as real LLM output (so downstream sanitizer + UI render unchanged). Source field = "fallback" tags these entries.
+* P1 — Typo "difficolta" → "difficoltà" in keyword-research.php hero subtitle + file-level docblock (CSV column header stays ASCII-safe).
+* P2 — Brand Voice a11y: added for=/id= association on <label> for orch-bv-name + orch-bv-post-type. Screen readers now connect labels to inputs.
+* v3.40.0 follow-up — mark_manual_applied tracker AJAX. New PHP handler seo_aeo_orchestra_mark_manual_applied called by the "Ho applicato manualmente" CTA in the manual-mode preview modal. Records a history entry with type=manual_applied + builder + action_type so the user sees manual applications in Cronologia. JS wires the click through to this endpoint (replaces the v3.40.0 stub toast).
+* DEFERRED to v3.40.2: Setup Wizard 3-stage modal (foundation in v3.40.0 exposes get_capability_summary()). Classic + Gutenberg surgical editors (Part 5a) also defer to v3.40.2 — current cycle delivered the architecturally critical P0 fix + tracker which unblock the user path. Surgical editors plug into the same dispatch architecture without further refactoring.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.40.0 =
 * NEW FEATURE — Universal compat foundation: capability matrix + lightweight builder detection + per-action mode dispatch + manual-mode UX. This is the architecture that distinguishes AEO Orchestra from Yoast/RankMath (which do 0% body edits across the WP ecosystem) by exposing what we CAN modify automatically per builder, and gracefully falling back to manual-paste mode where we CANNOT.
@@ -218,18 +229,4 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 * Frontend wiring — Keyword Research now renders three distinct banner variants instead of the generic "Risposta non valida dal server": (1) typed empty_result or any backend typed error with refunded > 0 → green "✓ Crediti rimborsati" banner showing backend message + refund amount, (2) WP-side timeout (nginx upstream closed, response not JSON) → orange "⏱ Tempo esaurito" banner with retry suggestion + 10-min auto-refund notice, (3) other typed errors → red banner with backend message. Survives the residual cases where the request never reaches the FastAPI handler.
 * Plugin Check 0/0 — WP.org compliance final sweep. Wrapped the v3.38.5 self-healing class-presence check in an anonymous closure so its locals ($critical_classes, $all_loaded, $cls) never reach global scope, and gated the load-failure error_log() diagnostic on WP_DEBUG. Plugin Check 1.9.0 against the WP.org ZIP now reports 0 errors and 0 warnings.
 
-= 3.38.6 =
-* Bug fix — Business Profile chip counters "[N compilati]" now sync correctly for ALL 5 collapsible fields uniformly. The v3.38.2 + v3.38.4 fixes worked for Differenziatori, Casi d'uso, and Area di servizio but Prodotti/Servizi + Fornitori e partner still showed 0 on Solaris. Replaced the per-wrapper count with a universal walker that iterates every details.orch-bp-collapse element and counts ANY item-child (.orch-bp-chip OR [data-orch-bp-repeat-card]) regardless of which class is used. Added a MutationObserver inside the form wrapper that re-runs the universal sync on any DOM change (throttled to one animation frame), so future code paths or async hydration races can never leave counters stale.
-
-= 3.38.5 =
-* Defensive hardening — Added a strict PHP version gate at the top of the main plugin file. If PHP < 7.4, an admin notice is rendered instead of fataling. Plugin appears installed but inert, so WordPress's broken-plugin recovery never triggers the file-removal path.
-* Defensive hardening — New seo_aeo_safe_require() helper used for the v3.38.0+ class loads (class-setup-progress, class-setup-widget). file_exists() pre-check + try/catch wrap (catches Error on PHP 8+). Failures are recorded in option seo_aeo_load_failures with file path, reason, timestamp.
-* Defensive hardening — New admin_notices hook surfaces recorded load failures as a precise diagnostic ("AEO Orchestra — load failures detected: class-X — file missing") visible on plugin pages and the Plugins screen, so a user with a half-extracted ZIP knows exactly which file to recover.
-* Self-healing — If the critical class set loads cleanly and the load_failures option still has stale entries from a previous broken state, the option is cleared automatically. No manual intervention needed once the plugin is re-uploaded clean.
-* Context — The v3.38.3 fatal on aeo-orchestra.com was traced to a transient filesystem race during WP's plugin upgrader file-swap step, not a code defect. The main plugin file went missing mid-update, PHP fataled, and WP recovery removed the main file permanently. This release ships defenses so a similar race can no longer self-destruct the install.
-
-= 3.38.4 =
-* Hotfix — Defensive backstop for Business Profile chip counters. The v3.38.2 Task 6 + v3.38.3 fixes resolved differentiators/use_cases (struct repeater) and territories (chip), but Prodotti/Servizi + Fornitori e partner still showed "[0 compilati]" with chips visually rendered. Added syncAllCounters() that iterates ALL collapsible fields uniformly (both struct + chip) at the end of loadProfile() so missed hydration paths never leave a counter stale.
-* Hotfix — Verified the CSS attribute selector quoting on the Profilo Business sidebar-hide rule. Rule now reads a[href*="page=seo-aeo-business-profile"] (quotes around the equals-containing value, per CSS3 spec) — without quotes the browser parser silently discarded the rule.
-
-For older changelog entries (3.38.2 and earlier), see the project repository at https://github.com/jcappelliemer/aeo-orchestra .
+For older changelog entries (3.38.5 and earlier), see the project repository at https://github.com/jcappelliemer/aeo-orchestra .

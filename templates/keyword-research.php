@@ -6,7 +6,7 @@
 // heuristic doesn't distinguish template-scope locals from globals.
 /*
  * Template: Keyword Research Autopilot (since 3.23.0)
- * UI per generare 30+ keyword strategiche da una nicchia, con cluster/intent/volume/difficolta.
+ * UI per generare 30+ keyword strategiche da una nicchia, con cluster/intent/volume/difficoltà.
  * 3.31.4: i18n auto-default lingua dropdown a locale admin, +DE option,
  *         tutti i label tabelle/bottoni passano da SEO_AEO_T::t().
  */
@@ -28,7 +28,7 @@ $_orch_kr_default_lang = in_array($_orch_kr_admin_locale, $_orch_kr_supported, t
             <div>
                 <div class="orch-kr-hero-eyebrow"><?php SEO_AEO_T::e('AEO Orchestra · Keyword Engine'); ?></div>
                 <h1 class="orch-kr-hero-title"><?php SEO_AEO_T::e('Keyword Research Autopilot'); ?></h1>
-                <p class="orch-kr-hero-sub"><?php SEO_AEO_T::e('Da nicchia generica a 30 keyword strategiche organizzate in cluster semantici, con intent + difficolta + idea articolo. L\'AI fa il lavoro che richiederebbe ore di SEMrush/Ahrefs.'); ?></p>
+                <p class="orch-kr-hero-sub"><?php SEO_AEO_T::e('Da nicchia generica a 30 keyword strategiche organizzate in cluster semantici, con intent + difficoltà + idea articolo. L\'AI fa il lavoro che richiederebbe ore di SEMrush/Ahrefs.'); ?></p>
             </div>
         </div>
     </div>

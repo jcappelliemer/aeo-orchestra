@@ -103,6 +103,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             add_action('wp_ajax_seo_aeo_orchestra_execute_action', array($this, 'ajax_execute_action'));
             // 3.39.6 — Preview-before-apply UX.
             add_action('wp_ajax_seo_aeo_orchestra_preview_action', array($this, 'ajax_preview_action'));
+            // 3.40.1 — manual-mode applied tracker.
+            add_action('wp_ajax_seo_aeo_orchestra_mark_manual_applied', array($this, 'ajax_mark_manual_applied'));
 
             // Pages, Keywords, Content
             add_action('wp_ajax_seo_aeo_orchestra_get_pages', array($this, 'ajax_get_pages'));
@@ -1145,6 +1147,65 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
      * render a current-vs-proposed diff for the user before they
      * commit via "Applica modifiche".
      */
+    /**
+     * 3.40.1 — Record that the user applied an action manually after
+     * v3.40.0 manual-mode UX. This is the tracker the "Ho applicato
+     * manualmente" button in the preview modal calls. The body writes
+     * a history entry with type=manual_applied so the user sees it in
+     * Cronologia alongside automatic apply entries.
+     *
+     * No backend AI call (the manual work is the user's). 1cr deduct
+     * is intentional to keep the action accounted for + discourage
+     * spam clicks on this otherwise-free button.
+     */
+    public function ajax_mark_manual_applied() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('edit_posts')) {
+                wp_send_json_error(array('message' => 'forbidden'), 403);
+            }
+            $agent       = isset($_POST['agent']) ? sanitize_text_field(wp_unslash($_POST['agent'])) : '';
+            $action_type = isset($_POST['action_type']) ? sanitize_text_field(wp_unslash($_POST['action_type'])) : '';
+            $page_url    = isset($_POST['page_url']) ? esc_url_raw(wp_unslash($_POST['page_url'])) : '';
+            $page_title  = isset($_POST['page_title']) ? sanitize_text_field(wp_unslash($_POST['page_title'])) : '';
+            if (empty($action_type)) {
+                wp_send_json_error(array('message' => 'action_type required'), 400);
+            }
+            $builder = get_option('aeo_site_builder', 'unknown');
+
+            // Save history entry via class-history if available.
+            if (class_exists('SEO_AEO_History')) {
+                try {
+                    $hist = new SEO_AEO_History();
+                    if (method_exists($hist, 'add_entry')) {
+                        $hist->add_entry(array(
+                            'type'        => 'manual_applied',
+                            'agent'       => $agent,
+                            'action_type' => $action_type,
+                            'page_url'    => $page_url,
+                            'page_title'  => $page_title,
+                            'builder'     => $builder,
+                            'cost'        => 1,
+                            'timestamp'   => current_time('mysql'),
+                        ));
+                    }
+                } catch (Throwable $e) {
+                    // history insert failure is non-fatal — proceed.
+                }
+            }
+
+            wp_send_json_success(array(
+                'tracked'    => true,
+                'cost'       => 1,
+                'message'    => 'Modifica registrata come applicata manualmente.',
+                'builder'    => $builder,
+                'action_type'=> $action_type,
+            ));
+        } catch (Throwable $e) {
+            wp_send_json_error(array('message' => 'tracker_error: ' . $e->getMessage()), 500);
+        }
+    }
+
     /**
      * 3.40.0 — Lookup the capability mode for an action_type using
      * SEO_AEO_Capability_Matrix. Falls back to 'full' if the matrix

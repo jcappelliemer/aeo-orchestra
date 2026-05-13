@@ -3386,10 +3386,34 @@
                 }
             });
             $modal.find('.orch-apv-applied-manual').on('click', function() {
-                close();
-                // v3.40.1 — call seo_aeo_orchestra_mark_manual_applied AJAX.
-                // For now show a confirmation toast.
-                SeoAeoOrchestra.showNotice(T('Modifica registrata come applicata manualmente.'), 'success');
+                // 3.40.1 — real tracker AJAX. Records to history with
+                // type=manual_applied so the user sees the action in
+                // Cronologia alongside automatic apply entries.
+                var $appliedBtn = jQuery(this);
+                $appliedBtn.prop('disabled', true).text(T('Registrazione...'));
+                jQuery.ajax({
+                    url: seoAeoOrchestra.ajaxUrl,
+                    type: 'POST',
+                    timeout: 15000,
+                    data: {
+                        action: 'seo_aeo_orchestra_mark_manual_applied',
+                        nonce: seoAeoOrchestra.nonce,
+                        agent: payload.agent || '',
+                        action_type: payload.action_type || '',
+                        page_url: (current && current.page_url) || '',
+                        page_title: (current && current.page_title) || '',
+                    },
+                }).done(function(resp) {
+                    if (resp && resp.success) {
+                        SeoAeoOrchestra.showNotice((resp.data && resp.data.message) || T('Modifica registrata come applicata manualmente.'), 'success');
+                    } else {
+                        SeoAeoOrchestra.showNotice(T('Errore registrazione'), 'error');
+                    }
+                }).fail(function(xhr) {
+                    SeoAeoOrchestra.showNotice(T('Errore registrazione') + ' (' + (xhr ? xhr.status : '?') + ')', 'error');
+                }).always(function() {
+                    close();
+                });
             });
             $modal.find('.orch-apv-regen').on('click', function() {
                 close();

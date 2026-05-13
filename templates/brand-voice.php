@@ -88,13 +88,13 @@ $profiles = SEO_AEO_Brand_Voice::list_profiles();
 
         <div class="orch-bv2-wizard-form">
             <div class="orch-bv2-field">
-                <label><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Nome del profilo')) : 'Nome del profilo'; ?></label>
+                <label for='orch-bv-name'><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Nome del profilo')) : 'Nome del profilo'; ?></label>
                 <input type="text" id="orch-bv-name" placeholder="<?php echo esc_attr(SEO_AEO_T::t('es. Stile editoriale principale, Tono ufficio commerciale, ...')); ?>" class="orch-bv2-input">
                 <small><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Dagli un nome chiaro: utile se hai più clienti o brand diversi.')) : 'Dagli un nome chiaro: utile se hai più clienti o brand diversi.'; ?></small>
             </div>
 
             <div class="orch-bv2-field">
-                <label><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Da quali contenuti imparo?')) : 'Da quali contenuti imparo?'; ?></label>
+                <label for='orch-bv-post-type'><?php echo class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_T::t('Da quali contenuti imparo?')) : 'Da quali contenuti imparo?'; ?></label>
                 <select id="orch-bv-post-type" class="orch-bv2-input">
                     <option value="post" selected>📝 Articoli del blog (Post)</option>
                     <?php

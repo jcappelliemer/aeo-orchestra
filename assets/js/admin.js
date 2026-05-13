@@ -2194,6 +2194,83 @@
             SeoAeoOrchestra.orchestrateNext();
         },
 
+        // 3.39.9 — ETA tick driver (restored after v3.39.8 lost the
+        // v3.39.7 helper insertion). Updates progress bar + ETA every
+        // 500ms based on the rolling median page duration (localStorage)
+        // or 25s fallback. All helpers are properties on the
+        // SeoAeoOrchestra object literal.
+        _ORCH_DUR_KEY: 'seo_aeo_orch_page_durations_v1',
+        _ORCH_DUR_MAX: 10,
+        _ORCH_DEFAULT_ETA: 25,
+        _orchEtaTimer: null,
+
+        _loadOrchDurations: function() {
+            try {
+                var raw = localStorage.getItem(SeoAeoOrchestra._ORCH_DUR_KEY);
+                if (!raw) return [];
+                var parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed.filter(function(n){ return typeof n === 'number' && n > 0 && n < 600; }) : [];
+            } catch (e) { return []; }
+        },
+        _recordOrchPageDuration: function(sec) {
+            try {
+                var list = SeoAeoOrchestra._loadOrchDurations();
+                list.push(sec);
+                while (list.length > SeoAeoOrchestra._ORCH_DUR_MAX) list.shift();
+                localStorage.setItem(SeoAeoOrchestra._ORCH_DUR_KEY, JSON.stringify(list));
+            } catch (e) {}
+        },
+        _getOrchMedianDuration: function() {
+            var list = SeoAeoOrchestra._loadOrchDurations();
+            if (!list.length) return SeoAeoOrchestra._ORCH_DEFAULT_ETA;
+            var sorted = list.slice().sort(function(a, b){ return a - b; });
+            var mid = Math.floor(sorted.length / 2);
+            return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+        },
+
+        _stopOrchEtaTick: function(success) {
+            if (SeoAeoOrchestra._orchEtaTimer) {
+                clearInterval(SeoAeoOrchestra._orchEtaTimer);
+                SeoAeoOrchestra._orchEtaTimer = null;
+            }
+            if (success === true) {
+                var $ = jQuery;
+                $('#orch-progress-bar').css('width', '100%');
+                $('#orch-progress-pct').text('100%');
+            }
+        },
+
+        _startOrchEtaTick: function(pageIdx, totalPages) {
+            if (typeof SeoAeoOrchestra._stopOrchEtaTick === 'function') SeoAeoOrchestra._stopOrchEtaTick();
+            var $ = jQuery;
+            var etaPerPage = SeoAeoOrchestra._getOrchMedianDuration();
+            var T = SeoAeoOrchestra.t || function(s){return s;};
+
+            function tick() {
+                var now = Date.now();
+                var elapsedThisPage = (now - (SeoAeoOrchestra._orchPageStartedAt || now)) / 1000;
+                var pageFraction = Math.min(0.95, elapsedThisPage / Math.max(1, etaPerPage));
+                var totalFraction = (pageIdx + pageFraction) / Math.max(1, totalPages);
+                var pct = Math.min(95, Math.round(totalFraction * 100));
+                $('#orch-progress-bar').css('width', pct + '%');
+                $('#orch-progress-pct').text(pct + '%');
+                var remainingThisPage = Math.max(0, etaPerPage - elapsedThisPage);
+                var remainingPages = (totalPages - pageIdx - 1) * etaPerPage;
+                var totalRemaining = Math.round(remainingThisPage + remainingPages);
+                var etaText;
+                if (totalRemaining <= 0) {
+                    etaText = T('Quasi finito...');
+                } else {
+                    var min = Math.floor(totalRemaining / 60);
+                    var sec = totalRemaining % 60;
+                    etaText = '~ ' + (min > 0 ? (min + ' min ' + sec + ' sec') : (sec + ' sec ' + T('rimanenti')));
+                }
+                $('#orch-progress-eta').text(etaText);
+            }
+            tick();
+            SeoAeoOrchestra._orchEtaTimer = setInterval(tick, 500);
+        },
+
         orchestrateNext: function() {
             var pages = SeoAeoOrchestra.orchestratePages;
             var idx = SeoAeoOrchestra.orchestrateIndex;
@@ -2228,7 +2305,9 @@
 
             // 3.39.7 — record page-start timestamp + start the 500ms tick.
             SeoAeoOrchestra._orchPageStartedAt = Date.now();
-            SeoAeoOrchestra._startOrchEtaTick(idx, pages.length);
+            if (typeof SeoAeoOrchestra._startOrchEtaTick === 'function') {
+                SeoAeoOrchestra._startOrchEtaTick(idx, pages.length);
+            }
 
             $('#orch-progress-log').prepend('<div>&#9654; Analizzando pagina ' + (idx + 1) + '/' + pages.length + ': ' + page.title + '...</div>');
 
@@ -2256,10 +2335,10 @@
                 // 3.39.7 — stop ETA tick + record this page's duration for
                 // future median ETA. Capped to a sensible window so a single
                 // outlier doesn't poison the rolling list.
-                SeoAeoOrchestra._stopOrchEtaTick();
+                if (typeof SeoAeoOrchestra._stopOrchEtaTick === 'function') SeoAeoOrchestra._stopOrchEtaTick();
                 if (SeoAeoOrchestra._orchPageStartedAt) {
                     var _dur = Math.round((Date.now() - SeoAeoOrchestra._orchPageStartedAt) / 1000);
-                    if (_dur > 0 && _dur < 600) SeoAeoOrchestra._recordOrchPageDuration(_dur);
+                    if (_dur > 0 && _dur < 600 && typeof SeoAeoOrchestra._recordOrchPageDuration === 'function') SeoAeoOrchestra._recordOrchPageDuration(_dur);
                 }
                 if (result && !result.error) {
                     SeoAeoOrchestra.orchestrateResults.push(result);
@@ -2277,7 +2356,7 @@
                 // Small delay to not overwhelm server
                 setTimeout(function() { SeoAeoOrchestra.orchestrateNext(); }, 500);
             }).fail(function() {
-                SeoAeoOrchestra._stopOrchEtaTick();
+                if (typeof SeoAeoOrchestra._stopOrchEtaTick === 'function') SeoAeoOrchestra._stopOrchEtaTick();
                 $('#orch-progress-log').prepend('<div style="color:#EF4444;">&#10007; ' + page.title + ' - ' + SeoAeoOrchestra.t('Connessione fallita') + '</div>');
                 SeoAeoOrchestra.orchestrateResults.push({
                     url: page.url, title: page.title, post_id: page.post_id,
@@ -2351,7 +2430,7 @@
             // start a new analysis.
             SeoAeoOrchestra._orchestrateInFlight = false;
             // 3.39.7 — kill the ETA tick before jumping the bar to 100%.
-            SeoAeoOrchestra._stopOrchEtaTick();
+            if (typeof SeoAeoOrchestra._stopOrchEtaTick === 'function') SeoAeoOrchestra._stopOrchEtaTick();
             $('#orch-progress-bar').css('width', '100%');
             $('#orch-progress-pct').text('100%');
             var elapsed = Math.round((Date.now() - SeoAeoOrchestra.orchestrateStartTime) / 1000);

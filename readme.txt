@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.8
+Stable tag: 3.39.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,13 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.9 =
+* URGENT REGRESSION FIX — analysis completely broken on v3.39.8. Console showed "TypeError: SeoAeoOrchestra._startOrchEtaTick is not a function" at admin.js:2231 inside orchestrateNext, called from orchestrateStart at line 2194. The exception aborted the flow BEFORE the AJAX call fired, so zero admin-ajax POSTs were sent and the analysis spinner spun forever at 0%.
+* Root cause — the v3.39.7 ETA-helper insertion (_loadOrchDurations, _recordOrchPageDuration, _getOrchMedianDuration, _stopOrchEtaTick, _startOrchEtaTick) never persisted to the deployed build, OR was overwritten by a later patch. The v3.39.8 cycle landed Bug A + retry-hardening but inherited the broken state. Call sites remained, definitions vanished, TypeError followed.
+* Fix (A) — re-added all five helpers as properties on the SeoAeoOrchestra object literal, right before orchestrateNext. Same behavior as the v3.39.7 spec: 500ms tick driving the progress bar to 95% per page slice and ETA countdown using the rolling median of last 10 successful durations in localStorage (25s fallback). _stopOrchEtaTick now also jumps the bar to 100% explicitly on success.
+* Fix (B) — defensive `typeof === 'function'` guards added at EVERY call site (_startOrchEtaTick, _stopOrchEtaTick, _recordOrchPageDuration). Any future regression that loses the helpers degrades gracefully — analysis still runs without ETA visualization rather than crashing the entire orchestration flow. This is now the standard pattern for ALL future inter-function calls inside SeoAeoOrchestra: never call a sibling method without a typeof guard.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.39.8 =
 * Bug A — Piano d'Azione rendering on history restore. Verified screenshot v3.39.7: after Riapri → "Carica analisi", Piano d'Azione section showed all actions concatenated as one continuous text blob without card separators. Root cause: restoreFromHistory was iterating the saved-HTML outputs map (which on older history entries contained merged/stale markup for #orch-action-plan) instead of rebuilding from the in-memory state.allActions hydrated in the same call. Fix: extracted SeoAeoOrchestra.renderActionPlan(actions) helper used by BOTH the fresh-analysis orchestrateComplete path and the restoreFromHistory orchestrator branch. Restore-side outputs loop now skips '#orch-action-plan' when state hydration is active, preventing stale-markup overwrites.

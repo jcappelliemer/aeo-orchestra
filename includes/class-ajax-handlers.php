@@ -1111,6 +1111,25 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             }
         }
 
+        // 3.40.6 P0 Bug A - dedup actions by (action_type, post_id) tuple.
+        // The LLM sometimes emits 2+ issues matching the same regex
+        // (e.g. "manca schema JSON-LD" + "manca markup structured data")
+        // producing duplicate "Genera schema JSON-LD" cards.
+        if (is_array($actions) && count($actions) > 1) {
+            $aeo_seen = array();
+            $aeo_deduped = array();
+            foreach ($actions as $aeo_a) {
+                if (!is_array($aeo_a)) continue;
+                $aeo_t = isset($aeo_a['action_type']) ? $aeo_a['action_type'] : (isset($aeo_a['label']) ? $aeo_a['label'] : '');
+                $aeo_p = isset($aeo_a['data']['post_id']) ? (int) $aeo_a['data']['post_id'] : (int) $post_id;
+                $aeo_k = $aeo_t . '|' . $aeo_p;
+                if ($aeo_t !== '' && isset($aeo_seen[$aeo_k])) continue;
+                if ($aeo_t !== '') $aeo_seen[$aeo_k] = true;
+                $aeo_deduped[] = $aeo_a;
+            }
+            $actions = $aeo_deduped;
+        }
+
         if ($post_id > 0) {
             update_post_meta($post_id, '_seo_aeo_seo_score', $seo_score);
             update_post_meta($post_id, '_seo_aeo_aeo_score', $aeo_score);
@@ -1621,6 +1640,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
 
                 case 'aeo_content':
                     $keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';
+                    $aeo_post_id = isset($data['post_id']) ? (int) $data['post_id'] : 0;
                     $result = $api->api_request('/ai/aeo-content', array(
                         'topic' => $keyword,
                         'keywords' => array($keyword),
@@ -1629,6 +1649,50 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'include_faq' => true,
                         'language' => $this->get_ai_language(),
                     ));
+                    if (isset($result['error'])) {
+                        wp_send_json($result);
+                        break;
+                    }
+                    // 3.40.6 P0 Bug C/D - per-action-type persistence. The legacy
+                    // path just echoed the AI text and the UI claimed "Completato"
+                    // while the WP post was untouched. We now branch on action_type:
+                    //  - GENERATE_SCHEMA: extract the <script ld+json> block, save
+                    //    to post_meta _seo_aeo_custom_schema_html, emit via wp_head.
+                    //  - other types (ADD_AUTHORITY_SIGNALS / REWRITE_INTRO /
+                    //    OPTIMIZE_FEATURED_SNIPPET / ADD_FAQ_SECTION etc.): return
+                    //    manual_mode:true with the proposed_text so the UI shows
+                    //    "Modalita manuale" with copy button INSTEAD of a fake
+                    //    "Completato" stamp. Real auto-persistence for these
+                    //    types lands in v3.40.7 (per-action executors).
+                    $action_type_exec = $action_type;
+                    if ($action_type_exec === 'GENERATE_SCHEMA' && $aeo_post_id > 0) {
+                        $content_html = isset($result['content']) ? (string) $result['content'] : '';
+                        $schema_html = '';
+                        if (preg_match('#<script[^>]*type=["\']application/ld\+json["\'][^>]*>.*?</script>#si', $content_html, $sm)) {
+                            $schema_html = $sm[0];
+                        }
+                        if ($schema_html !== '') {
+                            update_post_meta($aeo_post_id, '_seo_aeo_custom_schema_html', wp_kses_post($schema_html));
+                            $result['applied'] = true;
+                            $result['action_type'] = $action_type_exec;
+                            $result['post_id'] = $aeo_post_id;
+                            $result['schema_html'] = $schema_html;
+                            $result['message'] = 'Schema JSON-LD salvato e applicato in <head>. Verifica con Google Rich Results Test.';
+                        } else {
+                            $result['applied'] = false;
+                            $result['manual_mode'] = true;
+                            $result['action_type'] = $action_type_exec;
+                            $result['proposed_text'] = $content_html;
+                            $result['message'] = 'L\'AI non ha restituito un blocco JSON-LD valido. Copia il contenuto proposto e incollalo manualmente.';
+                        }
+                    } else {
+                        // All other aeo_content action_types: return manual_mode honestly.
+                        $result['applied'] = false;
+                        $result['manual_mode'] = true;
+                        $result['action_type'] = $action_type_exec;
+                        $result['proposed_text'] = isset($result['content']) ? (string) $result['content'] : '';
+                        $result['message'] = 'Contenuto generato. Per applicare automaticamente al post serve un editor surgical (v3.40.7+). Per ora copia il testo proposto.';
+                    }
                     wp_send_json($result);
                     break;
 
@@ -1642,6 +1706,16 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'include_faq' => true,
                         'language' => $this->get_ai_language(),
                     ));
+                    // 3.40.6 P0 Bug C/D - honest manual_mode for content_generator.
+                    // Persistence (post_content append for ADD_INTERNAL_LINKS,
+                    // EXPAND_CONTENT, FIX_HEADING_STRUCTURE) lands in v3.40.7.
+                    if (!isset($result['error'])) {
+                        $result['applied'] = false;
+                        $result['manual_mode'] = true;
+                        $result['action_type'] = $action_type;
+                        $result['proposed_text'] = isset($result['content']) ? (string) $result['content'] : '';
+                        $result['message'] = 'Contenuto generato. Per applicare automaticamente serve un editor surgical (v3.40.7+). Per ora copia il testo proposto.';
+                    }
                     wp_send_json($result);
                     break;
 

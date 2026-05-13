@@ -33,6 +33,8 @@ class SEO_AEO_Schema {
     public function __construct() {
         // Priority 5: dopo i nostri meta tags (priority 1) ma prima del resto del head
         add_action('wp_head', array($this, 'render'), 5);
+        // 3.40.6 - emit AI-generated custom schema saved per-post.
+        add_action('wp_head', array($this, 'emit_custom_schema'), 12);
     }
 
     public static function is_enabled() {
@@ -1202,4 +1204,25 @@ class SEO_AEO_Schema {
         return true;
     }
 
+    /**
+     * 3.40.6 - Echo any AI-generated JSON-LD schema saved in post_meta
+     * _seo_aeo_custom_schema_html (written by ajax_execute_action when the
+     * user runs a GENERATE_SCHEMA action). Runs regardless of whether the
+     * native_schema_enabled option is on, so the user gets the schema even
+     * if they did not enable the full native Schema.org output.
+     */
+    public function emit_custom_schema() {
+        if (!is_singular()) return;
+        $post_id = get_queried_object_id();
+        if (!$post_id) return;
+        $html = (string) get_post_meta($post_id, '_seo_aeo_custom_schema_html', true);
+        if ($html === '') return;
+        // _seo_aeo_custom_schema_html was sanitized with wp_kses_post on save.
+        // We re-echo as-is so the <script type="application/ld+json"> block
+        // reaches the page.
+        echo "
+" . $html . "
+";
+    }
 }
+

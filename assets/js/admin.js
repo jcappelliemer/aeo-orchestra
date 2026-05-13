@@ -3470,36 +3470,81 @@
             var $btn = $(this);
             var agent = $btn.data('agent');
             var actionData = $btn.data('action-data');
+            var actionType = $btn.data('action-type') || (actionData && actionData.action_type) || '';
             var idx = $btn.data('idx');
             var $result = $('#orch-action-result-' + idx);
+            var origLabel = $btn.html();
 
             $btn.addClass('executing').html('<span class="orchestra-spinner"></span> Esecuzione...');
+
+            function escHtml(s) {
+                return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+                    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'})[c];
+                });
+            }
 
             $.post(seoAeoOrchestra.ajaxUrl, {
                 action: 'seo_aeo_orchestra_execute_action',
                 nonce: seoAeoOrchestra.nonce,
                 agent: agent,
-                action_data: actionData
+                action_data: actionData,
+                action_type: actionType
             }, function(response) {
                 $btn.removeClass('executing');
-                if (response && !response.error) {
-                    $btn.html('<span class="dashicons dashicons-yes"></span> Completato').prop('disabled', true).css({'background':'#10B981','border-color':'#10B981'});
-                    var resultHtml = '';
-                    if (agent === 'meta_tags' && response.saved) {
-                        resultHtml = '<strong style="color:#10B981;">Meta tags salvati!</strong><br>Title: ' + (response.title || '') + '<br>Description: ' + (response.description || '');
-                    } else if (response.content || response.article) {
-                        var content = response.content || response.article || '';
-                        resultHtml = '<strong style="color:#10B981;">Contenuto generato!</strong><br>' + content.substring(0, 300) + '...';
-                    } else {
-                        resultHtml = '<strong style="color:#10B981;">Azione eseguita.</strong><br><pre style="font-size:11px">' + JSON.stringify(response, null, 2).substring(0, 500) + '</pre>';
-                    }
-                    $result.html(resultHtml).show();
-                } else {
+                // ---- Error / surgical fail branches ----
+                if (!response || response.error) {
                     $btn.html('<span class="dashicons dashicons-warning"></span> Errore').css({'background':'#EF4444','border-color':'#EF4444'});
-                    $result.html('<span style="color:red;">' + (response.error || 'Errore sconosciuto') + '</span>').show();
+                    $result.html('<span style="color:red;">' + (response && response.error || 'Errore sconosciuto') + '</span>').show();
+                    return;
                 }
+                if (response.surgical_failed) {
+                    $btn.html('<span class="dashicons dashicons-warning"></span> Manuale richiesta').css({'background':'#f59e0b','border-color':'#f59e0b'});
+                    $result.html('<div style="padding:10px 12px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;color:#78350f;font-size:12px;"><strong>Editor surgical non compatibile:</strong> ' + escHtml(response.reason || 'unknown') + '. Apri la pagina nell\u2019editor e applica manualmente il testo proposto.</div>').show();
+                    return;
+                }
+                // ---- v3.40.6 - honest manual_mode response ----
+                // Backend returns {applied:false, manual_mode:true, proposed_text, message}
+                // when the action_type has no auto-persisting executor wired yet.
+                // No fake "Completato" stamp; show the proposed text + copy
+                // button + manual-applied tracker.
+                if (response.manual_mode === true) {
+                    $btn.html('<span class="dashicons dashicons-edit"></span> Modalita manuale').prop('disabled', true).css({'background':'#f59e0b','border-color':'#f59e0b','color':'#fff'});
+                    var proposed = response.proposed_text || response.content || '';
+                    var msg = response.message || 'Testo generato. Applicalo manualmente al post.';
+                    var copyId = 'orch-am-copy-' + idx;
+                    var resultHtml = '<div style="padding:12px 14px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;color:#78350f;">'
+                                   + '<strong>\u270f\ufe0f Modalit\u00e0 manuale:</strong> ' + escHtml(msg) + '<br>'
+                                   + '<div style="margin-top:8px;max-height:260px;overflow:auto;background:#fff;border:1px solid #fde68a;padding:10px;border-radius:4px;font-size:12px;white-space:pre-wrap;font-family:ui-monospace,monospace;" id="' + copyId + '">' + escHtml(proposed.substring(0, 4000)) + '</div>'
+                                   + '<button type="button" class="button" style="margin-top:8px;" onclick="(function(t){var el=document.getElementById(t);if(!el)return;var r=document.createRange();r.selectNode(el);window.getSelection().removeAllRanges();window.getSelection().addRange(r);try{document.execCommand(\u0027copy\u0027);}catch(_){}window.getSelection().removeAllRanges();})(\u0027' + copyId + '\u0027)">\u270e Copia testo</button>'
+                                   + '</div>';
+                    $result.html(resultHtml).show();
+                    return;
+                }
+                // ---- Real apply path ----
+                // response.applied:true means the backend wrote post_meta/post_content.
+                // response.saved is the legacy meta_tags success flag.
+                if (response.applied === true || (agent === 'meta_tags' && response.saved)) {
+                    $btn.html('<span class="dashicons dashicons-yes"></span> Completato').prop('disabled', true).css({'background':'#10B981','border-color':'#10B981'});
+                    var msg2 = response.message || 'Azione applicata.';
+                    var resultHtml2 = '<div style="padding:10px 12px;background:#ecfdf5;border-left:4px solid #10b981;border-radius:6px;color:#065f46;"><strong>\u2713 ' + escHtml(msg2) + '</strong>';
+                    if (agent === 'meta_tags' && response.saved) {
+                        resultHtml2 += '<br>Title: ' + escHtml(response.title || '') + '<br>Description: ' + escHtml(response.description || '');
+                    } else if (actionType === 'GENERATE_SCHEMA' && response.schema_html) {
+                        resultHtml2 += '<br><small>JSON-LD emesso in <head>. Verifica con <a href="https://search.google.com/test/rich-results" target="_blank">Google Rich Results Test</a>.</small>';
+                    }
+                    resultHtml2 += '</div>';
+                    $result.html(resultHtml2).show();
+                    return;
+                }
+                // ---- Fallback: no applied + no manual_mode flag (legacy backend) ----
+                // Show a neutral "output ready" banner instead of fake success.
+                $btn.html('<span class="dashicons dashicons-info"></span> Output pronto').prop('disabled', true).css({'background':'#64748b','border-color':'#64748b','color':'#fff'});
+                var legacyContent = response.content || response.article || '';
+                var legacyHtml = '<div style="padding:10px 12px;background:#f1f5f9;border-left:4px solid #64748b;border-radius:6px;color:#475569;"><strong>Output AI pronto</strong> (non applicato automaticamente).<br><pre style="max-height:200px;overflow:auto;font-size:11px;background:#fff;border:1px solid #e2e8f0;padding:8px;border-radius:4px;margin-top:6px;">' + escHtml(legacyContent ? legacyContent.substring(0, 500) : JSON.stringify(response, null, 2).substring(0, 500)) + '</pre></div>';
+                $result.html(legacyHtml).show();
             }).fail(function() {
-                $btn.removeClass('executing').html('<span class="dashicons dashicons-warning"></span> Errore connessione');
+                $btn.removeClass('executing').html(origLabel).prop('disabled', false);
+                $result.html('<span style="color:red;">Errore di connessione</span>').show();
             });
         }
     };

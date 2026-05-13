@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.5
+Stable tag: 3.40.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,13 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.6 =
+* P0 Bug A - Duplicate actions in Piano d Azione. When the LLM emitted 2+ issues matching the same regex (e.g. "manca schema JSON-LD" + "manca markup structured data") the heuristic mapper produced 2 identical "Genera schema JSON-LD" cards. v3.40.6 deduplicates the actions array by (action_type, post_id) tuple before persist; the first match wins.
+* P0 Bug C/D - Fake execution removed. Clicking "Esegui" on Schema/FAQ/Authority/Intro/Snippet actions used to show "Completato" + a green "Contenuto generato!" box even though the backend NEVER wrote anything to wp_posts. The aeo_content and content_generator execute branches now branch on action_type: GENERATE_SCHEMA persists the AI-generated JSON-LD into post_meta _seo_aeo_custom_schema_html and emits it via wp_head priority 12 (new SEO_AEO_Schema::emit_custom_schema hook). All other action_types return manual_mode:true with the proposed text instead of a fake success stamp.
+* Frontend executeAction completely rewritten to honor the new response shape. Three distinct UX paths now exist: (a) applied:true OR meta_tags.saved -> green "Completato" + verification hint (Rich Results link for Schema); (b) manual_mode:true -> amber "Modalita manuale" banner with the AI text in a scrollable code-style box + Copia testo button; (c) error/surgical_failed -> red error banner with reason. No more fake success on output that never touched the post.
+* Post-meta hook: SEO_AEO_Schema::emit_custom_schema reads _seo_aeo_custom_schema_html on is_singular() and echoes it on wp_head priority 12 (after the main schema renderer). Runs regardless of whether the Native Schema option is enabled, so a single "Esegui" on a GENERATE_SCHEMA action persists the JSON-LD without any other setup.
+* DEFERRED to v3.40.7 - Per-action auto-persistence for ADD_FAQ_SECTION (append FAQ block to post_content), ADD_INTERNAL_LINKS (splice anchors via surgical editor), EXPAND_CONTENT (append paragraphs), FIX_HEADING_STRUCTURE (surgical H1/H2 rewrites), ADD_AUTHORITY_SIGNALS/REWRITE_INTRO/OPTIMIZE_FEATURED_SNIPPET (require AI prompt to emit {old_text, new_text} pairs for the surgical editor). Until then those action_types correctly return manual_mode and the UI shows the copy-paste path.
 
 = 3.40.5 =
 * P0 - AEO silent fallback (UI banner + auto-refund + retry log + per-tier metric). Symptom verified Chrome MCP on v3.40.3: SEO analysis succeeded (78 score + 5 problems) but AEO analysis silently returned the hardcoded fallback (-- score, 0 issues) with no error banner. User paid 5cr but got half the result.

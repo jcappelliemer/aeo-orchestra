@@ -1015,7 +1015,7 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
                 });
                 updateTermsCount($terms);
             }
-            $status.attr('class', 'orch-bp-sc-status is-ok').text('✓ Contesto generato (' + (resp.data.pages_analyzed || 0) + ' pagine analizzate). Verifica e modifica prima di salvare.');
+            var _n = (resp.data.pages_analyzed || 0); var _label = _n === 1 ? ' pagina analizzata' : ' pagine analizzate'; $status.attr('class', 'orch-bp-sc-status is-ok').text('✓ Contesto generato (' + _n + _label + '). Verifica e modifica prima di salvare.');
             triggerSave();
         }).fail(function(xhr) {
             var msg = 'HTTP ' + (xhr ? xhr.status : '?');

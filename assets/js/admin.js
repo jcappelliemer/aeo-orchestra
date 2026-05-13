@@ -3551,19 +3551,109 @@
                 // No fake "Completato" stamp; show the proposed text + copy
                 // button + manual-applied tracker.
                 if (response.manual_mode === true) {
-                    $btn.html('<span class="dashicons dashicons-edit"></span> Modalita manuale').prop('disabled', true).css({'background':'#f59e0b','border-color':'#f59e0b','color':'#fff'});
+                    $btn.html('<span class="dashicons dashicons-edit"></span> Modalit\u00e0 manuale').prop('disabled', true).css({'background':'#f59e0b','border-color':'#f59e0b','color':'#fff'});
                     var proposed = response.proposed_text || response.content || '';
                     var msg = response.message || 'Testo generato. Applicalo manualmente al post.';
                     if (typeof SeoAeoOrchestra.showNotice === 'function') {
                         SeoAeoOrchestra.showNotice(msg, 'warning');
                     }
-                    var copyId = 'orch-am-copy-' + idx;
+                    // 3.40.10 P1.2 - upgrade to proper modal. The inline result
+                    // block remains as a fallback summary, but the user can now
+                    // click "Apri editor" to get a full-screen modal with the
+                    // proposed text, a Copy button, and a "Ho applicato" tracker.
+                    var copyId = 'orch-am-copy-' + (idx || Math.floor(Math.random() * 1000));
+                    var modalId = 'orch-am-modal-' + (idx || Math.floor(Math.random() * 1000));
+                    var actionTypeLabel = response.action_type || actionType || '';
+                    var titleByType = {
+                        'GENERATE_SCHEMA':          'Schema JSON-LD generato',
+                        'ADD_FAQ_SECTION':          'FAQ generate',
+                        'ADD_AUTHORITY_SIGNALS':    'Segnali di autorit\u00e0 generati',
+                        'REWRITE_INTRO':            'Intro riscritta',
+                        'OPTIMIZE_FEATURED_SNIPPET':'Testo Featured Snippet generato',
+                        'OPTIMIZE_KEYWORDS':        'Suggerimenti keyword generati',
+                        'EXPAND_CONTENT':           'Espansione contenuto generata'
+                    };
+                    var modalTitle = (titleByType[actionTypeLabel] || 'Contenuto generato') + ' \u2014 applica manualmente';
+                    var modalSubtitle = msg;
+                    // Render fallback inline summary (kept for context) + button to open modal.
                     var resultHtml = '<div style="padding:12px 14px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;color:#78350f;">'
-                                   + '<strong>\u270f\ufe0f Modalit\u00e0 manuale:</strong> ' + escHtml(msg) + '<br>'
-                                   + '<div style="margin-top:8px;max-height:260px;overflow:auto;background:#fff;border:1px solid #fde68a;padding:10px;border-radius:4px;font-size:12px;white-space:pre-wrap;font-family:ui-monospace,monospace;" id="' + copyId + '">' + escHtml(proposed.substring(0, 4000)) + '</div>'
-                                   + '<button type="button" class="button" style="margin-top:8px;" onclick="(function(t){var el=document.getElementById(t);if(!el)return;var r=document.createRange();r.selectNode(el);window.getSelection().removeAllRanges();window.getSelection().addRange(r);try{document.execCommand(\u0027copy\u0027);}catch(_){}window.getSelection().removeAllRanges();})(\u0027' + copyId + '\u0027)">\u270e Copia testo</button>'
+                                   + '<strong>\u270F\uFE0F Modalit\u00e0 manuale:</strong> ' + escHtml(msg) + '<br>'
+                                   + '<button type="button" class="button button-primary orch-am-open" data-modal-target="' + modalId + '" style="margin-top:8px;margin-right:6px;">\uD83D\uDDD2\uFE0F Apri editor</button>'
+                                   + '<button type="button" class="button orch-am-applied" data-btn-idx="' + (idx || '') + '" style="margin-top:8px;">\u2713 Ho applicato manualmente</button>'
                                    + '</div>';
                     $result.html(resultHtml).show();
+
+                    // Inject the modal (one per execution; replaces any prior).
+                    $('#' + modalId).remove();
+                    $('#orch-am-modal-styles').length || $('head').append(
+                        '<style id="orch-am-modal-styles">' +
+                        '.orch-am-backdrop{position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;z-index:100100;animation:orchAmFade 0.15s ease;}' +
+                        '@keyframes orchAmFade{from{opacity:0}to{opacity:1}}' +
+                        '.orch-am-modal{background:#fff;border-radius:12px;box-shadow:0 24px 48px rgba(0,0,0,0.3);max-width:780px;width:calc(100% - 32px);max-height:88vh;display:flex;flex-direction:column;}' +
+                        '.orch-am-head{padding:16px 22px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;}' +
+                        '.orch-am-head h3{margin:0 0 6px;font-size:17px;font-weight:600;color:#0F172A;}' +
+                        '.orch-am-head p{margin:0;color:#64748b;font-size:13px;line-height:1.4;}' +
+                        '.orch-am-close{background:none;border:0;font-size:24px;line-height:1;color:#94A3B8;cursor:pointer;padding:0 4px;flex-shrink:0;}' +
+                        '.orch-am-body{padding:14px 22px;overflow:auto;flex:1;}' +
+                        '.orch-am-code{background:#0F172A;color:#E2E8F0;font-family:ui-monospace,monospace;font-size:12px;line-height:1.5;padding:14px 16px;border-radius:8px;max-height:380px;overflow:auto;white-space:pre-wrap;word-break:break-word;}' +
+                        '.orch-am-actions{padding:14px 22px;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:8px;}' +
+                        '</style>'
+                    );
+                    var modalHtml = '<div class="orch-am-backdrop" id="' + modalId + '">'
+                                  + '<div class="orch-am-modal">'
+                                    + '<div class="orch-am-head">'
+                                      + '<div>'
+                                        + '<h3>\u270F\uFE0F ' + escHtml(modalTitle) + '</h3>'
+                                        + '<p>' + escHtml(modalSubtitle) + '</p>'
+                                      + '</div>'
+                                      + '<button type="button" class="orch-am-close" aria-label="Chiudi">\u00D7</button>'
+                                    + '</div>'
+                                    + '<div class="orch-am-body">'
+                                      + '<div class="orch-am-code" id="' + copyId + '">' + escHtml(proposed.substring(0, 12000)) + '</div>'
+                                    + '</div>'
+                                    + '<div class="orch-am-actions">'
+                                      + '<button type="button" class="button orch-am-cancel">Annulla</button>'
+                                      + '<button type="button" class="button orch-am-copy" data-copy-target="' + copyId + '">\uD83D\uDCCB Copia testo</button>'
+                                      + '<button type="button" class="button button-primary orch-am-applied" data-btn-idx="' + (idx || '') + '">\u2713 Ho applicato manualmente</button>'
+                                    + '</div>'
+                                  + '</div>'
+                                + '</div>';
+                    $('body').append(modalHtml);
+                    var $modal = $('#' + modalId);
+                    $modal.on('click', '.orch-am-close, .orch-am-cancel', function () { $modal.remove(); });
+                    $modal.on('click', '.orch-am-backdrop', function (e) { if (e.target === this) $modal.remove(); });
+                    $modal.on('click', '.orch-am-copy', function () {
+                        var t = $(this).data('copy-target');
+                        var el = document.getElementById(t);
+                        if (!el) return;
+                        var r = document.createRange();
+                        r.selectNode(el);
+                        window.getSelection().removeAllRanges();
+                        window.getSelection().addRange(r);
+                        try { document.execCommand('copy'); } catch (_) {}
+                        window.getSelection().removeAllRanges();
+                        $(this).text('\u2713 Copiato');
+                        setTimeout(function () { $modal.find('.orch-am-copy').first().html('\uD83D\uDCCB Copia testo'); }, 1800);
+                    });
+                    var markApplied = function () {
+                        $btn.html('<span class="dashicons dashicons-yes"></span> Completato').css({'background':'#10B981','border-color':'#10B981','color':'#fff'});
+                        if (typeof SeoAeoOrchestra.showNotice === 'function') {
+                            SeoAeoOrchestra.showNotice('Marcato come applicato manualmente.', 'success');
+                        }
+                        // 3.40.10 - fire-and-forget tracker AJAX (lands a row in api_logs).
+                        $.post(seoAeoOrchestra.ajaxUrl, {
+                            action: 'seo_aeo_orchestra_mark_manual_applied',
+                            nonce: seoAeoOrchestra.nonce,
+                            action_type: actionTypeLabel
+                        });
+                        $modal.remove();
+                    };
+                    $modal.on('click', '.orch-am-applied', markApplied);
+                    // Delegate to the inline summary's "Apri editor" + "Ho applicato" buttons too.
+                    $result.off('click.amDelegate').on('click.amDelegate', '.orch-am-open', function () {
+                        $('#' + $(this).data('modal-target')).css('display', 'flex');
+                    });
+                    $result.on('click.amDelegate', '.orch-am-applied', markApplied);
                     return;
                 }
                 // ---- Real apply path ----
@@ -3594,7 +3684,7 @@
             }).fail(function(xhr, status) {
                 $btn.removeClass('executing').html(origLabel).prop('disabled', false);
                 if (status === 'timeout') {
-                    $result.html('<span style="color:red;">Esecuzione impiega troppo tempo (>120s). Riprova tra qualche secondo o usa la modalita manuale.</span>').show();
+                    $result.html('<span style="color:red;">Esecuzione impiega troppo tempo (>120s). Riprova tra qualche secondo o usa la modalit\u00e0 manuale.</span>').show();
                 } else {
                     $result.html('<span style="color:red;">Errore di rete (' + (xhr ? xhr.status : '?') + ')</span>').show();
                 }

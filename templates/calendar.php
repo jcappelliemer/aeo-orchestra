@@ -178,7 +178,7 @@ body.orch-cal-modal-lock { overflow:hidden !important; }
     </div>
 
     <div class="orch-cal-actions">
-        <button class="orch-cal-btn" id="orch-cal-bulk-btn">🚀 <?php echo esc_html(SEO_AEO_T::t('Pianifica 7/30 articoli con AI')); ?></button>
+        <button class="orch-cal-btn" id="orch-cal-bulk-btn">🚀 <?php echo esc_html(SEO_AEO_T::t('Pianifica 7 o 30 articoli (1 al giorno) con AI')); ?></button>
         <button class="orch-cal-btn secondary" id="orch-cal-refresh-btn">🔄 <?php echo esc_html(SEO_AEO_T::t('Aggiorna')); ?></button>
     </div>
 

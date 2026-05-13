@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.9
+Stable tag: 3.40.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,14 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.10 =
+* P1.2 - Manual-mode MODAL upgrade. v3.40.6+ rendered manual_mode responses as an inline amber result block with a copy button; this is fine for short snippets but is awkward for a 4-12KB JSON-LD block where the user has to scroll inside a small element. v3.40.10 replaces it with a proper modal: title varies by action_type ("Schema JSON-LD generato — applica manualmente" / "FAQ generate — applica manualmente" / etc.), subtitle carries the backend message, body is a scrollable dark code box, and three CTAs: "Annulla" closes, "Copia testo" puts the content on the clipboard, "Ho applicato manualmente" marks the button green + fires the `seo_aeo_orchestra_mark_manual_applied` tracker AJAX. The inline summary stays as a brief banner with "Apri editor" + "Ho applicato manualmente" buttons so the user can dismiss-and-defer or open the modal later.
+* P1.10 - Italian singular/plural via SeoAeoOrchestra.pluralIT(n, singular, plural) helper. Wired into business-profile.php (Site Context generation result) and native-output.php (sitemap stats) so "1 pagine analizzate" now reads "1 pagina analizzata" while N>=2 reads "N pagine analizzate". Plus a global plural helper on the SeoAeoOrchestra namespace for future call sites.
+* P1.11 - Cannibalizzazione H1/H2 duplicate. The dedicated Cannibalizzazione page already shows an H1 "Cannibalizzazione SEO"; the partial template (also used on the main Orchestratore dashboard) used to render an H2 with the same literal text — visible as duplicate on the dedicated page. The partial's H2 is now "Scansione cannibalizzazione" so it stays descriptive on the dashboard and avoids duplicate on the dedicated page.
+* P1.12 - Pianifica cadence label. The Calendario bulk button label changes from "Pianifica 7/30 articoli con AI" to "Pianifica 7 o 30 articoli (1 al giorno) con AI" — the modal lets the user pick 7 or 30, the label now clarifies that the chosen count = days at 1 article/day cadence.
+* P1.1 - Accent residues. The executeAction timeout banner and the manual-mode button label both use "modalità" with proper accent (previously "modalita" without).
+* DEFERRED to v3.40.11 - Setup Wizard step 6 (P1.4), chart bar value rendering (P1.6), Premium upgrade CTAs (P1.8), Setup step 6/7 + completed-step summaries (P1.9), Pesca da Research dynamic ID (P1.10 - requires backend endpoint exposing latest research job id), full P1.13 fallback-banner-elsewhere audit. DEFERRED to v3.41.0 - per-builder surgical editors (Elementor / Divi / WPBakery / Beaver / Bricks / Oxygen + headless WPGraphQL / SSG modes).
 
 = 3.40.9 =
 * P0c FINAL - action_type propagation pipeline. v3.40.8 ZIPs deployed but execution on Schema/FAQ actions still landed in honest manual_mode instead of real-apply. Chrome MCP diagnostic on aeo-orchestra.com Page id=69: backend received POST /api/ai/aeo-content 200 OK (19,629 bytes), then evaluated `action_type === 'GENERATE_SCHEMA'` as FALSE because `action_type` was empty string. Root cause: the v3.40.7 agent rename moved the type semantics into the agent name (schema_generator etc.) but the JS renderer (renderActionPlan + buildProblemCards) never emitted `data-action-type` on the rendered buttons, and the `action.data` dict serialised into `data-action-data` only contained url/keyword/post_id/topic/issue from build_action_from_issue - not the top-level action.action_type.

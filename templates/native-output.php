@@ -4254,7 +4254,7 @@ if (is_admin() && defined('SEO_AEO_URL')) {
             applyScanCandidates(resp.candidates || {});
             var pages = (resp.pages_scanned || []).length;
             var msg = (resp.from_cache ? '✓ Risultato dalla cache (' + (resp.cache_age_hours || '?') + 'h fa)' : '✓ Scan completato')
-                + ' · ' + pages + ' pagine analizzate · industry rilevata: ' + (resp.industry_recommendation || '?')
+                + ' · ' + pages + (pages === 1 ? ' pagina analizzata' : ' pagine analizzate') + ' · industry rilevata: ' + (resp.industry_recommendation || '?')
                 + (resp.from_cache ? '' : ' · 5 crediti consumati');
             setScanStatus('success', msg);
             identityRefreshPreview();

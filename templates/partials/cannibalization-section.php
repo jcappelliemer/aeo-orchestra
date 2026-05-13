@@ -30,7 +30,7 @@ if (!isset($T) || !is_callable($T)) {
 <div class="orchestra-v3">
 <div class="orch3-card orch-cannibal-card">
     <div class="orch-cannibal-head">
-        <h2 class="orch3-h2"><?php echo esc_html($T('Cannibalizzazione SEO')); ?></h2>
+        <h2 class="orch3-h2"><?php echo esc_html($T('Scansione cannibalizzazione')); ?></h2>
         <button type="button" class="orch3-btn orch3-btn-ghost orch-cannibal-toggle" aria-expanded="true"><?php echo esc_html($T('Nascondi')); ?></button>
     </div>
     <div class="orch-cannibal-body">

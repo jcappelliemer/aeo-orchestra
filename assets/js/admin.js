@@ -2201,7 +2201,7 @@
         // SeoAeoOrchestra object literal.
         _ORCH_DUR_KEY: 'seo_aeo_orch_page_durations_v1',
         _ORCH_DUR_MAX: 10,
-        _ORCH_DEFAULT_ETA: 25,
+        _ORCH_DEFAULT_ETA: 50,  // 3.39.10 — measured real p50 is ~50s, was 25s
         _orchEtaTimer: null,
 
         _loadOrchDurations: function() {
@@ -2254,12 +2254,20 @@
                 var pct = Math.min(95, Math.round(totalFraction * 100));
                 $('#orch-progress-bar').css('width', pct + '%');
                 $('#orch-progress-pct').text(pct + '%');
-                var remainingThisPage = Math.max(0, etaPerPage - elapsedThisPage);
-                var remainingPages = (totalPages - pageIdx - 1) * etaPerPage;
-                var totalRemaining = Math.round(remainingThisPage + remainingPages);
+                // 3.39.10 — track signed remaining so the overage branch can
+                // compute how many extra seconds we've already gone past the
+                // estimate (instead of freezing on "Quasi finito...").
+                var signedRemainingThisPage = etaPerPage - elapsedThisPage;
+                var remainingPages = Math.max(0, totalPages - pageIdx - 1) * etaPerPage;
+                var totalRemaining = Math.round(signedRemainingThisPage + remainingPages);
                 var etaText;
                 if (totalRemaining <= 0) {
-                    etaText = T('Quasi finito...');
+                    // 3.39.10 — show overage so the clock keeps ticking visibly
+                    // instead of freezing on "Quasi finito..." for 30+ seconds.
+                    var extraSec = Math.ceil(-totalRemaining);
+                    etaText = extraSec > 0
+                        ? T('Quasi finito...') + ' (+' + extraSec + 's extra)'
+                        : T('Quasi finito...');
                 } else {
                     var min = Math.floor(totalRemaining / 60);
                     var sec = totalRemaining % 60;
@@ -3135,22 +3143,44 @@
 
             var origLabel = $btn.html();
             $btn.prop('disabled', true).html('<span class="dashicons dashicons-update spin"></span> ' + SeoAeoOrchestra.t('Generando preview...'));
+            console.log('[PREVIEW] click', {agent: agent, actionData: actionData});
 
-            jQuery.post(seoAeoOrchestra.ajaxUrl, {
-                action: 'seo_aeo_orchestra_preview_action',
-                nonce: seoAeoOrchestra.nonce,
-                agent: agent,
-                action_data: actionData,
+            // 3.39.10 — explicit 60s timeout + better diagnostics + always-
+            // restore guard. No button can hang in loading state forever.
+            jQuery.ajax({
+                url: seoAeoOrchestra.ajaxUrl,
+                type: 'POST',
+                timeout: 60000,
+                data: {
+                    action: 'seo_aeo_orchestra_preview_action',
+                    nonce: seoAeoOrchestra.nonce,
+                    agent: agent,
+                    action_data: actionData,
+                },
             }).done(function(resp) {
+                console.log('[PREVIEW] response', resp);
                 if (!resp || resp.error) {
                     SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Errore preview') + ': ' + ((resp && resp.error) || 'sconosciuto'), 'error');
                     return;
                 }
-                resp._sourceBtn = $btn.get(0);
-                SeoAeoOrchestra.showPreviewModal(resp);
-            }).fail(function(xhr) {
-                SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Errore di rete') + ' (' + (xhr ? xhr.status : '?') + ')', 'error');
+                try {
+                    resp._sourceBtn = $btn.get(0);
+                    SeoAeoOrchestra.showPreviewModal(resp);
+                } catch (renderErr) {
+                    console.error('[PREVIEW] showPreviewModal threw', renderErr);
+                    SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Errore rendering preview') + ': ' + (renderErr && renderErr.message ? renderErr.message : ''), 'error');
+                }
+            }).fail(function(xhr, status) {
+                console.error('[PREVIEW] fail', {status: xhr ? xhr.status : null, ajaxStatus: status, body: (xhr && xhr.responseText ? xhr.responseText.substring(0, 300) : '')});
+                var msg;
+                if (status === 'timeout') {
+                    msg = SeoAeoOrchestra.t('Preview impiega troppo tempo (>60s). Riprova tra qualche secondo.');
+                } else {
+                    msg = SeoAeoOrchestra.t('Errore di rete') + ' (' + (xhr ? xhr.status : '?') + ')';
+                }
+                SeoAeoOrchestra.showNotice(msg, 'error');
             }).always(function() {
+                console.log('[PREVIEW] always — restoring button');
                 $btn.prop('disabled', false).html(origLabel);
             });
         },

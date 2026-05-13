@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.9
+Stable tag: 3.39.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,13 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.10 =
+* Task 1 — ETA baseline calibration. Default 25s underestimate of real ~50s p50 caused the ETA to reach 0 and freeze on "Quasi finito..." for 25-30s while the LLM completed. Bumped _ORCH_DEFAULT_ETA from 25 to 50 (matches observed median). The rolling-localStorage median continues to override this as soon as 1+ successful analyses are recorded.
+* Task 1 — Overage display. When totalRemaining drops to 0 the ETA used to show static "Quasi finito..." indefinitely. Now shows "Quasi finito... (+Ns extra)" with a live-incrementing overage so the user sees the clock keeps ticking and calibrates expectations. Fixed an off-by-one in the tick computation (used Math.max which floored the signed remaining; switched to signed arithmetic so overage is computable).
+* Task 2 (P1) — Preview button stuck. Verified screenshot v3.39.9: clicking "👁 Mostra modifiche" stayed in "Generando preview..." state indefinitely (>1 min observed). The previewAction $.post had no timeout, no diagnostics, and showPreviewModal exceptions inside .done() weren't caught — combination produced a black-hole button.
+* Fix — switched to jQuery.ajax with explicit 60s timeout. Added console.log diagnostics at click / response / always-restore. Wrapped showPreviewModal in try/catch so render exceptions show an error toast instead of silently leaving the user without feedback. Distinct timeout message ("Preview impiega troppo tempo (>60s). Riprova tra qualche secondo.") vs generic network error. Standard pattern for future: every loading state needs success + failure + timeout exit paths.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.39.9 =
 * URGENT REGRESSION FIX — analysis completely broken on v3.39.8. Console showed "TypeError: SeoAeoOrchestra._startOrchEtaTick is not a function" at admin.js:2231 inside orchestrateNext, called from orchestrateStart at line 2194. The exception aborted the flow BEFORE the AJAX call fired, so zero admin-ajax POSTs were sent and the analysis spinner spun forever at 0%.
@@ -216,32 +223,4 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 * Hotfix — Defensive backstop for Business Profile chip counters. The v3.38.2 Task 6 + v3.38.3 fixes resolved differentiators/use_cases (struct repeater) and territories (chip), but Prodotti/Servizi + Fornitori e partner still showed "[0 compilati]" with chips visually rendered. Added syncAllCounters() that iterates ALL collapsible fields uniformly (both struct + chip) at the end of loadProfile() so missed hydration paths never leave a counter stale.
 * Hotfix — Verified the CSS attribute selector quoting on the Profilo Business sidebar-hide rule. Rule now reads a[href*="page=seo-aeo-business-profile"] (quotes around the equals-containing value, per CSS3 spec) — without quotes the browser parser silently discarded the rule.
 
-= 3.38.3 =
-* CRITICAL P0 — Keyword Research feature was unusable on Gemini Flash since 3.23.x. Gemini 2.5/2.0/1.5 Flash all silently cap output at 8192 tokens regardless of requested max_output_tokens. For 30 keywords x 6 verbose fields, the JSON was frequently truncated mid-array, strict json.loads failed, and the user saw a generic error even though 20+ valid keywords were produced. Module 13 reservation refund worked correctly (no credit waste) but the feature returned no results.
-* Fix — New _tolerant_extract_keywords() partial parser that walks balanced-brace entries one at a time, returning the prefix of complete entries when the JSON is truncated. Strict json.loads still runs first (happy path unchanged); tolerant fallback only kicks in when strict fails AND at least 5 valid entries can be recovered.
-* Fix — Replaced legacy add_credits + HTTPException 502 refund paths in /keyword-research (Module 13's commit/refund patch had missed these specific branches). Both gemini exception path AND parse-failure path now use proper TypedAPIError + refund_reservation, consistent with the rest of Module 13.
-* Observability — Added structured logging on every keyword_research call: raw_len, first_pass_count, tolerant_count, niche. Helps detect future LLM truncation trends + Sentry signal-to-noise.
-* Layer A — 7/7 unit tests passed against synthetic + realistic truncated payloads. Realistic case (22 complete entries + 1 truncated at character level) recovers exactly 22.
-
-= 3.38.2 =
-* Cleanup — Removed the legacy "Per iniziare in 5 mosse" quickstart section from Dashboard (wizard-home.php). Setup Guidato + the Dashboard ambassador banner are now the single source of truth for onboarding. ~70 lines of dead CSS removed.
-* Menu reorder — Setup Guidato moved to submenu position 2 (right after Dashboard), no longer buried at the tail. Profilo Business removed from the submenu (page route stays alive, accessed via Setup Guidato Step 2 link).
-* BETA badge cleanup — Removed "Beta" badge from SEO Output Nativo header (feature is stable since 3.13.x).
-* Removed hardcoded "v3.35.80" sub-component version label from AI Crawlers hero (only the plugin global version is shown now).
-* Bug fix — Business Profile collapsible counters "[N compilati]" now stay in sync for chip-input fields (Prodotti/Servizi, Fornitori, Aree, Concorrenti). Counter previously walked only data-orch-bp-repeat-card children and showed 0 for chip fields regardless of actual content. New updateChipCount() helper invoked on add, remove, and initial render-from-DB.
-* Cronologia layout fix — Keyword Research (and other history-rendering pages) showed entries flowing horizontally with overflow when an ancestor became a flex container. Forced .history-item to width:100% + flex:0 0 100% + .orchestra-history-container to display:block so entries always stack vertically full-width regardless of theme/ancestor styling.
-* Empty-result UX — Keyword Research now distinguishes the typed empty_result 422 (Module 13 backend refund) from generic errors. Shows a green "✓ Crediti rimborsati" inline banner with the refund amount + suggestion to retry with more specific input. Skips history save in this case so the cronologia doesn't show a paid entry for an analysis that was refunded.
-
-= 3.38.1 =
-* Task 2 hotfix — Ambassador banner relocated to the correct template (wizard-home.php / Dashboard page). It was wrongly placed in admin-dashboard.php (Orchestratore page) in 3.38.0 and therefore never visible to users landing on Dashboard. Plus added a "Setup completato" celebration variant when all 7 steps done.
-* Task 1 — Step data preview in Setup Guidato. Every done step now renders a compact summary of underlying data (Perimetro fields, Business Profile description + Context AI char count, Keyword Research count + timestamp, Brand Voice profile/tone/audience, Orchestrator health score + pages analyzed, Native Output 4 toggle states, Auto-Pilot job count). Perimetro inline form now prepopulates with saved values. New "✗ Marca da rifare" action per step lets users reset status to TODO while keeping the underlying data intact.
-* Task 3 — Free first home analysis backend. New free_analyses_used collection with unique-index on user_id; try_claim_free_analysis() is race-safe (DuplicateKeyError caught). The /api/ai/analyze + /api/ai/aeo-analyze endpoints accept an is_free_first field — when set and the user has never claimed, both calls skip credit deduction. Setup Guidato Step 5 button now links to Orchestratore with ?is_free_first=1; the Orchestratore JS reads the param and passes it ONLY to the first page of the analysis run.
-* Task 4 — Post-activation redirect to Setup Guidato. Industry-standard pattern (Yoast/RankMath/Elementor): new register_activation_hook sets a 60s transient scoped to current user; admin_init listener detects it, clears it, and redirects to ?page=seo-aeo-setup-guidato&first_run=1. The first-run hero shows a warm welcome + ⭐ "prima analisi gratis" callout + two CTAs (Inizia il setup / Esplora liberamente). The "Esplora liberamente" path persists seo_aeo_setup_skipped_by_user and respects the choice on future activations. Once all 7 steps are done the seo_aeo_setup_completed_once flag prevents future auto-redirect on plugin deactivate/reactivate.
-
-= 3.38.0 =
-* NEW: Setup Guidato (Onboarding 3.0). 7-step guided plugin configuration, persistent state, resume anytime. Persona branching (consultant / WP owner / exploring). Auto-detection of already-completed steps (no false TODOs). Sticky widget on every admin page showing progress + jump-to-step. Ambassador banner replaces the legacy 3-step onboarding overlay on Dashboard (overlay retained for parallel coexistence; will be removed in 3.38.1 once Setup Guidato is browser-verified). Free first home analysis (Step 5 messaging) — backend mechanism lands in 3.38.1.
-* Module 16.3 — GSC property-mismatch message rewritten. When the connected Google account does not have access to the current domain, the widget now names the actual domain + connected email + offers two clear options (verify ownership in GSC, or change account via the new "⚙ Cambia account Google" button). Removed residual "team Orchestra" copy from the deprecated managed-mode branch.
-* New menu entry: 🎯 Setup Guidato (position 12, between Dashboard and Profilo Business).
-* Pure client-side state for now (WP option seo_aeo_setup_progress). No backend changes required.
-
-For older changelog entries (3.37.2 and earlier), see the project repository at https://github.com/jcappelliemer/aeo-orchestra .
+For older changelog entries (3.38.2 and earlier), see the project repository at https://github.com/jcappelliemer/aeo-orchestra .

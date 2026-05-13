@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.7
+Stable tag: 3.39.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,13 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.8 =
+* Bug A — Piano d'Azione rendering on history restore. Verified screenshot v3.39.7: after Riapri → "Carica analisi", Piano d'Azione section showed all actions concatenated as one continuous text blob without card separators. Root cause: restoreFromHistory was iterating the saved-HTML outputs map (which on older history entries contained merged/stale markup for #orch-action-plan) instead of rebuilding from the in-memory state.allActions hydrated in the same call. Fix: extracted SeoAeoOrchestra.renderActionPlan(actions) helper used by BOTH the fresh-analysis orchestrateComplete path and the restoreFromHistory orchestrator branch. Restore-side outputs loop now skips '#orch-action-plan' when state hydration is active, preventing stale-markup overwrites.
+* P1 — LLM retry hardening. _validated_analysis max_retries bumped 2 → 4 (5 attempts total) at both call sites. Both inner-function fallbacks collapsed from 2 fake hardcoded issues to 1 consolidated "Analisi AI temporaneamente non disponibile" MANUAL_REVIEW entry with _llm_failed=True flag.
+* New SeoAeoOrchestra.renderLlmFailedBanner emits a single amber banner above #orch-action-plan listing the number of pages where the LLM permanently failed (e.g. "Analisi AI temporaneamente non disponibile per 2 pagine (33%)") with retry hint, instead of cluttering the recommendation list with multiple fake "rivedi manualmente" entries. Banner re-renders on history restore.
+* Permanent-failure log line now includes the schema name (SEOAnalysisOutput / AEOAnalysisOutput) for faster diagnosis.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.39.7 =
 * UX FIX — Animated ETA + progress bar during analysis. v3.39.6 showed "Tempo stimato: calcolo..." for the entire run and the progress bar stayed at 0% until completion. Now a 500ms-tick interval drives both fields based on a rolling-median historical duration per page (kept in localStorage, last 10 successful pages) with a 25s fallback if no history exists. Bar grows linearly toward 95% per page slice and only jumps to 100% on actual response. ETA counts down in seconds (e.g. "~ 18 sec rimanenti"); shows "Quasi finito..." if the LLM takes longer than the median. Tick auto-stops on success / fail / cancel.

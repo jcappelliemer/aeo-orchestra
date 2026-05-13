@@ -1639,6 +1639,19 @@
                         if (c.totalSeoIssues != null) $('#orch-seo-issues-count').text(c.totalSeoIssues);
                         if (c.totalAeoIssues != null) $('#orch-aeo-issues-count').text(c.totalAeoIssues);
                         if (c.totalActions != null)   $('#orch-total-actions').text(c.totalActions);
+                        // 3.39.8 Bug A — rebuild Piano d'Azione from in-memory
+                        // state (not the saved-HTML outputs map, which on older
+                        // history entries can contain merged/stale markup).
+                        if (SeoAeoOrchestra.renderActionPlan) {
+                            SeoAeoOrchestra.renderActionPlan(SeoAeoOrchestra._allActions);
+                        }
+                        if (SeoAeoOrchestra.renderLlmFailedBanner) {
+                            var _failed = 0;
+                            (SeoAeoOrchestra._results || []).forEach(function(r) {
+                                if ((r.seo_detail && r.seo_detail._llm_failed) || (r.aeo_detail && r.aeo_detail._llm_failed)) _failed++;
+                            });
+                            SeoAeoOrchestra.renderLlmFailedBanner(_failed, (SeoAeoOrchestra._results || []).length);
+                        }
                     }
 
                     // Restore form fields
@@ -1659,7 +1672,13 @@
                     // Restore output HTML
                     var firstOutputSel = null;
                     if (restore.outputs) {
+                        var _orchStateActive = !!(restore.state && restore.state.results);
                         $.each(restore.outputs, function(selector, html) {
+                            // 3.39.8 — when orchestrator state hydration ran,
+                            // skip #orch-action-plan in the legacy outputs map
+                            // so renderActionPlan() (which already ran above)
+                            // is not overwritten by potentially stale markup.
+                            if (_orchStateActive && selector === '#orch-action-plan') return;
                             var $el = $(selector);
                             if (!$el.length) return;
                             $el.html(html);
@@ -2269,6 +2288,64 @@
             });
         },
 
+        // 3.39.8 P1 — single LLM-failure banner instead of cluttering the
+        // recommendation list with hardcoded fallback actions per page.
+        renderLlmFailedBanner: function(failedCount, totalCount) {
+            var $host = jQuery('#orch-action-plan');
+            if (!$host.length) return;
+            jQuery('#orch-llm-failed-banner').remove();
+            if (!failedCount || failedCount <= 0) return;
+            var T = SeoAeoOrchestra.t || function(s){return s;};
+            var label = failedCount === 1
+                ? T('Analisi AI temporaneamente non disponibile per 1 pagina')
+                : (T('Analisi AI temporaneamente non disponibile per') + ' ' + failedCount + ' ' + T('pagine'));
+            var pct = totalCount > 0 ? Math.round((failedCount / totalCount) * 100) : 0;
+            var sub = T("Riesegui l\u0027analisi tra qualche minuto. Le altre pagine sono state analizzate correttamente.");
+            var html = '<div id="orch-llm-failed-banner" class="orch-llm-failed-banner" style="margin:0 0 12px;padding:10px 14px;background:#fffbeb;border-left:3px solid #f59e0b;border-radius:4px;font-size:13px;color:#78350f;">' +
+                '<strong>\u26a0 ' + label + (pct > 0 ? ' (' + pct + '%)' : '') + '</strong><br>' +
+                '<span style="font-size:12px;color:#92400e;">' + sub + '</span>' +
+                '</div>';
+            $host.before(html);
+        },
+
+        // 3.39.8 Bug A — Piano d'Azione renderer extracted so the
+        // restoreFromHistory path uses identical HTML scaffolding as fresh.
+        // Idempotent: clear-and-rebuild.
+        renderActionPlan: function(actions) {
+            var $list = jQuery('#orch-action-plan');
+            if (!$list.length) return;
+            actions = Array.isArray(actions) ? actions : [];
+            if (actions.length === 0) {
+                $list.html('<p style="color:#10B981;font-weight:bold;">' + SeoAeoOrchestra.t('Nessuna azione critica necessaria. Il sito e ben ottimizzato!') + '</p>');
+                return;
+            }
+            var planHtml = '';
+            actions.forEach(function(action, idx) {
+                var detailDesc = SeoAeoOrchestra.getActionDetailDescription(action);
+                planHtml += '<div class="orch-action-item">';
+                planHtml += '<span class="priority-badge priority-' + action.priority + '">' + SeoAeoOrchestra.t(action.priority) + '</span>';
+                planHtml += '<div style="flex:1;">';
+                planHtml += '<strong>' + (action.label || '') + '</strong>';
+                planHtml += '<br><small style="color:#666;">' + (action.page_title || '') + '</small>';
+                planHtml += '<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;font-size:12px;color:#334155;">' + detailDesc + '</div>';
+                planHtml += '</div>';
+                planHtml += '<button type="button" class="button orch-action-btn orch-preview-btn" ';
+                planHtml += 'data-agent="' + (action.agent || '') + '" ';
+                planHtml += 'data-action-data=\'' + JSON.stringify(action.data || {}) + '\' ';
+                planHtml += 'data-idx="' + idx + '" ';
+                planHtml += 'title="' + SeoAeoOrchestra.t('Anteprima delle modifiche prima di applicarle') + '">';
+                planHtml += '👁 ' + SeoAeoOrchestra.t('Mostra modifiche') + '</button> ';
+                planHtml += '<button type="button" class="button button-primary orch-action-btn orch-execute-btn" ';
+                planHtml += 'data-agent="' + (action.agent || '') + '" ';
+                planHtml += 'data-action-data=\'' + JSON.stringify(action.data || {}) + '\' ';
+                planHtml += 'data-idx="' + idx + '">';
+                planHtml += '<span class="dashicons dashicons-controls-play"></span> ' + SeoAeoOrchestra.t('Esegui') + '</button>';
+                planHtml += '<div id="orch-action-result-' + idx + '" class="orch-action-result" style="display:none;"></div>';
+                planHtml += '</div>';
+            });
+            $list.html(planHtml);
+        },
+
         orchestrateComplete: function() {
             // 3.37.2 Module 14 — release the in-flight latch so the user can
             // start a new analysis.
@@ -2289,10 +2366,15 @@
             var totalSeo = 0, totalAeo = 0, countSeo = 0, countAeo = 0;
             var totalSeoIssues = 0, totalAeoIssues = 0, allActions = [];
             var allSeoIssues = [], allAeoIssues = [];
+            // 3.39.8 P1 — count pages where the LLM permanently failed so we
+            // can show ONE consolidated banner instead of cluttering the
+            // recommendation list with fake "Analisi LLM non riuscita" items.
+            var llmFailedPages = 0;
 
             results.forEach(function(r) {
                 if (r.seo_score !== null && r.seo_score !== undefined) { totalSeo += r.seo_score; countSeo++; }
                 if (r.aeo_score !== null && r.aeo_score !== undefined) { totalAeo += r.aeo_score; countAeo++; }
+                if ((r.seo_detail && r.seo_detail._llm_failed) || (r.aeo_detail && r.aeo_detail._llm_failed)) llmFailedPages++;
                 var sIssues = (r.seo_issues || 0);
                 var aIssues = (r.aeo_issues || 0);
                 totalSeoIssues += sIssues;
@@ -2350,38 +2432,14 @@
             SeoAeoOrchestra._allAeoIssues = allAeoIssues;
             SeoAeoOrchestra._allActions = allActions;
             SeoAeoOrchestra._results = results;
+            SeoAeoOrchestra._llmFailedPages = llmFailedPages;
+            SeoAeoOrchestra.renderLlmFailedBanner(llmFailedPages, results.length);
 
-            // Build action plan with detailed descriptions
-            var planHtml = '';
-            if (allActions.length === 0) {
-                planHtml = '<p style="color:#10B981;font-weight:bold;">' + SeoAeoOrchestra.t('Nessuna azione critica necessaria. Il sito e ben ottimizzato!') + '</p>';
-            }
-            allActions.forEach(function(action, idx) {
-                var detailDesc = SeoAeoOrchestra.getActionDetailDescription(action);
-                planHtml += '<div class="orch-action-item">';
-                planHtml += '<span class="priority-badge priority-' + action.priority + '">' + SeoAeoOrchestra.t(action.priority) + '</span>';
-                planHtml += '<div style="flex:1;">';
-                planHtml += '<strong>' + action.label + '</strong>';
-                planHtml += '<br><small style="color:#666;">' + action.page_title + '</small>';
-                planHtml += '<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;font-size:12px;color:#334155;">' + detailDesc + '</div>';
-                planHtml += '</div>';
-                // 3.39.6 — preview-before-apply button. Same data-* attributes
-                // as the executor so handlers can route to either flow.
-                planHtml += '<button type="button" class="button orch-action-btn orch-preview-btn" ';
-                planHtml += 'data-agent="' + action.agent + '" ';
-                planHtml += 'data-action-data=\'' + JSON.stringify(action.data) + '\' ';
-                planHtml += 'data-idx="' + idx + '" ';
-                planHtml += 'title="' + SeoAeoOrchestra.t('Anteprima delle modifiche prima di applicarle') + '">';
-                planHtml += '👁 ' + SeoAeoOrchestra.t('Mostra modifiche') + '</button> ';
-                planHtml += '<button type="button" class="button button-primary orch-action-btn orch-execute-btn" ';
-                planHtml += 'data-agent="' + action.agent + '" ';
-                planHtml += 'data-action-data=\'' + JSON.stringify(action.data) + '\' ';
-                planHtml += 'data-idx="' + idx + '">';
-                planHtml += '<span class="dashicons dashicons-controls-play"></span> ' + SeoAeoOrchestra.t('Esegui') + '</button>';
-                planHtml += '<div id="orch-action-result-' + idx + '" class="orch-action-result" style="display:none;"></div>';
-                planHtml += '</div>';
-            });
-            $('#orch-action-plan').html(planHtml);
+            // 3.39.8 Bug A — render via shared helper. Fresh-analysis path AND
+            // restoreFromHistory orchestrator branch both call the same code,
+            // so the cards are always built from data (state.allActions),
+            // never from stale outputs-map markup.
+            SeoAeoOrchestra.renderActionPlan(allActions);
 
             // Build per-page results with full detail
             var pageHtml = '';

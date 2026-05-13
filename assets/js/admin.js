@@ -2436,15 +2436,22 @@
                 planHtml += '<br><small style="color:#666;">' + (action.page_title || '') + '</small>';
                 planHtml += '<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;font-size:12px;color:#334155;">' + detailDesc + '</div>';
                 planHtml += '</div>';
+                // 3.40.9 - fold action_type into data-action-data AND emit
+                // data-action-type so the backend dispatch can resolve the
+                // action_type even when the JSON parsing of data-action-data
+                // surfaces just the data subdict.
+                var planActionData = Object.assign({}, action.data || {}, action.action_type ? {action_type: action.action_type} : {});
                 planHtml += '<button type="button" class="button orch-action-btn orch-preview-btn" ';
                 planHtml += 'data-agent="' + (action.agent || '') + '" ';
-                planHtml += 'data-action-data=\'' + JSON.stringify(action.data || {}) + '\' ';
+                planHtml += 'data-action-type="' + (action.action_type || '') + '" ';
+                planHtml += 'data-action-data=\'' + JSON.stringify(planActionData) + '\' ';
                 planHtml += 'data-idx="' + idx + '" ';
                 planHtml += 'title="' + SeoAeoOrchestra.t('Anteprima delle modifiche prima di applicarle') + '">';
                 planHtml += '👁 ' + SeoAeoOrchestra.t('Mostra modifiche') + '</button> ';
                 planHtml += '<button type="button" class="button button-primary orch-action-btn orch-execute-btn" ';
                 planHtml += 'data-agent="' + (action.agent || '') + '" ';
-                planHtml += 'data-action-data=\'' + JSON.stringify(action.data || {}) + '\' ';
+                planHtml += 'data-action-type="' + (action.action_type || '') + '" ';
+                planHtml += 'data-action-data=\'' + JSON.stringify(planActionData) + '\' ';
                 planHtml += 'data-idx="' + idx + '">';
                 planHtml += '<span class="dashicons dashicons-controls-play"></span> ' + SeoAeoOrchestra.t('Esegui') + '</button>';
                 planHtml += '<div id="orch-action-result-' + idx + '" class="orch-action-result" style="display:none;"></div>';
@@ -2844,14 +2851,19 @@
                         var credits = matchAction.estimated_credits || '';
                         var creditsLabel = credits ? ' (' + credits + ' cr)' : '';
                         // 3.39.6 — preview button precedes Esegui on Problemi cards too.
+                        // 3.40.9 - emit data-action-type + fold into data-action-data.
+                        var problemActionData = Object.assign({}, matchAction.data || {}, matchAction.action_type ? {action_type: matchAction.action_type} : {});
+                        var problemActionDataJson = JSON.stringify(problemActionData).replace(/\'/g, '&apos;');
                         out += '<button type="button" class="button orch-preview-btn orch-problem-preview" ';
                         out += 'data-agent="' + escHtml(matchAction.agent) + '" ';
-                        out += 'data-action-data=\'' + JSON.stringify(matchAction.data || {}).replace(/\'/g, '&apos;') + '\' ';
+                        out += 'data-action-type="' + escHtml(matchAction.action_type || '') + '" ';
+                        out += 'data-action-data=\'' + problemActionDataJson + '\' ';
                         out += 'title="' + SeoAeoOrchestra.t('Anteprima delle modifiche prima di applicarle') + '">';
                         out += '👁 ' + SeoAeoOrchestra.t('Mostra modifiche') + '</button> ';
                         out += '<button type="button" class="button button-primary orch-execute-btn orch-problem-exec" ';
                         out += 'data-agent="' + escHtml(matchAction.agent) + '" ';
-                        out += 'data-action-data=\'' + JSON.stringify(matchAction.data || {}).replace(/\'/g, '&apos;') + '\'>';
+                        out += 'data-action-type="' + escHtml(matchAction.action_type || '') + '" ';
+                        out += 'data-action-data=\'' + problemActionDataJson + '\'>';
                         out += '⚡ ' + SeoAeoOrchestra.t('Esegui automaticamente') + creditsLabel + '</button>';
                     }
                     out += '<button type="button" class="button orch-problem-toggle-pages" data-target="' + cardId + '-pages">';
@@ -3491,6 +3503,9 @@
 
             $btn.addClass('executing').html('<span class="orchestra-spinner"></span> Esecuzione...');
 
+            // 3.40.9 - diagnostic trace mirroring v3.40.3 [PREVIEW] pattern.
+            try { console.log('[EXEC] click', {agent: agent, actionType: actionType, postId: actionData && actionData.post_id, idx: idx}); } catch(_) {}
+
             function escHtml(s) {
                 return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
                     return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'})[c];
@@ -3500,6 +3515,7 @@
             // 3.40.7 P0c - explicit 120s timeout. Without this an AI call
             // that stalls leaves the button in "Sto generando..." forever
             // (verified 151s+ on v3.40.6 Chrome MCP).
+            try { console.log('[EXEC] ajax sent', {agent: agent, actionType: actionType}); } catch(_) {}
             $.ajax({
                 url: seoAeoOrchestra.ajaxUrl,
                 type: 'POST',
@@ -3512,6 +3528,7 @@
                     action_type: actionType
                 }
             }).done(function(response) {
+                try { console.log('[EXEC] ajax done', response ? Object.keys(response) : 'null', {applied: response && response.applied, manual_mode: response && response.manual_mode, error: response && response.error}); } catch(_) {}
                 $btn.removeClass('executing');
                 // ---- Error / surgical fail branches ----
                 if (!response || response.error) {

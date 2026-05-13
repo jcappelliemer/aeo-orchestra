@@ -1390,6 +1390,26 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             $data = isset($_POST['action_data']) ? (array) $_POST['action_data'] : array();
             // 3.40.0 — capability-matrix mode dispatch.
             $action_type = isset($_POST['action_type']) ? sanitize_text_field(wp_unslash($_POST['action_type'])) : '';
+            // 3.40.9 P0c FINAL - infer action_type from agent name when the
+            // frontend didn't pass it. The semantic agent rename in v3.40.7
+            // (schema_generator / faq_generator / ...) carries the action_type
+            // implicitly, so any older renderer that doesn't emit data-action-type
+            // (or one that loses it through serialization quirks) still hits the
+            // real persistence path instead of falling into manual_mode.
+            if ($action_type === '') {
+                $aeo_agent_to_type = array(
+                    'schema_generator'    => 'GENERATE_SCHEMA',
+                    'faq_generator'       => 'ADD_FAQ_SECTION',
+                    'authority_generator' => 'ADD_AUTHORITY_SIGNALS',
+                    'intro_rewriter'      => 'REWRITE_INTRO',
+                    'snippet_optimizer'   => 'OPTIMIZE_FEATURED_SNIPPET',
+                    'keyword_optimizer'   => 'OPTIMIZE_KEYWORDS',
+                    'meta_optimizer'      => 'REWRITE_META',
+                );
+                if (isset($aeo_agent_to_type[$agent])) {
+                    $action_type = $aeo_agent_to_type[$agent];
+                }
+            }
             $mode = $this->get_action_mode($action_type);
             $builder = get_option('aeo_site_builder', 'unknown');
             $manual_instructions = (class_exists('SEO_AEO_Capability_Matrix') && SEO_AEO_Capability_Matrix::is_manual_mode($mode))

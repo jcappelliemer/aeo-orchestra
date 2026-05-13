@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.8
+Stable tag: 3.40.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,12 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.9 =
+* P0c FINAL - action_type propagation pipeline. v3.40.8 ZIPs deployed but execution on Schema/FAQ actions still landed in honest manual_mode instead of real-apply. Chrome MCP diagnostic on aeo-orchestra.com Page id=69: backend received POST /api/ai/aeo-content 200 OK (19,629 bytes), then evaluated `action_type === 'GENERATE_SCHEMA'` as FALSE because `action_type` was empty string. Root cause: the v3.40.7 agent rename moved the type semantics into the agent name (schema_generator etc.) but the JS renderer (renderActionPlan + buildProblemCards) never emitted `data-action-type` on the rendered buttons, and the `action.data` dict serialised into `data-action-data` only contained url/keyword/post_id/topic/issue from build_action_from_issue - not the top-level action.action_type.
+* Frontend fix - renderActionPlan + buildProblemCards now both emit `data-action-type="<action.action_type>"` on preview AND execute buttons, AND fold action_type into the serialised `data-action-data` JSON as a backstop. executeAction reads either source via `$btn.data('action-type') || (actionData && actionData.action_type)`.
+* Backend fix - defensive agent->action_type inference in ajax_execute_action. When `$_POST['action_type']` arrives empty (older plugin builds, cache, lost serialisation), the dispatcher infers the canonical action_type from the agent name: schema_generator -> GENERATE_SCHEMA, faq_generator -> ADD_FAQ_SECTION, authority_generator -> ADD_AUTHORITY_SIGNALS, intro_rewriter -> REWRITE_INTRO, snippet_optimizer -> OPTIMIZE_FEATURED_SNIPPET, keyword_optimizer -> OPTIMIZE_KEYWORDS, meta_optimizer -> REWRITE_META. This is a belt-and-braces safety net so the real-apply path fires even on plugins still running an older renderer.
+* Diagnostic [EXEC] console traces mirroring v3.40.3 [PREVIEW] pattern: `[EXEC] click {agent, actionType, postId, idx}` at click, `[EXEC] ajax sent {agent, actionType}` before the AJAX, `[EXEC] ajax done <responseKeys> {applied, manual_mode, error}` on completion. Chrome DevTools console now exposes the full pipeline state for future failure diagnosis.
 
 = 3.40.8 =
 * P0c-A - Silent execution UI fix. Verified Chrome MCP on v3.40.7 against aeo-orchestra.com Page id=69: clicking Esegui on a Schema action returned the button to normal after ~55s with no toast, no Completato badge, no inline feedback - despite the backend AJAX completing 200 OK. Root cause: executeAction queried `#orch-action-result-undefined` because Problemi card execute buttons (.orch-problem-exec) don't carry data-idx (only Piano d Azione cards do). jQuery returned empty set, .show()/.html() were no-ops. Fix: when data-idx is undefined, walk up to the closest `.orch-action-item, .orch-problem-card, .orch-problem-actions` and lazily inject a `.orch-action-result-fallback` block. Plus an always-on SeoAeoOrchestra.showNotice() toast for every response branch (success / manual_mode / error) so the user gets feedback even if the container injection silently fails.

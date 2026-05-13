@@ -4,7 +4,7 @@
  * Plugin Name: AEO Orchestra
  * Plugin URI: https://aeo-orchestra.com
  * Description: Plugin SEO + AEO completo: specialisti AI perfettamente orchestrati per meta tags, content generation, schema, llms.txt, sitemap, redirect manager, brand voice e altro.
- * Version: 3.40.8
+ * Version: 3.40.9
  * Requires at least: 5.8
  * Tested up to: 6.9
  * Requires PHP: 7.4
@@ -37,7 +37,7 @@ if (version_compare(PHP_VERSION, '7.4', '<')) {
     return;
 }
 
-define('SEO_AEO_VERSION', '3.40.8');
+define('SEO_AEO_VERSION', '3.40.9');
 define('SEO_AEO_AGENTS_COUNT', 13);  // 3.35.84.2: +Verify-Live  // mirrors backend/helpers/config.py AGENTS_COUNT — bump on every new agent
 define('SEO_AEO_TOOLS_COUNT', 22);   // 3.35.84.2: +Verify-Live, Profilo Business, AI Performance, AI Crawlers   // mirrors backend/helpers/config.py TOOLS_COUNT — bump on every new tool
 define('SEO_AEO_DIR', plugin_dir_path(__FILE__));

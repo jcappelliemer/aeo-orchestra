@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.3
+Stable tag: 3.39.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,15 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.4 =
+* CRITICAL FIX — LLM structured output enforcement. v3.39.3 calibrated the prompt rules (FACTUAL vs NORMATIVE vs SCORING) but free-text prompt revision proved insufficient against cautious Gemini Flash behavior: Chrome MCP on aeo-orchestra.com v3.39.3 still returned seo_score=null, aeo_score=null, 0 issues. The model interpreted ambiguity as "decline to answer".
+* New helpers/orchestrator_schema.py — two Pydantic v2 schemas (SEOAnalysisOutput, AEOAnalysisOutput) with min_length=2 on issues array, ge=0/le=100 on score fields (no null possible), Literal types for action_type / category / severity, min_length=50 on action_description.
+* gemini_generate() — added response_schema kwarg. When provided, the Gemini call is constrained to JSON output via response_mime_type=application/json + response_schema, with temperature dropped from 0.7 to 0.3 for deterministic compliance.
+* New _validated_analysis() helper wraps the LLM call: parses JSON, validates against the Pydantic schema, and on ValidationError automatically retries up to 2 times with a hardened system message that cites the specific schema error + normative gap examples (FAQ schema, Organization markup, conversational tone, E-E-A-T signals) so the model knows EXACTLY what to fix.
+* ai_analyze_seo + ai_aeo_analysis — switched to the validated path. On permanent LLM failure (all 3 attempts fail), the endpoint returns a structured fallback with 2 issues including MANUAL_REVIEW + a normative gap (GENERATE_SCHEMA or ADD_FAQ_SECTION) so the UI never displays "0 problemi" + "--" again.
+* PHP/JS compatibility — issues are now objects with .description field (vs. plain strings before). Both the PHP build_action_from_issue mapper and the JS buildProblemCards function already handled the object case (isinstance check + .description fallback), so this is a transparent upgrade. The LLM-emitted action_type can also drive the executor directly, bypassing the heuristic keyword mapper when present.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.39.3 =
 * CRITICAL UX FIX — anti-hallucination calibration. v3.39.2 introduced REGOLE CRITICHE that were too restrictive: the LLM applied rule "se un'informazione non e' presente, dichiarala NON DETERMINABILE" to NORMATIVE SEO/AEO gaps too, not just factual claims. Verified Chrome MCP on aeo-orchestra.com v3.39.2: fresh analysis returned 0 SEO problems, 0 AEO problems, seo_score=null, aeo_score=null. Zero hallucinations (correct) but also zero analysis (useless). User saw "SEO MEDIO --" and "AEO MEDIO --" with 0 problems and concluded the plugin was broken.
@@ -229,58 +238,4 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 * Polish: removed legacy BETA label from Redirect Manager (feature stable since 3.15.0).
 * Polish: Business Profile placeholder examples cleaned up (Solaris client-specific examples replaced with generic ones). Comma separator support for tag inputs confirmed and documented in help text.
 
-= 3.36.8 =
-* CRITICAL FIX dashboard layout: wp_add_inline_style() called from inside template body buffers (the ob_start/ob_get_clean pattern in 25+ templates) was silently dropped by WordPress because admin_print_styles flushes queued styles in <head> BEFORE the template body runs, marking the handle as done. SEO_AEO_Inline_Assets::add_inline_style() now detects late calls via did_action(admin_print_styles) and defers emission to admin_print_footer_scripts, emitting a <style> tag at footer time. Same fix mirrored for add_inline_script. Restores the .orch-wiz-hero flex header and ~20-50KB of dashboard CSS that had been silently dropped since v3.36.0.
-
-
-= 3.36.7 =
-* Fixed critical UI regression introduced by v3.36.0 wp_enqueue refactor: literal <script type=text/javascript> tag in templates/partials/gsc-section.php (line 128) was never closed with </script>, breaking the admin dashboard layout (5-box stat header collapsed to vertical list) and emitting "Uncaught SyntaxError: Unexpected token <" in the browser console. Replaced with ob_start() so SEO_AEO_Inline_Assets::add_inline_script() captures the JS via wp_add_inline_script (which wraps the JS in script tags itself).
-* Cleanup line 35-37 comment corruption (same v3.36.0 refactor pass had incorrectly converted "<script> CDN" text inside a PHP comment to "<?php ob_start(); ?>\nCDN" — restored to plain prose).
-
-
-= 3.36.6 =
-* Plugin Check zero/zero: wrapped 2 additional functions in class-ai-crawler-detector with function-scope phpcs:disable/enable for InterpolatedNotPrepared (cleanup_old_logs covers DELETE FROM $table, daily_aggregate covers DELETE FROM $log_table + DELETE FROM $stats_table).
-
-
-= 3.36.5 =
-* Plugin Check zero/zero: converted phpcs:ignore line-by-line to function-scope phpcs:disable/enable blocks for SQL InterpolatedNotPrepared and UnfinishedPrepare in 5 files (class-ai-crawler-admin, class-ai-crawler-detector, class-migration-importer, ai-crawler-live-state template, class-page-roles). 12 functions wrapped + 1 template-level disable.
-
-
-= 3.36.4 =
-* Fix audit Plugin Check 6 run: la v3.36.3 sweep mis-applied — l'idempotency guard saltava i siti gia annotati con format virgola+spazio (lascito v3.36.0-.36.1), che PHPCS strict parser non riconosce.
-* Normalizzate 222 phpcs:ignore/disable lines su 60 files dal format "Rule1, Rule2" a "Rule1,Rule2" (PHPCS strict parser).
-* Sostituite 59 ignore lines pre-esistenti con la versione comprensiva (aggiunte PluginCheck.Security.DirectDB.UnescapedDBParameter e WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber al set di regole soppresse).
-* class-ajax-handlers.php: aggiunta WordPress.Security.NonceVerification.Missing/Recommended al file-level disable (il namespace effettivamente flaggato da Plugin Check, non solo PluginCheck.Security.Nonce).
-
-
-= 3.36.3 =
-* Plugin Check zero/zero sweep: closed all remaining warnings via documented phpcs:ignore comments with audit-friendly justification (no real code changes — only annotations explaining technical false positives).
-* content-generator.php: file-level phpcs:disable NonceVerification.Recommended for GET prefill reads (form pre-fill only, no state mutation).
-* ajax-handlers.php: added PluginCheck.Security.Nonce.NonceVerification to existing file-level disable header (every handler verifies via check_ajax_referer at entry).
-* class-debug-snapshot::set_error_handler: phpcs:ignore added (already wrapped in WP_DEBUG conditional, never installed in production).
-* class-migration-importer::sql_batch: phpcs:ignore for ReplacementsWrongNumber false positive (count is correct via array_merge — Plugin Check cannot evaluate array_merge result length).
-* SQL false-positive ignores expanded across additional cited sites (class-ai-crawler-detector, class-migration-importer, ai-crawler-section, class-sitemap).
-* class-page-roles meta_key/meta_value slow_db_query ignores added for admin-diagnostic WP_Query args.
-
-
-= 3.36.2 =
-* Plugin Check final sweep: 22 errors closed (16 OutputNotEscaped + 3 PreparedSQL.NotPrepared + 2 fclose + 1 wp_enqueue_style version param).
-* OutputNotEscaped fixes in templates: admin-dashboard score_delta + admin_url + ternary translations, ai-crawlers + native-output cache-buster time(), content-generator SEO_AEO_T constant, ai-crawler-empty-state sprintf, ai-crawler-live-state trend_pct + bot_strs + sprintf bot count.
-* PreparedSQL annotations updated to include WordPress.DB.PreparedSQL.NotPrepared rule (table-name-only interpolation, no user input).
-* fclose phpcs:ignore annotations consolidated for php://output streams (CSV export, WP_Filesystem not applicable).
-* wp_enqueue_style for Fontshare now passes SEO_AEO_VERSION as version parameter (was null).
-
-
-= 3.36.1 =
-* Plugin Check sweep: zero errors after 3rd-pass remediation. Warnings reduced or annotated with documented phpcs:ignore (false positives only — table-name interpolation is $wpdb->prefix-derived, AJAX nonces are verified upstream by check_ajax_referer, template variables are local scope).
-* Output escaping completed: SSE str_repeat padding annotated, admin-notices body wrapped with wp_kses_post.
-* SQL prepare(): direct DB queries on admin diagnostics surfaced with phpcs:ignore + table-name safety note. Table names come from $wpdb->prefix + literal constant, never user input.
-* Removed inline error_reporting() calls from 12 files (production code uses WP_DEBUG via WordPress core).
-* set_error_handler in class-debug-snapshot now gated behind WP_DEBUG — production sites never install the handler.
-* class-verify-live SSE emit_event hardened: sanitize_key on event name, wp_json_encode on payload, phpcs:disable EscapeOutput with detailed comment explaining text/event-stream context.
-* Inline link/script tags moved to wp_enqueue_style / wp_enqueue_script (admin-dashboard fonts, native-output Prism syntax highlighter).
-* orch_debug_log() renamed to seo_aeo_debug_log() for consistent plugin-wide prefix (76 call sites updated).
-* Template files receive file-level phpcs:disable for NonPrefixedVariableFound — local-scope variables in templates are not globals despite the static analyzer's heuristic.
-
-
-For older changelog entries (3.35.x and earlier), see the project repository at https://github.com/jcappelliemer/aeo-orchestra .
+For older changelog entries (3.36.x and earlier), see the project repository at https://github.com/jcappelliemer/aeo-orchestra .

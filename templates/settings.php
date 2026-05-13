@@ -162,6 +162,133 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
             </tr>
         </table>
 
+        <?php
+        // 3.40.2 — Compatibilità Sito section.
+        $aeo_profile = class_exists('SEO_AEO_Site_Scanner') ? SEO_AEO_Site_Scanner::get_profile() : array();
+        $aeo_summary = class_exists('SEO_AEO_Capability_Matrix') ? SEO_AEO_Capability_Matrix::get_capability_summary() : array('rows' => array(), 'environment_label' => 'sconosciuto');
+        $aeo_env_label = isset($aeo_summary['environment_label']) ? $aeo_summary['environment_label'] : 'sconosciuto';
+        ?>
+        <h2 style="margin-top:24px;">🧩 <?php echo esc_html(SEO_AEO_T::t('Compatibilita\' Sito')); ?></h2>
+        <p class="description">
+            <?php echo esc_html(SEO_AEO_T::t('Come AEO Orchestra interagisce con il tuo ambiente WordPress: page builder rilevato, modalita\' headless, e mappa delle capacita\' per ogni tipo di azione AI.')); ?>
+        </p>
+        <table class="form-table aeo-compat-table">
+            <tr>
+                <th scope="row"><?php echo esc_html(SEO_AEO_T::t('Page builder rilevato')); ?></th>
+                <td>
+                    <strong id="aeo-compat-builder"><?php echo esc_html(isset($aeo_profile['builder']) ? $aeo_profile['builder'] : 'unknown'); ?></strong>
+                    <span class="aeo-compat-confidence" id="aeo-compat-builder-conf">
+                        (<?php echo (int) (isset($aeo_profile['builder_confidence']) ? $aeo_profile['builder_confidence'] : 0); ?>%)
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><?php echo esc_html(SEO_AEO_T::t('Sito headless')); ?></th>
+                <td>
+                    <strong id="aeo-compat-headless"><?php echo !empty($aeo_profile['is_headless']) ? esc_html(SEO_AEO_T::t('Si')) . ' (' . esc_html(isset($aeo_profile['headless_mode']) ? $aeo_profile['headless_mode'] : 'rest') . ')' : esc_html(SEO_AEO_T::t('No')); ?></strong>
+                    <span class="aeo-compat-confidence" id="aeo-compat-headless-conf">
+                        (<?php echo (int) (isset($aeo_profile['headless_confidence']) ? $aeo_profile['headless_confidence'] : 0); ?>%)
+                    </span>
+                    <?php if (!empty($aeo_profile['headless_signals']) && is_array($aeo_profile['headless_signals'])): ?>
+                    <details style="margin-top:8px;">
+                        <summary style="cursor:pointer;font-size:12px;color:#5b6478;"><?php echo esc_html(SEO_AEO_T::t('Vedi segnali rilevati')); ?></summary>
+                        <ul style="margin:8px 0 0 18px;font-size:12px;" id="aeo-compat-signals">
+                            <?php foreach ($aeo_profile['headless_signals'] as $sig): ?>
+                                <li style="margin:2px 0;color:<?php echo !empty($sig['matched']) ? '#065f46' : '#64748b'; ?>;">
+                                    <?php echo !empty($sig['matched']) ? '✓' : '×'; ?>
+                                    <strong><?php echo esc_html($sig['name']); ?></strong>
+                                    (<?php echo (int) $sig['weight']; ?>%):
+                                    <?php echo esc_html($sig['note']); ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </details>
+                    <?php endif; ?>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><?php echo esc_html(SEO_AEO_T::t('Ambiente effettivo')); ?></th>
+                <td>
+                    <strong id="aeo-compat-env"><?php echo esc_html($aeo_env_label); ?></strong>
+                    <p class="description"><?php echo esc_html(SEO_AEO_T::t('Determina quali azioni AI verranno applicate automaticamente vs in modalita\' manuale.')); ?></p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row"><?php echo esc_html(SEO_AEO_T::t('Capacita\' per azione')); ?></th>
+                <td>
+                    <table class="aeo-compat-matrix" style="border-collapse:collapse;width:100%;max-width:520px;">
+                        <thead>
+                            <tr style="background:#f1f5f9;">
+                                <th style="text-align:left;padding:6px 10px;border:1px solid #e2e8f0;font-size:12px;"><?php echo esc_html(SEO_AEO_T::t('Tipo di azione')); ?></th>
+                                <th style="text-align:left;padding:6px 10px;border:1px solid #e2e8f0;font-size:12px;"><?php echo esc_html(SEO_AEO_T::t('Modalita\'')); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody id="aeo-compat-matrix-body">
+                            <?php foreach ((isset($aeo_summary['rows']) ? $aeo_summary['rows'] : array()) as $row):
+                                $mode = isset($row['mode']) ? $row['mode'] : 'manual';
+                                $colors = array(
+                                    'full'   => array('#065f46', '#ecfdf5'),
+                                    'high'   => array('#1e40af', '#eff6ff'),
+                                    'medium' => array('#92400e', '#fffbeb'),
+                                    'low'    => array('#9a3412', '#fff7ed'),
+                                    'manual' => array('#7f1d1d', '#fef2f2'),
+                                );
+                                $c = isset($colors[$mode]) ? $colors[$mode] : array('#475569', '#f8fafc');
+                            ?>
+                            <tr>
+                                <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:13px;"><?php echo esc_html($row['label']); ?></td>
+                                <td style="padding:6px 10px;border:1px solid #e2e8f0;font-size:13px;">
+                                    <span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;background:<?php echo esc_attr($c[1]); ?>;color:<?php echo esc_attr($c[0]); ?>;">
+                                        <?php echo esc_html($row['mode_label']); ?>
+                                    </span>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">&nbsp;</th>
+                <td>
+                    <button type="button" class="button button-primary" id="aeo-compat-rescan">🔄 <?php echo esc_html(SEO_AEO_T::t('Re-scansiona sito')); ?></button>
+                    <span id="aeo-compat-rescan-status" style="margin-left:8px;color:#64748b;font-size:12px;"></span>
+                </td>
+            </tr>
+        </table>
+
+        <script>
+        jQuery(function ($) {
+            $('#aeo-compat-rescan').on('click', function () {
+                var $btn = $(this);
+                var $status = $('#aeo-compat-rescan-status');
+                $btn.prop('disabled', true);
+                $status.text('<?php echo esc_js(SEO_AEO_T::t('Scansione in corso...')); ?>');
+                $.post(ajaxurl, {
+                    action: 'seo_aeo_orchestra_rescan_site',
+                    nonce: (window.seoAeoOrchestra && window.seoAeoOrchestra.nonce) || ''
+                }).done(function (resp) {
+                    if (resp && resp.success && resp.data && resp.data.profile) {
+                        var p = resp.data.profile;
+                        $('#aeo-compat-builder').text(p.builder || 'unknown');
+                        $('#aeo-compat-builder-conf').text('(' + (p.builder_confidence || 0) + '%)');
+                        $('#aeo-compat-headless').text(p.is_headless ? ('<?php echo esc_js(SEO_AEO_T::t('Si')); ?> (' + (p.headless_mode || 'rest') + ')') : '<?php echo esc_js(SEO_AEO_T::t('No')); ?>');
+                        $('#aeo-compat-headless-conf').text('(' + (p.headless_confidence || 0) + '%)');
+                        $('#aeo-compat-env').text(resp.data.env_label || '');
+                        $status.css('color', '#065f46').text('✓ <?php echo esc_js(SEO_AEO_T::t('Sito ri-scansionato.')); ?>');
+                        setTimeout(function () { window.location.reload(); }, 800);
+                    } else {
+                        $status.css('color', '#991b1b').text('× <?php echo esc_js(SEO_AEO_T::t('Scansione fallita.')); ?>');
+                    }
+                }).fail(function (xhr) {
+                    $status.css('color', '#991b1b').text('× HTTP ' + (xhr ? xhr.status : '?'));
+                }).always(function () {
+                    $btn.prop('disabled', false);
+                });
+            });
+        });
+        </script>
+
         <?php submit_button(class_exists('SEO_AEO_T') ? SEO_AEO_T::t('Salva Impostazioni') : 'Salva Impostazioni'); ?>
     </form>
 

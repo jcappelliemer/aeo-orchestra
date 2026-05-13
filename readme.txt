@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.1
+Stable tag: 3.40.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,14 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.2 =
+* P0a — Multi-signal builder + headless detection. v3.40.0 lightweight scanner mis-classified aeo-orchestra.com (React/Next.js headless) as "Gutenberg" because some blog posts use block markup. New SEO_AEO_Site_Scanner::detect_headless() aggregates 5 signals: WPGraphQL plugin (30%), siteurl != home (25%), env constants VERCEL/NETLIFY/NEXT/NUXT (20%), theme stem matches /headless|api|stub|null|frontity/i (15%), REST API enabled (10%). Threshold 40% to flag headless. scan_full() combines builder + headless with confidence scores and writes the full profile to option aeo_site_profile + back-compat aeo_site_builder / aeo_site_is_headless / aeo_headless_mode options. When headless confidence >= builder confidence the environment promotes to headless_<mode> in the capability matrix.
+* P0c — NEW "Compatibilita\' Sito" section in Impostazioni (templates/settings.php). Shows builder + confidence, headless + confidence + signal breakdown (collapsible "Vedi segnali rilevati" with each weighted signal hit/miss + note), effective environment label, capability matrix table (color-coded badges per mode: full=green, high=blue, medium=amber, low=orange, manual=red), "🔄 Re-scansiona sito" button. AJAX endpoint seo_aeo_orchestra_rescan_site forces SiteScanner::force_rescan() and reloads the page on success.
+* P0d — Classic + Gutenberg surgical text editors. NEW includes/class-surgical-editor.php with SEO_AEO_Classic_Surgical_Editor (DOMDocument fragment parse + XPath text-node find + innerHTML replace, falls back to string-level str_replace for the happy path) and SEO_AEO_Gutenberg_Surgical_Editor (parse_blocks recursive walker that replaces text in attrs[content|text|value] for core/heading, paragraph, quote, pullquote, button, list-item, falls back to innerHTML/innerContent substring replace for 3rd-party blocks).
+* ajax_execute_action gained a surgical dispatch branch BEFORE the manual-mode short-circuit AND BEFORE the agent switch. When action_type maps to surgical_text in the capability matrix AND action_data carries {post_id, edits:[{old_text, new_text, tag_type?}, ...]}, route through Gutenberg editor if can_handle() OR Classic editor as fallback. Success returns {success:true, surgical:true, engine, edits_applied}. Miss returns {surgical_failed:true, reason, failures} so the frontend can offer manual mode without burning more credits.
+* DEFERRED to v3.40.3: Setup Wizard 3-stage modal (Part 3 — Compat tab in Impostazioni covers the configuration use case for now). Elementor / Divi / WPBakery / Beaver / Headless surgical editors. AI prompt updates so REWRITE_INTRO etc. emit {old_text, new_text} pairs the dispatch can route through.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.40.1 =
 * P0 — Keyword Research hardened. Verified Chrome MCP on v3.40.0: 4 of 6 cronologia runs failed with "L'AI ha risposto con un formato non valido, crediti rimborsati" (~67% fail rate). Credits were correctly refunded but the user saw raw error + no result.

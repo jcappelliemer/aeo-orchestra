@@ -105,6 +105,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             add_action('wp_ajax_seo_aeo_orchestra_preview_action', array($this, 'ajax_preview_action'));
             // 3.40.1 — manual-mode applied tracker.
             add_action('wp_ajax_seo_aeo_orchestra_mark_manual_applied', array($this, 'ajax_mark_manual_applied'));
+            // 3.40.2 — re-scan site environment + return fresh profile.
+            add_action('wp_ajax_seo_aeo_orchestra_rescan_site', array($this, 'ajax_rescan_site'));
 
             // Pages, Keywords, Content
             add_action('wp_ajax_seo_aeo_orchestra_get_pages', array($this, 'ajax_get_pages'));
@@ -1158,6 +1160,35 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
      * is intentional to keep the action accounted for + discourage
      * spam clicks on this otherwise-free button.
      */
+    /**
+     * 3.40.2 — Force a fresh scan of the WordPress environment and
+     * return the updated profile + capability summary. Called by the
+     * "Re-scansiona sito" button in Impostazioni → Compatibilita\' Sito.
+     */
+    public function ajax_rescan_site() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(array('message' => 'forbidden'), 403);
+            }
+            if (!class_exists('SEO_AEO_Site_Scanner')) {
+                wp_send_json_error(array('message' => 'scanner_not_loaded'), 500);
+            }
+            $profile = SEO_AEO_Site_Scanner::force_rescan();
+            $env_label = '';
+            if (class_exists('SEO_AEO_Capability_Matrix')) {
+                $summary = SEO_AEO_Capability_Matrix::get_capability_summary();
+                $env_label = isset($summary['environment_label']) ? $summary['environment_label'] : '';
+            }
+            wp_send_json_success(array(
+                'profile'   => $profile,
+                'env_label' => $env_label,
+            ));
+        } catch (Throwable $e) {
+            wp_send_json_error(array('message' => 'rescan_exception: ' . $e->getMessage()), 500);
+        }
+    }
+
     public function ajax_mark_manual_applied() {
         try {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
@@ -1452,6 +1483,67 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     'builder'        => get_option('aeo_site_builder', 'unknown'),
                     'action_type'    => $action_type,
                     'message'        => 'Questa azione richiede applicazione manuale per il builder rilevato. Usa la preview e copia il testo proposto.',
+                ));
+                return;
+            }
+
+            // 3.40.2 — Surgical text edit dispatch. When the capability matrix
+            // says surgical_text (REWRITE_INTRO etc.) AND the action_data
+            // carries old_text + new_text pairs, route through the appropriate
+            // editor (Classic / Gutenberg). On miss, return surgical_failed
+            // so the frontend can offer manual-mode without burning more credits.
+            $dim_map = class_exists('SEO_AEO_Capability_Matrix') ? SEO_AEO_Capability_Matrix::ACTION_TYPE_MAP : array();
+            $dim = isset($dim_map[$action_type]) ? $dim_map[$action_type] : null;
+            if ($dim === 'surgical_text' && !empty($data['edits']) && is_array($data['edits'])) {
+                $surgical_post_id = isset($data['post_id']) ? (int) $data['post_id'] : 0;
+                if ($surgical_post_id <= 0) {
+                    wp_send_json(array(
+                        'surgical_failed' => true,
+                        'reason'          => 'missing_post_id',
+                        'mode'            => $mode,
+                    ));
+                    return;
+                }
+                $builder_now = get_option('aeo_site_builder', 'unknown');
+                $editor_class = null;
+                if (class_exists('SEO_AEO_Gutenberg_Surgical_Editor') && SEO_AEO_Gutenberg_Surgical_Editor::can_handle($surgical_post_id)) {
+                    $editor_class = 'SEO_AEO_Gutenberg_Surgical_Editor';
+                } elseif (class_exists('SEO_AEO_Classic_Surgical_Editor') && SEO_AEO_Classic_Surgical_Editor::can_handle($surgical_post_id)) {
+                    $editor_class = 'SEO_AEO_Classic_Surgical_Editor';
+                }
+                if (!$editor_class) {
+                    wp_send_json(array(
+                        'surgical_failed' => true,
+                        'reason'          => 'no_compatible_editor',
+                        'builder'         => $builder_now,
+                        'mode'            => $mode,
+                    ));
+                    return;
+                }
+                $surgical_result = call_user_func(array($editor_class, 'apply'), $surgical_post_id, $data['edits']);
+                if ($surgical_result['success']) {
+                    wp_send_json(array(
+                        'success'        => true,
+                        'surgical'       => true,
+                        'engine'         => $surgical_result['engine'],
+                        'edits_applied'  => (int) $surgical_result['edits_applied'],
+                        'edits_failed'   => (int) $surgical_result['edits_failed'],
+                        'builder'        => $builder_now,
+                        'action_type'    => $action_type,
+                        'message'        => 'Modifiche applicate con surgical editor (' . $surgical_result['engine'] . ').',
+                    ));
+                    return;
+                }
+                wp_send_json(array(
+                    'surgical_failed' => true,
+                    'engine'          => $surgical_result['engine'],
+                    'edits_applied'   => (int) $surgical_result['edits_applied'],
+                    'edits_failed'    => (int) $surgical_result['edits_failed'],
+                    'failures'        => $surgical_result['failures'],
+                    'builder'         => $builder_now,
+                    'action_type'     => $action_type,
+                    'reason'          => 'surgical_apply_failed',
+                    'message'         => 'Surgical editor non e\' riuscito ad applicare le modifiche. Suggerisci modalita\' manuale.',
                 ));
                 return;
             }

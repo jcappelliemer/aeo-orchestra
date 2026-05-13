@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.7
+Stable tag: 3.40.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,11 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.8 =
+* P0c-A - Silent execution UI fix. Verified Chrome MCP on v3.40.7 against aeo-orchestra.com Page id=69: clicking Esegui on a Schema action returned the button to normal after ~55s with no toast, no Completato badge, no inline feedback - despite the backend AJAX completing 200 OK. Root cause: executeAction queried `#orch-action-result-undefined` because Problemi card execute buttons (.orch-problem-exec) don't carry data-idx (only Piano d Azione cards do). jQuery returned empty set, .show()/.html() were no-ops. Fix: when data-idx is undefined, walk up to the closest `.orch-action-item, .orch-problem-card, .orch-problem-actions` and lazily inject a `.orch-action-result-fallback` block. Plus an always-on SeoAeoOrchestra.showNotice() toast for every response branch (success / manual_mode / error) so the user gets feedback even if the container injection silently fails.
+* P0c-B - REST meta visibility. _seo_aeo_custom_schema_html is now registered via register_post_meta on every public post type with show_in_rest:true, so verifier scripts that GET /wp-json/wp/v2/<type>/N?_fields=meta can see the auto-applied JSON-LD block in the meta object. Auth callback gates the write to current_user_can('edit_posts'). Hook fires on init priority 20.
+* P0c-C - FAQ real persistence. ADD_FAQ_SECTION action now actually modifies the post: the AI HTML is scanned for a <h2>FAQ ... block (heuristic 1) or a <div class*='faq'>...</div> block (heuristic 2), falling back to the whole AI HTML if neither matches. The block is appended to post_content between idempotent <!-- aeo-orchestra:faq-block --> markers (re-runs replace the previous block in place rather than duplicating). wp_update_post bumps post_modified for REST verification. Returns verified:true + post_modified_gmt:<new ts> on success, falls back to honest manual_mode on extraction failure or wp_update_post error.
 
 = 3.40.7 =
 * P0a EMERGENCY - Fatal PHP error "Call to undefined method SEO_AEO_Orchestra_Ajax_Handlers::aeo_polylang_term_label()". The v3.40.4 patch wrote two callers (Layout articoli AI categories + Calendar default categories) but the helper definition was lost because the anchor expected  while the file actually exposes . v3.40.7 re-adds the private helper as a null-safe object/array handler that calls  when Polylang is active and returns the plain term name otherwise.

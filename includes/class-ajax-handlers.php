@@ -1794,7 +1794,73 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         wp_send_json($alias_result);
                         break;
                     }
-                    if ($action_type === 'GENERATE_SCHEMA' && $aeo_alias_post_id > 0) {
+                    // 3.40.8 P0c-C - ADD_FAQ_SECTION real persistence.
+                    // Append the FAQ HTML block from the AI response to the
+                    // post_content via wp_update_post. Best-effort heuristic
+                    // extraction: prefer a <h2>FAQ</h2> ... block at the end,
+                    // otherwise treat the whole AI HTML as FAQ section.
+                    if ($action_type === 'ADD_FAQ_SECTION' && $aeo_alias_post_id > 0) {
+                        $alias_html = isset($alias_result['content']) ? (string) $alias_result['content'] : '';
+                        $faq_block = '';
+                        // Heuristic 1 - look for <h2>FAQ ... up to end-of-string.
+                        if (preg_match('#<h2[^>]*>\s*(FAQ|Domande|F\.A\.Q\.).*?</h2>.*$#si', $alias_html, $fm)) {
+                            $faq_block = $fm[0];
+                        }
+                        // Heuristic 2 - <div class*="faq">...</div>.
+                        if ($faq_block === '' && preg_match('#<div[^>]*class=["\'][^"\']*faq[^"\']*["\'][^>]*>.*?</div>#si', $alias_html, $fm2)) {
+                            $faq_block = $fm2[0];
+                        }
+                        // Heuristic 3 - fall back to the whole AI HTML
+                        // (consumes credits anyway; better than discarding).
+                        if ($faq_block === '' && $alias_html !== '') {
+                            $faq_block = $alias_html;
+                        }
+                        if ($faq_block !== '') {
+                            $existing = get_post_field('post_content', $aeo_alias_post_id, 'raw');
+                            $marker = '<!-- aeo-orchestra:faq-block -->';
+                            // Idempotent - if a previous FAQ block exists, replace it.
+                            if (strpos((string) $existing, $marker) !== false) {
+                                $new_content = preg_replace(
+                                    '#' . preg_quote($marker, '#') . '.*?' . preg_quote('<!-- /aeo-orchestra:faq-block -->', '#') . '#si',
+                                    $marker . "\n" . wp_kses_post($faq_block) . "\n" . '<!-- /aeo-orchestra:faq-block -->',
+                                    (string) $existing
+                                );
+                            } else {
+                                $new_content = (string) $existing . "\n\n" . $marker . "\n" . wp_kses_post($faq_block) . "\n" . '<!-- /aeo-orchestra:faq-block -->';
+                            }
+                            $upd = wp_update_post(array(
+                                'ID'           => $aeo_alias_post_id,
+                                'post_content' => $new_content,
+                                'post_modified'     => current_time('mysql'),
+                                'post_modified_gmt' => current_time('mysql', 1),
+                            ), true);
+                            $faq_post_mod = (string) get_post_field('post_modified_gmt', $aeo_alias_post_id, 'raw');
+                            $faq_verified = !is_wp_error($upd) && $faq_post_mod !== '' && $faq_post_mod !== $aeo_pre_modified;
+                            if ($faq_verified) {
+                                $alias_result['applied'] = true;
+                                $alias_result['action_type'] = $action_type;
+                                $alias_result['post_id'] = $aeo_alias_post_id;
+                                $alias_result['faq_block'] = $faq_block;
+                                $alias_result['post_modified_gmt'] = $faq_post_mod;
+                                $alias_result['verified'] = true;
+                                $alias_result['message'] = 'FAQ section aggiunta al post_content. Post_modified aggiornato.';
+                            } else {
+                                $alias_result['applied'] = false;
+                                $alias_result['manual_mode'] = true;
+                                $alias_result['action_type'] = $action_type;
+                                $alias_result['proposed_text'] = $alias_html;
+                                $alias_result['message'] = is_wp_error($upd)
+                                    ? ('wp_update_post fallito: ' . $upd->get_error_message() . '. Copia il testo manualmente.')
+                                    : 'FAQ generata ma post_modified non aggiornato (cache?). Copia manualmente.';
+                            }
+                        } else {
+                            $alias_result['applied'] = false;
+                            $alias_result['manual_mode'] = true;
+                            $alias_result['action_type'] = $action_type;
+                            $alias_result['proposed_text'] = $alias_html;
+                            $alias_result['message'] = 'L\'AI non ha restituito un blocco FAQ valido. Copia il contenuto proposto e incollalo manualmente.';
+                        }
+                    } elseif ($action_type === 'GENERATE_SCHEMA' && $aeo_alias_post_id > 0) {
                         $alias_content = isset($alias_result['content']) ? (string) $alias_result['content'] : '';
                         $alias_schema = '';
                         if (preg_match('#<script[^>]*type=["\']application/ld\+json["\'][^>]*>.*?</script>#si', $alias_content, $sm)) {

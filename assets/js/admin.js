@@ -3472,7 +3472,21 @@
             var actionData = $btn.data('action-data');
             var actionType = $btn.data('action-type') || (actionData && actionData.action_type) || '';
             var idx = $btn.data('idx');
-            var $result = $('#orch-action-result-' + idx);
+            // 3.40.8 P0c-A - resolve a result container that ALWAYS exists.
+            // Action plan cards carry data-idx + <div#orch-action-result-N>;
+            // Problemi cards lack both. Fall back to the closest action item
+            // wrapper and lazily inject a result block.
+            var $result = (typeof idx !== 'undefined') ? $('#orch-action-result-' + idx) : $([]);
+            if (!$result.length) {
+                var $card = $btn.closest('.orch-action-item, .orch-problem-card, .orch-problem-actions');
+                if ($card.length) {
+                    $result = $card.find('.orch-action-result-fallback').first();
+                    if (!$result.length) {
+                        $result = $('<div class="orch-action-result-fallback" style="margin-top:10px;"></div>');
+                        $card.append($result);
+                    }
+                }
+            }
             var origLabel = $btn.html();
 
             $btn.addClass('executing').html('<span class="orchestra-spinner"></span> Esecuzione...');
@@ -3502,7 +3516,11 @@
                 // ---- Error / surgical fail branches ----
                 if (!response || response.error) {
                     $btn.html('<span class="dashicons dashicons-warning"></span> Errore').css({'background':'#EF4444','border-color':'#EF4444'});
-                    $result.html('<span style="color:red;">' + (response && response.error || 'Errore sconosciuto') + '</span>').show();
+                    var errMsg = response && response.error || 'Errore sconosciuto';
+                    $result.html('<span style="color:red;">' + errMsg + '</span>').show();
+                    if (typeof SeoAeoOrchestra.showNotice === 'function') {
+                        SeoAeoOrchestra.showNotice('Esecuzione fallita: ' + errMsg, 'error');
+                    }
                     return;
                 }
                 if (response.surgical_failed) {
@@ -3519,6 +3537,9 @@
                     $btn.html('<span class="dashicons dashicons-edit"></span> Modalita manuale').prop('disabled', true).css({'background':'#f59e0b','border-color':'#f59e0b','color':'#fff'});
                     var proposed = response.proposed_text || response.content || '';
                     var msg = response.message || 'Testo generato. Applicalo manualmente al post.';
+                    if (typeof SeoAeoOrchestra.showNotice === 'function') {
+                        SeoAeoOrchestra.showNotice(msg, 'warning');
+                    }
                     var copyId = 'orch-am-copy-' + idx;
                     var resultHtml = '<div style="padding:12px 14px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;color:#78350f;">'
                                    + '<strong>\u270f\ufe0f Modalit\u00e0 manuale:</strong> ' + escHtml(msg) + '<br>'
@@ -3534,6 +3555,9 @@
                 if (response.applied === true || (agent === 'meta_tags' && response.saved)) {
                     $btn.html('<span class="dashicons dashicons-yes"></span> Completato').prop('disabled', true).css({'background':'#10B981','border-color':'#10B981'});
                     var msg2 = response.message || 'Azione applicata.';
+                    if (typeof SeoAeoOrchestra.showNotice === 'function') {
+                        SeoAeoOrchestra.showNotice(msg2, 'success');
+                    }
                     var resultHtml2 = '<div style="padding:10px 12px;background:#ecfdf5;border-left:4px solid #10b981;border-radius:6px;color:#065f46;"><strong>\u2713 ' + escHtml(msg2) + '</strong>';
                     if (agent === 'meta_tags' && response.saved) {
                         resultHtml2 += '<br>Title: ' + escHtml(response.title || '') + '<br>Description: ' + escHtml(response.description || '');

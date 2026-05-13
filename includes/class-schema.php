@@ -35,6 +35,30 @@ class SEO_AEO_Schema {
         add_action('wp_head', array($this, 'render'), 5);
         // 3.40.6 - emit AI-generated custom schema saved per-post.
         add_action('wp_head', array($this, 'emit_custom_schema'), 12);
+        // 3.40.8 P0c-B - expose the schema post_meta via REST so external
+        // verifiers (Chrome MCP, curl /wp-json/wp/v2/<type>/N?_fields=meta)
+        // can confirm the apply landed. Schema only meta needed in REST,
+        // not the keyword/title meta which already work via Yoast bridge.
+        add_action('init', array($this, 'register_rest_meta'), 20);
+    }
+
+    /**
+     * 3.40.8 P0c-B - expose _seo_aeo_custom_schema_html in REST API.
+     * Registered for every public post type so the auto-applied JSON-LD
+     * block is visible to verifier scripts that GET
+     * /wp-json/wp/v2/<type>/N?_fields=meta.
+     */
+    public function register_rest_meta() {
+        if (!function_exists('register_post_meta')) return;
+        $types = get_post_types(array('public' => true), 'names');
+        foreach ((array) $types as $t) {
+            register_post_meta($t, '_seo_aeo_custom_schema_html', array(
+                'type'         => 'string',
+                'single'       => true,
+                'show_in_rest' => true,
+                'auth_callback' => function() { return current_user_can('edit_posts'); },
+            ));
+        }
     }
 
     public static function is_enabled() {

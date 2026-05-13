@@ -778,7 +778,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
         $patterns = array(
             array(
                 'rx'    => '/schema|markup|json[\s\-]?ld|structured\s+data|dati\s+strutturati|rich\s+result/i',
-                'agent' => 'aeo_content',
+                'agent' => 'schema_generator',
                 'type'  => 'GENERATE_SCHEMA',
                 'title' => 'Genera schema JSON-LD per questa pagina',
                 'desc'  => 'Aggiungo automaticamente il markup Schema.org (Organization, Service o Article a seconda del tipo di pagina) come blocco JSON-LD. Migliora rich results su Google e citabilita\' AEO. ~3 minuti.',
@@ -786,7 +786,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             ),
             array(
                 'rx'    => '/\bfaq\b|domand[ae]\s+frequent|domanda[\-\s]+risposta|sezione\s+faq|q&a/i',
-                'agent' => 'aeo_content',
+                'agent' => 'faq_generator',
                 'type'  => 'ADD_FAQ_SECTION',
                 'title' => 'Genera sezione FAQ con domande tipo per questo argomento',
                 'desc'  => 'Estraggo le 5-7 domande più\' frequenti sul tuo argomento dal contesto Brand Voice + Profilo Business e genero una sezione FAQ con risposte concise. Riduce significativamente il gap AEO. ~5 minuti.',
@@ -794,7 +794,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             ),
             array(
                 'rx'    => '/meta\s+(title|description)|meta[\-\s]?tag|description\s+(mancante|corta|generica)/i',
-                'agent' => 'meta_tags',
+                'agent' => 'meta_optimizer',
                 'type'  => 'REWRITE_META',
                 'title' => 'Riscrivi Meta Title + Meta Description ottimizzati',
                 'desc'  => 'Genero Meta Title (50-60 caratteri) e Meta Description (140-160) ottimizzati per la keyword e per il CTR nei risultati Google. Salvati direttamente nel post WordPress. ~1 minuto.',
@@ -818,7 +818,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             ),
             array(
                 'rx'    => '/intro|introduzion|focus\s+(sul|sulla)|prodotto|product\s+description|descrizione\s+prodotto|risponde\s+a\s+domand/i',
-                'agent' => 'aeo_content',
+                'agent' => 'intro_rewriter',
                 'type'  => 'REWRITE_INTRO',
                 'title' => 'Riscrivi intro pagina con focus problema-soluzione',
                 'desc'  => 'Riformulo i primi 200 caratteri della pagina per aprire con il problema del cliente e la soluzione, non con il prodotto. Migliora engagement e citabilita\' AEO. ~2 minuti.',
@@ -826,7 +826,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             ),
             array(
                 'rx'    => '/citab|cita(zione|bilita)|autorit|e[\-\s]?e[\-\s]?a[\-\s]?t|expertise|fonte/i',
-                'agent' => 'aeo_content',
+                'agent' => 'authority_generator',
                 'type'  => 'ADD_AUTHORITY_SIGNALS',
                 'title' => 'Aggiungi segnali di autorita\' per AEO',
                 'desc'  => 'Riscrivo passaggi chiave inserendo segnali E-E-A-T (autore, data, fonti, dati verificabili) che le AI considerano nella valutazione di citabilita\'. ~4 minuti.',
@@ -834,7 +834,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             ),
             array(
                 'rx'    => '/featured\s+snippet|snippet|risposta\s+(diretta|breve)|paragrafo\s+iniziale/i',
-                'agent' => 'aeo_content',
+                'agent' => 'snippet_optimizer',
                 'type'  => 'OPTIMIZE_FEATURED_SNIPPET',
                 'title' => 'Ottimizza per Featured Snippet (risposta diretta nei primi 2-3 paragrafi)',
                 'desc'  => 'Riformulo l\'apertura della pagina con una risposta diretta e citabile alla query principale (formato definizione/lista/tabella). Aumenta probabilita\' di apparire in Featured Snippet e AI Overviews. ~3 minuti.',
@@ -842,7 +842,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             ),
             array(
                 'rx'    => '/keyword|parol[ae]\s+chiave|densita/i',
-                'agent' => 'meta_tags',
+                'agent' => 'keyword_optimizer',
                 'type'  => 'OPTIMIZE_KEYWORDS',
                 'title' => 'Ottimizza keyword targeting + LSI',
                 'desc'  => 'Identifico le keyword secondarie (LSI) più\' rilevanti per questa pagina e aggiorno meta + suggerisco integrazione naturale nel contenuto. ~2 minuti.',
@@ -1666,6 +1666,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     //    types lands in v3.40.7 (per-action executors).
                     $action_type_exec = $action_type;
                     if ($action_type_exec === 'GENERATE_SCHEMA' && $aeo_post_id > 0) {
+                        $aeo_pre_mod = (string) get_post_field('post_modified_gmt', $aeo_post_id, 'raw');
                         $content_html = isset($result['content']) ? (string) $result['content'] : '';
                         $schema_html = '';
                         if (preg_match('#<script[^>]*type=["\']application/ld\+json["\'][^>]*>.*?</script>#si', $content_html, $sm)) {
@@ -1673,11 +1674,23 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         }
                         if ($schema_html !== '') {
                             update_post_meta($aeo_post_id, '_seo_aeo_custom_schema_html', wp_kses_post($schema_html));
+                            // 3.40.7 P0c - bump post_modified for REST verification.
+                            wp_update_post(array(
+                                'ID' => $aeo_post_id,
+                                'post_modified'     => current_time('mysql'),
+                                'post_modified_gmt' => current_time('mysql', 1),
+                            ));
+                            $aeo_post_mod = (string) get_post_field('post_modified_gmt', $aeo_post_id, 'raw');
+                            $aeo_verified = ($aeo_post_mod !== '' && $aeo_post_mod !== $aeo_pre_mod);
                             $result['applied'] = true;
                             $result['action_type'] = $action_type_exec;
                             $result['post_id'] = $aeo_post_id;
                             $result['schema_html'] = $schema_html;
-                            $result['message'] = 'Schema JSON-LD salvato e applicato in <head>. Verifica con Google Rich Results Test.';
+                            $result['post_modified_gmt'] = $aeo_post_mod;
+                            $result['verified'] = $aeo_verified;
+                            $result['message'] = $aeo_verified
+                                ? 'Schema JSON-LD salvato e applicato in <head>. Post_modified aggiornato. Verifica con Google Rich Results Test.'
+                                : 'Schema salvato ma post_modified non aggiornato (cache?). Verifica manualmente.';
                         } else {
                             $result['applied'] = false;
                             $result['manual_mode'] = true;
@@ -1717,6 +1730,111 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         $result['message'] = 'Contenuto generato. Per applicare automaticamente serve un editor surgical (v3.40.7+). Per ora copia il testo proposto.';
                     }
                     wp_send_json($result);
+                    break;
+
+                // 3.40.7 P0b - semantic-named agents fall through to the
+                // legacy aeo_content path. The renderer emits data-agent
+                // matching action_type semantics so the user sees the right
+                // badge; the execute switch normalises to one persistence
+                // path. ACTION_TYPE-specific persistence lives inside the
+                // aeo_content branch above (already wired in v3.40.6 for
+                // GENERATE_SCHEMA, honest manual_mode for the rest).
+                // meta_optimizer + keyword_optimizer route to meta_tags real persistence (REWRITE_META, OPTIMIZE_KEYWORDS) - mirrors the existing meta_tags case.
+                case 'meta_optimizer':
+                case 'keyword_optimizer':
+                    $mo_post_id = isset($data['post_id']) ? intval($data['post_id']) : 0;
+                    $mo_keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';
+                    $mo_pre_mod = ($mo_post_id > 0) ? (string) get_post_field('post_modified_gmt', $mo_post_id, 'raw') : '';
+                    $mo_result = $api->api_request('/ai/generate-meta', array(
+                        'title'    => $mo_post_id > 0 ? get_the_title($mo_post_id) : '',
+                        'content'  => $mo_post_id > 0 ? substr(wp_strip_all_tags(get_post_field('post_content', $mo_post_id)), 0, 3000) : '',
+                        'keyword'  => $mo_keyword,
+                        'language' => $this->get_ai_language(),
+                    ));
+                    if (!isset($mo_result['error']) && $mo_post_id > 0) {
+                        if (!empty($mo_result['title'])) update_post_meta($mo_post_id, '_seo_aeo_meta_title', $mo_result['title']);
+                        if (!empty($mo_result['description'])) update_post_meta($mo_post_id, '_seo_aeo_meta_description', $mo_result['description']);
+                        if (!empty($mo_result['keywords']) && is_array($mo_result['keywords'])) update_post_meta($mo_post_id, '_seo_aeo_meta_keywords', implode(', ', $mo_result['keywords']));
+                        wp_update_post(array('ID' => $mo_post_id, 'post_modified' => current_time('mysql'), 'post_modified_gmt' => current_time('mysql', 1)));
+                        $mo_post_mod = (string) get_post_field('post_modified_gmt', $mo_post_id, 'raw');
+                        $mo_result['saved'] = true;
+                        $mo_result['applied'] = true;
+                        $mo_result['action_type'] = $action_type;
+                        $mo_result['post_id'] = $mo_post_id;
+                        $mo_result['post_modified_gmt'] = $mo_post_mod;
+                        $mo_result['verified'] = ($mo_post_mod !== '' && $mo_post_mod !== $mo_pre_mod);
+                        $mo_result['message'] = 'Meta tags salvati e post_modified aggiornato.';
+                    }
+                    wp_send_json($mo_result);
+                    break;
+
+                case 'schema_generator':
+                case 'faq_generator':
+                case 'authority_generator':
+                case 'intro_rewriter':
+                case 'snippet_optimizer':
+                    $agent = 'aeo_content';
+                    // Re-enter the aeo_content case by manual fall-through:
+                    // do the same work inline. We duplicate the small loop
+                    // body rather than goto so the diff stays surgical.
+                    $aeo_keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';
+                    $aeo_alias_post_id = isset($data['post_id']) ? (int) $data['post_id'] : 0;
+                    $aeo_pre_modified = ($aeo_alias_post_id > 0)
+                        ? (string) get_post_field('post_modified_gmt', $aeo_alias_post_id, 'raw')
+                        : '';
+                    $alias_result = $api->api_request('/ai/aeo-content', array(
+                        'topic' => $aeo_keyword,
+                        'keywords' => array($aeo_keyword),
+                        'target_engines' => array('google_ai', 'chatgpt', 'perplexity'),
+                        'include_schema' => true,
+                        'include_faq' => true,
+                        'language' => $this->get_ai_language(),
+                    ));
+                    if (isset($alias_result['error'])) {
+                        wp_send_json($alias_result);
+                        break;
+                    }
+                    if ($action_type === 'GENERATE_SCHEMA' && $aeo_alias_post_id > 0) {
+                        $alias_content = isset($alias_result['content']) ? (string) $alias_result['content'] : '';
+                        $alias_schema = '';
+                        if (preg_match('#<script[^>]*type=["\']application/ld\+json["\'][^>]*>.*?</script>#si', $alias_content, $sm)) {
+                            $alias_schema = $sm[0];
+                        }
+                        if ($alias_schema !== '') {
+                            update_post_meta($aeo_alias_post_id, '_seo_aeo_custom_schema_html', wp_kses_post($alias_schema));
+                            // 3.40.7 P0c - bump post_modified so the user can verify
+                            // the change landed via REST GET /wp-json/wp/v2/<type>/N.
+                            wp_update_post(array(
+                                'ID' => $aeo_alias_post_id,
+                                'post_modified'     => current_time('mysql'),
+                                'post_modified_gmt' => current_time('mysql', 1),
+                            ));
+                            $aeo_post_modified = (string) get_post_field('post_modified_gmt', $aeo_alias_post_id, 'raw');
+                            $aeo_verified = ($aeo_post_modified !== '' && $aeo_post_modified !== $aeo_pre_modified);
+                            $alias_result['applied'] = true;
+                            $alias_result['action_type'] = $action_type;
+                            $alias_result['post_id'] = $aeo_alias_post_id;
+                            $alias_result['schema_html'] = $alias_schema;
+                            $alias_result['post_modified_gmt'] = $aeo_post_modified;
+                            $alias_result['verified'] = $aeo_verified;
+                            $alias_result['message'] = $aeo_verified
+                                ? 'Schema JSON-LD salvato e applicato in <head>. Post_modified aggiornato. Verifica con Google Rich Results Test.'
+                                : 'Schema salvato ma post_modified non aggiornato (cache?). Verifica manualmente.';
+                        } else {
+                            $alias_result['applied'] = false;
+                            $alias_result['manual_mode'] = true;
+                            $alias_result['action_type'] = $action_type;
+                            $alias_result['proposed_text'] = $alias_content;
+                            $alias_result['message'] = 'L\'AI non ha restituito un blocco JSON-LD valido. Copia il contenuto proposto e incollalo manualmente.';
+                        }
+                    } else {
+                        $alias_result['applied'] = false;
+                        $alias_result['manual_mode'] = true;
+                        $alias_result['action_type'] = $action_type;
+                        $alias_result['proposed_text'] = isset($alias_result['content']) ? (string) $alias_result['content'] : '';
+                        $alias_result['message'] = 'Contenuto generato. Per applicare automaticamente al post serve un editor surgical (v3.40.8+). Per ora copia il testo proposto.';
+                    }
+                    wp_send_json($alias_result);
                     break;
 
                 default:
@@ -4060,6 +4178,27 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
      * AJAX: ritorna metadata necessaria per popolare i 5 dropdown del layout
      * (post_types, templates per type, categorie, autori, page builders detected).
      */
+    /**
+     * 3.40.7 - Polylang-aware category label. Returns "Name (locale)" when
+     * Polylang is active and the term has a language assigned, else returns
+     * the plain term name. Disambiguates "Uncategorized x N" duplicates on
+     * multi-language WP sites. v3.40.4 declared the callers but the helper
+     * definition was lost when the bulk patch anchored on a non-existent
+     * function signature - this re-adds it.
+     */
+    private function aeo_polylang_term_label($cat) {
+        if (!is_object($cat) && !is_array($cat)) return '';
+        $name = is_object($cat) ? (string) ($cat->name ?? '') : (string) (($cat['name'] ?? ''));
+        $term_id = is_object($cat) ? (int) ($cat->term_id ?? 0) : (int) (($cat['term_id'] ?? 0));
+        if ($term_id > 0 && function_exists('pll_get_term_language')) {
+            $lang = pll_get_term_language($term_id);
+            if (!empty($lang) && is_string($lang)) {
+                return $name . ' (' . $lang . ')';
+            }
+        }
+        return $name;
+    }
+
     public function ajax_layout_discover() {
         try {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');

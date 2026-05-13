@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.6
+Stable tag: 3.40.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,13 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.7 =
+* P0a EMERGENCY - Fatal PHP error "Call to undefined method SEO_AEO_Orchestra_Ajax_Handlers::aeo_polylang_term_label()". The v3.40.4 patch wrote two callers (Layout articoli AI categories + Calendar default categories) but the helper definition was lost because the anchor expected  while the file actually exposes . v3.40.7 re-adds the private helper as a null-safe object/array handler that calls  when Polylang is active and returns the plain term name otherwise.
+* P0b - Action dispatch semantic agent rename. The DOM  attribute now reflects the action type semantics instead of always reading : GENERATE_SCHEMA -> schema_generator, ADD_FAQ_SECTION -> faq_generator, ADD_AUTHORITY_SIGNALS -> authority_generator, REWRITE_INTRO -> intro_rewriter, OPTIMIZE_FEATURED_SNIPPET -> snippet_optimizer, OPTIMIZE_KEYWORDS -> keyword_optimizer, REWRITE_META -> meta_optimizer. Six new alias cases in ajax_execute_action route the new agent names to the right persistence path. meta_optimizer/keyword_optimizer use the real /ai/generate-meta + update_post_meta flow (same as the legacy meta_tags case). schema_generator persists the AI-generated JSON-LD into post_meta _seo_aeo_custom_schema_html + bumps post_modified for REST verification. The other four return honest manual_mode pending v3.40.8 surgical executors.
+* P0c - Real-execution verification. The /aeo-analyze schema persistence path now calls wp_update_post with current_time('mysql') for post_modified and post_modified_gmt, then re-reads post_modified_gmt and compares with the pre-execute timestamp. The response gains  +  so the frontend can confirm via REST GET /wp-json/wp/v2/<type>/N that modified actually changed. Verified false produces a yellow "salvato ma post_modified non aggiornato (cache?)" message instead of a green "Completato".
+* P0c - Frontend timeout. executeAction switched from $.post (no timeout) to $.ajax with timeout: 120000. The 151+ second "Sto generando..." hang seen on v3.40.6 Chrome MCP is fixed: after 2 minutes the call aborts and a red "Esecuzione impiega troppo tempo (>120s). Riprova o usa la modalita manuale." banner appears with the action button restored.
+* P0d - page_quote truncation. Gemini Flash consistently emitted page_quote > 200 chars and burned all 5 retries -> AEO fallback -> UI showed "--". Three-layer fix: (a) pre-Pydantic post-processing in _validated_analysis truncates any issues[].page_quote > 197 chars to 197 chars + "..." before model_validate_json; (b) AEO system prompt gains "CRITICAL - page_quote constraint: <= 200 caratteri verbatim, ... per troncare" and the JSON schema example shows "<passaggio MAX 200 char verbatim O NON_PRESENTE>"; (c) AEOAnalysisOutput.issues[].page_quote max_length relaxed from 200 to 300 as a safety net beyond the explicit truncation.
 
 = 3.40.6 =
 * P0 Bug A - Duplicate actions in Piano d Azione. When the LLM emitted 2+ issues matching the same regex (e.g. "manca schema JSON-LD" + "manca markup structured data") the heuristic mapper produced 2 identical "Genera schema JSON-LD" cards. v3.40.6 deduplicates the actions array by (action_type, post_id) tuple before persist; the first match wins.

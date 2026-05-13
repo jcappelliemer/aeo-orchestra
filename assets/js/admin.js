@@ -3483,13 +3483,21 @@
                 });
             }
 
-            $.post(seoAeoOrchestra.ajaxUrl, {
-                action: 'seo_aeo_orchestra_execute_action',
-                nonce: seoAeoOrchestra.nonce,
-                agent: agent,
-                action_data: actionData,
-                action_type: actionType
-            }, function(response) {
+            // 3.40.7 P0c - explicit 120s timeout. Without this an AI call
+            // that stalls leaves the button in "Sto generando..." forever
+            // (verified 151s+ on v3.40.6 Chrome MCP).
+            $.ajax({
+                url: seoAeoOrchestra.ajaxUrl,
+                type: 'POST',
+                timeout: 120000,
+                data: {
+                    action: 'seo_aeo_orchestra_execute_action',
+                    nonce: seoAeoOrchestra.nonce,
+                    agent: agent,
+                    action_data: actionData,
+                    action_type: actionType
+                }
+            }).done(function(response) {
                 $btn.removeClass('executing');
                 // ---- Error / surgical fail branches ----
                 if (!response || response.error) {
@@ -3542,9 +3550,13 @@
                 var legacyContent = response.content || response.article || '';
                 var legacyHtml = '<div style="padding:10px 12px;background:#f1f5f9;border-left:4px solid #64748b;border-radius:6px;color:#475569;"><strong>Output AI pronto</strong> (non applicato automaticamente).<br><pre style="max-height:200px;overflow:auto;font-size:11px;background:#fff;border:1px solid #e2e8f0;padding:8px;border-radius:4px;margin-top:6px;">' + escHtml(legacyContent ? legacyContent.substring(0, 500) : JSON.stringify(response, null, 2).substring(0, 500)) + '</pre></div>';
                 $result.html(legacyHtml).show();
-            }).fail(function() {
+            }).fail(function(xhr, status) {
                 $btn.removeClass('executing').html(origLabel).prop('disabled', false);
-                $result.html('<span style="color:red;">Errore di connessione</span>').show();
+                if (status === 'timeout') {
+                    $result.html('<span style="color:red;">Esecuzione impiega troppo tempo (>120s). Riprova tra qualche secondo o usa la modalita manuale.</span>').show();
+                } else {
+                    $result.html('<span style="color:red;">Errore di rete (' + (xhr ? xhr.status : '?') + ')</span>').show();
+                }
             });
         }
     };

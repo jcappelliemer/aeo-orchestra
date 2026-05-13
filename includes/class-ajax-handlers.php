@@ -101,6 +101,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             // Orchestrator
             add_action('wp_ajax_seo_aeo_orchestra_orchestrate_single', array($this, 'ajax_orchestrate_single'));
             add_action('wp_ajax_seo_aeo_orchestra_execute_action', array($this, 'ajax_execute_action'));
+            // 3.39.6 — Preview-before-apply UX.
+            add_action('wp_ajax_seo_aeo_orchestra_preview_action', array($this, 'ajax_preview_action'));
 
             // Pages, Keywords, Content
             add_action('wp_ajax_seo_aeo_orchestra_get_pages', array($this, 'ajax_get_pages'));
@@ -1131,6 +1133,140 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
         ));
         } catch (Throwable $e) {
             wp_send_json(array('error' => 'Errore orchestrazione: ' . $e->getMessage()));
+        }
+        wp_die();
+    }
+
+    /**
+     * 3.39.6 — Preview the changes an action WOULD apply, WITHOUT
+     * writing to WordPress. Mirrors ajax_execute_action across the
+     * four wired agents but skips every update_post_meta / DB-write
+     * step. Returns the agent's raw output so the frontend modal can
+     * render a current-vs-proposed diff for the user before they
+     * commit via "Applica modifiche".
+     */
+    public function ajax_preview_action() {
+        try {
+            check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
+            if (!current_user_can('edit_posts')) {
+                wp_send_json(array('error' => 'forbidden'));
+                return;
+            }
+            $api = $this->require_api();
+            if (!$api) return;
+            $agent = isset($_POST['agent']) ? sanitize_text_field(wp_unslash($_POST['agent'])) : '';
+            $data = isset($_POST['action_data']) ? (array) $_POST['action_data'] : array();
+
+            // Collect "current" page state so the modal can show before/after.
+            $current = array();
+            $post_id = isset($data['post_id']) ? intval($data['post_id']) : 0;
+            if ($post_id > 0) {
+                $current['post_id']     = $post_id;
+                $current['page_title']  = get_the_title($post_id);
+                $current['page_url']    = get_permalink($post_id);
+                $current['meta_title']  = (string) get_post_meta($post_id, '_seo_aeo_meta_title', true);
+                $current['meta_description'] = (string) get_post_meta($post_id, '_seo_aeo_meta_description', true);
+                if (empty($current['meta_description']) && class_exists('SEO_AEO_Engine_Bridge')) {
+                    try {
+                        $bridge_data = SEO_AEO_Engine_Bridge::read_meta($post_id);
+                        if (is_array($bridge_data)) {
+                            if (empty($current['meta_title']) && !empty($bridge_data['meta_title'])) {
+                                $current['meta_title'] = $bridge_data['meta_title'];
+                            }
+                            if (!empty($bridge_data['meta_description'])) {
+                                $current['meta_description'] = $bridge_data['meta_description'];
+                            }
+                        }
+                    } catch (Throwable $e) { /* ignore bridge failures in preview */ }
+                }
+            }
+
+            switch ($agent) {
+                case 'meta_tags':
+                    $keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';
+                    $result = $api->api_request('/ai/generate-meta', array(
+                        'title'    => get_the_title($post_id),
+                        'content'  => substr(wp_strip_all_tags(get_post_field('post_content', $post_id)), 0, 3000),
+                        'keyword'  => $keyword,
+                        'language' => $this->get_ai_language(),
+                    ));
+                    wp_send_json(array(
+                        'preview'        => true,
+                        'agent'          => $agent,
+                        'current'        => $current,
+                        'proposed'       => $result,
+                        'estimated_credits' => 3,
+                    ));
+                    break;
+
+                case 'aeo_content':
+                    $keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';
+                    $result = $api->api_request('/ai/aeo-content', array(
+                        'topic'           => $keyword,
+                        'keywords'        => array($keyword),
+                        'target_engines'  => array('google_ai', 'chatgpt', 'perplexity'),
+                        'include_schema'  => true,
+                        'include_faq'     => true,
+                        'language'        => $this->get_ai_language(),
+                    ));
+                    wp_send_json(array(
+                        'preview'        => true,
+                        'agent'          => $agent,
+                        'current'        => $current,
+                        'proposed'       => $result,
+                        'estimated_credits' => 10,
+                    ));
+                    break;
+
+                case 'content_generator':
+                    $topic   = isset($data['topic']) ? sanitize_text_field($data['topic']) : '';
+                    $keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';
+                    $result = $api->api_request('/ai/generate-content', array(
+                        'topic'       => $topic,
+                        'keywords'    => array($keyword),
+                        'length'      => 'medium',
+                        'include_faq' => true,
+                        'language'    => $this->get_ai_language(),
+                    ));
+                    wp_send_json(array(
+                        'preview'        => true,
+                        'agent'          => $agent,
+                        'current'        => $current,
+                        'proposed'       => $result,
+                        'estimated_credits' => 15,
+                    ));
+                    break;
+
+                case 'seo_analysis':
+                    $url     = isset($data['url']) ? esc_url_raw($data['url']) : '';
+                    $keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';
+                    $result = $api->api_request('/ai/analyze', array(
+                        'url'      => $url,
+                        'keyword'  => $keyword,
+                        'language' => $this->get_ai_language(),
+                    ));
+                    wp_send_json(array(
+                        'preview'        => true,
+                        'agent'          => $agent,
+                        'current'        => $current,
+                        'proposed'       => $result,
+                        'estimated_credits' => 5,
+                    ));
+                    break;
+
+                case 'manual_review':
+                default:
+                    wp_send_json(array(
+                        'preview'        => true,
+                        'agent'          => $agent,
+                        'current'        => $current,
+                        'proposed'       => array('manual_review' => true),
+                        'estimated_credits' => 0,
+                        'message'        => 'Questa azione richiede una revisione manuale: aprire la pagina nell\'editor WordPress.',
+                    ));
+            }
+        } catch (Throwable $e) {
+            wp_send_json(array('error' => 'Errore preview azione: ' . $e->getMessage()));
         }
         wp_die();
     }

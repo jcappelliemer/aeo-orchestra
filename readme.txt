@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.39.5
+Stable tag: 3.39.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,13 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.39.6 =
+* UX FIX — preview-before-apply on Piano d'Azione and Problemi cards. Clicking "Esegui automaticamente" used to apply destructive AI agent modifications (meta tags, schema, FAQ section, content rewrite) to the page in a single click, with no opportunity for the user to review what would change. Especially risky for first-time users.
+* NEW BUTTON — "👁 Mostra modifiche" sits before "⚡ Esegui" on both Piano d'Azione cards (orch-action-item) and Problemi SEO/AEO cards (orch-problem-card). Same data-agent + data-action-data attributes so handlers route to either the preview or the executor.
+* NEW BACKEND — ajax_preview_action mirrors ajax_execute_action across the 4 wired agents (meta_tags, aeo_content, seo_analysis, content_generator) but SKIPS every update_post_meta / DB-write step. Returns the agent's raw output so the frontend modal can render a current-vs-proposed diff. For manual_review the modal explains the action requires the WordPress editor.
+* NEW MODAL — branched render per agent type: meta_tags shows side-by-side meta_title + meta_description diff (current vs proposed) plus keywords, aeo_content / content_generator shows the generated HTML preview (sanitized) + Schema JSON-LD if included, seo_analysis shows score + top 8 issues + top 5 suggestions, manual_review shows plain message. CTAs: [Annulla] [Rigenera] [Applica modifiche (N cr)]. Applica triggers the existing .orch-execute-btn so the executor flow runs unchanged (writes to DB, deducts credits, etc.). Rigenera re-fires the preview.
+* Plugin Check 1.9.0 against the WP.org ZIP: 0 errors / 0 warnings.
 
 = 3.39.5 =
 * CRITICAL FIX — silent backend 500 since v3.39.1 producing "Risposta non valida dal server". Chrome MCP XHR interceptor on aeo-orchestra.com v3.39.4 captured response 412 bytes with seo_score=null + aeo_score=null + seo_detail.error="Risposta non valida dal server" + total time ~9ms (impossible for any LLM call, let alone 3 retries).

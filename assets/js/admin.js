@@ -525,6 +525,8 @@
             $(document).on('click', '#orch-select-posts', function() { $('.orch-page-check').prop('checked', false).filter('[data-type="post"]').prop('checked', true); SeoAeoOrchestra.updateOrchestratorCount(); });
             $(document).on('change', '.orch-page-check', this.updateOrchestratorCount);
             $(document).on('click', '.orch-execute-btn', this.executeAction);
+            // 3.39.6 — preview-before-apply
+            $(document).on('click', '.orch-preview-btn', SeoAeoOrchestra.previewAction);
 
             // Cancel orchestrator
             // 3.37.3 Module 12 — actually stop the in-flight AJAX + request refund.
@@ -2364,6 +2366,14 @@
                 planHtml += '<br><small style="color:#666;">' + action.page_title + '</small>';
                 planHtml += '<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;font-size:12px;color:#334155;">' + detailDesc + '</div>';
                 planHtml += '</div>';
+                // 3.39.6 — preview-before-apply button. Same data-* attributes
+                // as the executor so handlers can route to either flow.
+                planHtml += '<button type="button" class="button orch-action-btn orch-preview-btn" ';
+                planHtml += 'data-agent="' + action.agent + '" ';
+                planHtml += 'data-action-data=\'' + JSON.stringify(action.data) + '\' ';
+                planHtml += 'data-idx="' + idx + '" ';
+                planHtml += 'title="' + SeoAeoOrchestra.t('Anteprima delle modifiche prima di applicarle') + '">';
+                planHtml += '👁 ' + SeoAeoOrchestra.t('Mostra modifiche') + '</button> ';
                 planHtml += '<button type="button" class="button button-primary orch-action-btn orch-execute-btn" ';
                 planHtml += 'data-agent="' + action.agent + '" ';
                 planHtml += 'data-action-data=\'' + JSON.stringify(action.data) + '\' ';
@@ -2669,6 +2679,12 @@
                     if (canAutoExec) {
                         var credits = matchAction.estimated_credits || '';
                         var creditsLabel = credits ? ' (' + credits + ' cr)' : '';
+                        // 3.39.6 — preview button precedes Esegui on Problemi cards too.
+                        out += '<button type="button" class="button orch-preview-btn orch-problem-preview" ';
+                        out += 'data-agent="' + escHtml(matchAction.agent) + '" ';
+                        out += 'data-action-data=\'' + JSON.stringify(matchAction.data || {}).replace(/\'/g, '&apos;') + '\' ';
+                        out += 'title="' + SeoAeoOrchestra.t('Anteprima delle modifiche prima di applicarle') + '">';
+                        out += '👁 ' + SeoAeoOrchestra.t('Mostra modifiche') + '</button> ';
                         out += '<button type="button" class="button button-primary orch-execute-btn orch-problem-exec" ';
                         out += 'data-agent="' + escHtml(matchAction.agent) + '" ';
                         out += 'data-action-data=\'' + JSON.stringify(matchAction.data || {}).replace(/\'/g, '&apos;') + '\'>';
@@ -2956,6 +2972,200 @@
                         $btn.prop('disabled', false).html('<span class="dashicons dashicons-format-image" style="margin-top:3px;"></span> Riprova');
                     }
                 });
+            });
+        },
+
+        // 3.39.6 — Preview the action's proposed output before applying.
+        previewAction: function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var $btn = jQuery(this);
+            var agent = $btn.data('agent');
+            var rawData = $btn.attr('data-action-data') || '{}';
+            // data-action-data on Problemi cards has single-quote → &apos; escaping.
+            rawData = String(rawData).replace(/&apos;/g, "'");
+            var actionData;
+            try { actionData = JSON.parse(rawData); } catch (err) { actionData = {}; }
+
+            if (agent === 'manual_review') {
+                SeoAeoOrchestra.showPreviewModal({
+                    agent: agent,
+                    current: {},
+                    proposed: {manual_review: true},
+                    message: SeoAeoOrchestra.t('Questa azione richiede una revisione manuale. Apri la pagina nell\'editor WordPress per esaminare il problema.'),
+                });
+                return;
+            }
+
+            var origLabel = $btn.html();
+            $btn.prop('disabled', true).html('<span class="dashicons dashicons-update spin"></span> ' + SeoAeoOrchestra.t('Generando preview...'));
+
+            jQuery.post(seoAeoOrchestra.ajaxUrl, {
+                action: 'seo_aeo_orchestra_preview_action',
+                nonce: seoAeoOrchestra.nonce,
+                agent: agent,
+                action_data: actionData,
+            }).done(function(resp) {
+                if (!resp || resp.error) {
+                    SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Errore preview') + ': ' + ((resp && resp.error) || 'sconosciuto'), 'error');
+                    return;
+                }
+                resp._sourceBtn = $btn.get(0);
+                SeoAeoOrchestra.showPreviewModal(resp);
+            }).fail(function(xhr) {
+                SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Errore di rete') + ' (' + (xhr ? xhr.status : '?') + ')', 'error');
+            }).always(function() {
+                $btn.prop('disabled', false).html(origLabel);
+            });
+        },
+
+        // 3.39.6 — Render the preview-vs-current modal. Branches per agent.
+        showPreviewModal: function(payload) {
+            var $ = jQuery;
+            $('#orch-action-preview-modal').remove();
+            var T = SeoAeoOrchestra.t || function(s){return s;};
+            var agent = payload.agent || 'unknown';
+            var current = payload.current || {};
+            var proposed = payload.proposed || {};
+            var credits = payload.estimated_credits || 0;
+
+            function escHtml(s) {
+                return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+                    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+                });
+            }
+
+            function renderSideBySide(label, currentVal, proposedVal) {
+                return '<div class="orch-apv-section">' +
+                       '<h4>' + escHtml(label) + '</h4>' +
+                       '<div class="orch-apv-diff">' +
+                         '<div class="orch-apv-col orch-apv-current"><div class="orch-apv-col-h">' + T('Attuale') + '</div><div class="orch-apv-val">' + (currentVal ? escHtml(currentVal) : '<em>' + T('vuoto') + '</em>') + '</div></div>' +
+                         '<div class="orch-apv-col orch-apv-proposed"><div class="orch-apv-col-h">' + T('Proposto') + '</div><div class="orch-apv-val">' + (proposedVal ? escHtml(proposedVal) : '<em>' + T('vuoto') + '</em>') + '</div></div>' +
+                       '</div></div>';
+            }
+
+            var bodyHtml = '';
+            var canApply = true;
+
+            if (proposed && proposed.error) {
+                bodyHtml = '<p class="orch-apv-err">' + T('Backend ha restituito un errore') + ': ' + escHtml(proposed.error || proposed.message || '') + '</p>';
+                canApply = false;
+            } else if (payload.message || (proposed && proposed.manual_review)) {
+                bodyHtml = '<p class="orch-apv-info">' + escHtml(payload.message || T('Revisione manuale richiesta.')) + '</p>';
+                canApply = false;
+            } else if (agent === 'meta_tags') {
+                bodyHtml += '<p class="orch-apv-pageinfo">' + T('Pagina') + ': <strong>' + escHtml(current.page_title || '—') + '</strong>' + (current.page_url ? ' — <a href="' + escHtml(current.page_url) + '" target="_blank">' + escHtml(current.page_url) + '</a>' : '') + '</p>';
+                bodyHtml += renderSideBySide('Meta Title', current.meta_title, proposed.title);
+                bodyHtml += renderSideBySide('Meta Description', current.meta_description, proposed.description);
+                if (proposed.keywords && proposed.keywords.length) {
+                    bodyHtml += '<div class="orch-apv-section"><h4>' + T('Keywords proposte') + '</h4><p>' + escHtml(proposed.keywords.join(', ')) + '</p></div>';
+                }
+            } else if (agent === 'aeo_content' || agent === 'content_generator') {
+                bodyHtml += '<p class="orch-apv-pageinfo">' + T('Pagina') + ': <strong>' + escHtml(current.page_title || '—') + '</strong></p>';
+                var content = proposed.content || '';
+                if (!content) {
+                    bodyHtml += '<p class="orch-apv-err">' + T('Nessun contenuto generato dall\'AI.') + '</p>';
+                    canApply = false;
+                } else {
+                    bodyHtml += '<div class="orch-apv-section"><h4>' + T('Contenuto proposto') + ' (' + (proposed.word_count || '~') + ' ' + T('parole') + ')</h4>';
+                    bodyHtml += '<div class="orch-apv-content-preview">' + content + '</div></div>';
+                    if (proposed.schema) {
+                        bodyHtml += '<div class="orch-apv-section"><h4>' + T('Schema JSON-LD incluso') + '</h4><pre class="orch-apv-code">' + escHtml(JSON.stringify(proposed.schema, null, 2)) + '</pre></div>';
+                    }
+                }
+            } else if (agent === 'seo_analysis') {
+                bodyHtml += '<p class="orch-apv-pageinfo">' + T('Pagina') + ': <strong>' + escHtml(current.page_title || '—') + '</strong></p>';
+                bodyHtml += '<div class="orch-apv-section"><h4>' + T('Analisi SEO') + '</h4>';
+                if (typeof proposed.score === 'number') bodyHtml += '<p>' + T('Score') + ': <strong>' + proposed.score + '/100</strong></p>';
+                if (proposed.issues && proposed.issues.length) {
+                    bodyHtml += '<h5>' + T('Problemi identificati') + ':</h5><ul>';
+                    proposed.issues.slice(0, 8).forEach(function(it) {
+                        var txt = typeof it === 'string' ? it : (it.description || JSON.stringify(it));
+                        bodyHtml += '<li>' + escHtml(txt) + '</li>';
+                    });
+                    bodyHtml += '</ul>';
+                }
+                if (proposed.suggestions && proposed.suggestions.length) {
+                    bodyHtml += '<h5>' + T('Suggerimenti') + ':</h5><ul>';
+                    proposed.suggestions.slice(0, 5).forEach(function(s) { bodyHtml += '<li>' + escHtml(typeof s === 'string' ? s : JSON.stringify(s)) + '</li>'; });
+                    bodyHtml += '</ul>';
+                }
+                bodyHtml += '</div>';
+            } else {
+                bodyHtml = '<pre class="orch-apv-code">' + escHtml(JSON.stringify(proposed, null, 2)) + '</pre>';
+            }
+
+            var ctaHtml = '<button type="button" class="button orch-apv-cancel">' + T('Annulla') + '</button>';
+            ctaHtml += '<button type="button" class="button orch-apv-regen">' + T('Rigenera') + '</button>';
+            if (canApply) {
+                ctaHtml += '<button type="button" class="button button-primary orch-apv-apply">' + T('Applica modifiche') + (credits ? ' (' + credits + ' cr)' : '') + '</button>';
+            }
+
+            if (!$('#orch-apv-styles').length) {
+                $('head').append(
+                    '<style id="orch-apv-styles">' +
+                    '.orch-apv-backdrop{position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;z-index:100002;animation:orchApvFade 0.15s ease;}' +
+                    '@keyframes orchApvFade{from{opacity:0}to{opacity:1}}' +
+                    '.orch-apv-modal{background:#fff;border-radius:12px;box-shadow:0 24px 48px rgba(0,0,0,0.3);max-width:760px;width:calc(100% - 32px);max-height:88vh;display:flex;flex-direction:column;}' +
+                    '.orch-apv-head{padding:16px 22px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5e7eb;}' +
+                    '.orch-apv-head h3{margin:0;font-size:17px;font-weight:600;color:#0F172A;}' +
+                    '.orch-apv-close{background:none;border:0;font-size:24px;line-height:1;color:#94A3B8;cursor:pointer;padding:0 4px;}' +
+                    '.orch-apv-body{padding:14px 22px;overflow:auto;flex:1;font-size:13px;color:#475569;}' +
+                    '.orch-apv-pageinfo{color:#475569;margin:0 0 12px;}' +
+                    '.orch-apv-section{margin:0 0 16px;}' +
+                    '.orch-apv-section h4{margin:8px 0 6px;font-size:13px;font-weight:700;color:#0F172A;text-transform:uppercase;letter-spacing:0.05em;}' +
+                    '.orch-apv-diff{display:grid;grid-template-columns:1fr 1fr;gap:8px;}' +
+                    '.orch-apv-col{padding:10px 12px;border-radius:6px;background:#f8fafc;border:1px solid #e2e8f0;}' +
+                    '.orch-apv-current{background:#fef2f2;border-color:#fecaca;}' +
+                    '.orch-apv-proposed{background:#ecfdf5;border-color:#a7f3d0;}' +
+                    '.orch-apv-col-h{font-size:11px;text-transform:uppercase;color:#94A3B8;font-weight:700;margin-bottom:6px;}' +
+                    '.orch-apv-val{font-size:13px;color:#0F172A;word-wrap:break-word;}' +
+                    '.orch-apv-content-preview{max-height:360px;overflow:auto;padding:12px 14px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;font-size:13px;line-height:1.55;}' +
+                    '.orch-apv-code{max-height:240px;overflow:auto;background:#0F172A;color:#e0e7ff;padding:12px;border-radius:6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;line-height:1.5;}' +
+                    '.orch-apv-err{color:#991b1b;background:#fef2f2;padding:10px 14px;border-radius:6px;border-left:3px solid #ef4444;}' +
+                    '.orch-apv-info{color:#1e3a8a;background:#eff6ff;padding:10px 14px;border-radius:6px;border-left:3px solid #3b82f6;}' +
+                    '.orch-apv-foot{padding:12px 22px 16px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;}' +
+                    '@media (max-width:680px){.orch-apv-diff{grid-template-columns:1fr;}}' +
+                    '@keyframes orchApvSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}' +
+                    '.dashicons.spin{animation:orchApvSpin 0.8s linear infinite;display:inline-block;}' +
+                    '</style>'
+                );
+            }
+
+            var html = '<div class="orch-apv-backdrop" id="orch-action-preview-modal">' +
+                '<div class="orch-apv-modal">' +
+                  '<div class="orch-apv-head">' +
+                    '<h3>' + T('Anteprima modifiche') + ' — ' + escHtml(payload.agent || '') + '</h3>' +
+                    '<button type="button" class="orch-apv-close" aria-label="' + T('Chiudi') + '">×</button>' +
+                  '</div>' +
+                  '<div class="orch-apv-body">' + bodyHtml + '</div>' +
+                  '<div class="orch-apv-foot">' + ctaHtml + '</div>' +
+                '</div>' +
+              '</div>';
+            $('body').append(html);
+            var $modal = $('#orch-action-preview-modal');
+            function close() { $modal.remove(); }
+            $modal.on('click', function(ev) { if (ev.target === $modal[0]) close(); });
+            $modal.find('.orch-apv-close, .orch-apv-cancel').on('click', close);
+            $modal.find('.orch-apv-regen').on('click', function() {
+                close();
+                if (payload._sourceBtn) jQuery(payload._sourceBtn).trigger('click');
+            });
+            $modal.find('.orch-apv-apply').on('click', function() {
+                close();
+                // Trigger the sibling execute button so the existing
+                // executor handler runs (writes to DB, deducts credits).
+                if (!payload._sourceBtn) return;
+                var $src = jQuery(payload._sourceBtn);
+                // Each card has a paired .orch-execute-btn with the same data-agent.
+                // Find the nearest sibling execute button in the same .orch-action-item / .orch-problem-card.
+                var $card = $src.closest('.orch-action-item, .orch-problem-card');
+                var $exec = $card.find('.orch-execute-btn').first();
+                if ($exec.length) {
+                    $exec.trigger('click');
+                } else {
+                    SeoAeoOrchestra.showNotice(T('Pulsante Esegui non trovato'), 'error');
+                }
             });
         },
 

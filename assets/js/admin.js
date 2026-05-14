@@ -2306,7 +2306,10 @@
             // Check if cancelled
             if (SeoAeoOrchestra.orchestrateCancelled) {
                 $('#orch-progress-text').text(SeoAeoOrchestra.t('Analisi annullata dall\'utente.'));
-                $('#orch-progress-eta').text(SeoAeoOrchestra.t('{N} pagine analizzate su {TOT}').replace('{N}', idx).replace('{TOT}', pages.length));
+                var _pTpl = idx === 1
+                    ? SeoAeoOrchestra.t('{N} pagina analizzata su {TOT}')
+                    : SeoAeoOrchestra.t('{N} pagine analizzate su {TOT}');
+                $('#orch-progress-eta').text(_pTpl.replace('{N}', idx).replace('{TOT}', pages.length));
                 $('#orch-cancel-analysis').hide();
                 setTimeout(function() {
                     if (SeoAeoOrchestra.orchestrateResults.length > 0) {
@@ -2658,7 +2661,7 @@
                     }
                 }
             };
-            SeoAeoOrchestra.saveHistory('orchestrator', 'analysis', SeoAeoOrchestra.t('{N} pagine analizzate').replace('{N}', pagesCount), historyData, pagesCount * 5, orchRestore);
+            SeoAeoOrchestra.saveHistory('orchestrator', 'analysis', SeoAeoOrchestra.t(pagesCount === 1 ? '{N} pagina analizzata' : '{N} pagine analizzate').replace('{N}', pagesCount), historyData, pagesCount * 5, orchRestore);
             // 3.6.0 — Live update Health Score box senza refresh pagina
             if (typeof SeoAeoOrchestra.refreshHealthScoreHero === 'function') {
                 setTimeout(SeoAeoOrchestra.refreshHealthScoreHero, 800);
@@ -2668,7 +2671,7 @@
             setTimeout(function() {
                 $('#orchestrator-progress').hide();
                 $('#orchestrator-results').show();
-                SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t('Analisi completata! {N} pagine analizzate, {A} azioni suggerite.').replace('{N}', pagesCount).replace('{A}', allActions.length), 'success');
+                SeoAeoOrchestra.showNotice(SeoAeoOrchestra.t(pagesCount === 1 ? 'Analisi completata! {N} pagina analizzata, {A} azioni suggerite.' : 'Analisi completata! {N} pagine analizzate, {A} azioni suggerite.').replace('{N}', pagesCount).replace('{A}', allActions.length), 'success');
             }, 1000);
         },
 

@@ -193,7 +193,7 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
                 <td>
                     <strong id="aeo-compat-headless"><?php
                         if (!empty($aeo_profile['is_headless'])) {
-                            echo esc_html(SEO_AEO_T::t('Si')) . ' (' . esc_html(isset($aeo_profile['headless_mode']) ? $aeo_profile['headless_mode'] : 'rest') . ')';
+                            echo esc_html(SEO_AEO_T::t('Sì')) . ' (' . esc_html(isset($aeo_profile['headless_mode']) ? $aeo_profile['headless_mode'] : 'rest') . ')';
                         } elseif (!empty($aeo_profile['is_hybrid'])) {
                             echo esc_html(SEO_AEO_T::t('Parziale (hybrid)'));
                         } else {
@@ -354,7 +354,7 @@ $seo_aeo_T = function($s) { return class_exists('SEO_AEO_T') ? esc_html(SEO_AEO_
                         var p = resp.data.profile;
                         $('#aeo-compat-builder').text(p.builder || 'unknown');
                         $('#aeo-compat-builder-conf').text('(' + (p.builder_confidence || 0) + '%)');
-                        $('#aeo-compat-headless').text(p.is_headless ? ('<?php echo esc_js(SEO_AEO_T::t('Si')); ?> (' + (p.headless_mode || 'rest') + ')') : '<?php echo esc_js(SEO_AEO_T::t('No')); ?>');
+                        $('#aeo-compat-headless').text(p.is_headless ? ('<?php echo esc_js(SEO_AEO_T::t('Sì')); ?> (' + (p.headless_mode || 'rest') + ')') : '<?php echo esc_js(SEO_AEO_T::t('No')); ?>');
                         $('#aeo-compat-headless-conf').text('(' + (p.headless_confidence || 0) + '%)');
                         $('#aeo-compat-env').text(resp.data.env_label || '');
                         $status.css('color', '#065f46').text('✓ <?php echo esc_js(SEO_AEO_T::t('Sito ri-scansionato.')); ?>');

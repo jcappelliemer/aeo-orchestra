@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.10
+Stable tag: 3.40.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,13 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.11 =
+* P1.1 - Si -> Si with accent in the Compatibilita Sito section. The headless row affirmative read "Si (rest)" (no accent); both the PHP render and the JS reload path now read "Si" with proper Italian accent (Yes affirmation).
+* P1.10 - More singular plural fixes in admin.js. The progress label "{N} pagine analizzate su {TOT}", the history label "{N} pagine analizzate", and the completion toast "Analisi completata! {N} pagine analizzate, ..." now branch on N === 1 to render the singular form ("1 pagina analizzata ...") - matches the v3.40.10 fix on business-profile.php / native-output.php.
+* P1.3 / P1.5 / P1.7 - VERIFIED in place: signal #6 React markers iterates over headless_signals so all 6 signals (incl. the v3.40.3 React markers one) display in the Compatibilita Sito breakdown table; Polylang locale suffix helper aeo_polylang_term_label is wired into ajax_layout_init + ajax_calendar_categories; Brand Voice CTA link "-> Configura Brand Voice ora" lives inside the autopilot.php warning badge.
+* DEFERRED to v3.40.12 - P1.4 Setup Wizard step 6 (requires wizard refactor), P1.6 chart bar value rendering (Analytics page inspection), P1.8 Premium upgrade CTAs (locate all premium gates), P1.9 Setup step 6/7 button visibility + completed-step summaries, P1.10 (residual) "Pesca da Research <N>" dynamic ID (requires new backend endpoint exposing latest research job_id).
+* DEFERRED to v3.41.0 - per-builder surgical editors (Elementor / Divi / WPBakery / Beaver / Bricks / Oxygen + headless WPGraphQL / SSG modes), ~7-10h plus PHPUnit fixtures per builder.
 
 = 3.40.10 =
 * P1.2 - Manual-mode MODAL upgrade. v3.40.6+ rendered manual_mode responses as an inline amber result block with a copy button; this is fine for short snippets but is awkward for a 4-12KB JSON-LD block where the user has to scroll inside a small element. v3.40.10 replaces it with a proper modal: title varies by action_type ("Schema JSON-LD generato — applica manualmente" / "FAQ generate — applica manualmente" / etc.), subtitle carries the backend message, body is a scrollable dark code box, and three CTAs: "Annulla" closes, "Copia testo" puts the content on the clipboard, "Ho applicato manualmente" marks the button green + fires the `seo_aeo_orchestra_mark_manual_applied` tracker AJAX. The inline summary stays as a brief banner with "Apri editor" + "Ho applicato manualmente" buttons so the user can dismiss-and-defer or open the modal later.

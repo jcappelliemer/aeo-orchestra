@@ -740,6 +740,29 @@
 
         displayAnalysisResults: function(data) {
             var html = '<div class="analysis-results">';
+
+            // 3.40.13 P1.13 - surface SEO fallback banner symmetric to
+            // displayAEOResults (v3.40.5). Backend /ai/analyze now sends
+            // _llm_failed + _refunded + _refunded_credits + _fallback_reason
+            // (v3.40.12). Banner explains the fallback + refund line and
+            // refreshes the wallet display.
+            if (data && data._llm_failed) {
+                var refunded = data._refunded ? (data._refunded_credits || 0) : 0;
+                var reason = (data._fallback_reason || 'unknown').replace(/_/g, ' ');
+                var refundLine = refunded > 0
+                    ? '<strong>' + refunded + ' crediti rimborsati automaticamente.</strong>'
+                    : 'Crediti NON rimborsati (verifica wallet).';
+                html += '<div style="background:#fef2f2;border-left:4px solid #b91c1c;padding:14px 18px;border-radius:8px;margin-bottom:16px;color:#7f1d1d;font-size:13px;line-height:1.5;">'
+                     + '<strong>⚠ Analisi SEO non completata</strong> &mdash; '
+                     + 'l’AI non ha rispettato lo schema dopo 5 tentativi (motivo: <code>' + reason + '</code>). '
+                     + refundLine
+                     + ' Riprova tra qualche minuto.'
+                     + '</div>';
+                if (typeof SeoAeoOrchestra.fetchCredits === 'function') {
+                    try { SeoAeoOrchestra.fetchCredits(); } catch(_) {}
+                }
+            }
+
             var scoreClass = data.score >= 80 ? 'good' : data.score >= 60 ? 'medium' : 'bad';
             html += '<div class="score-display ' + scoreClass + '">';
             html += '<span class="score-number">' + (data.score || 0) + '</span>';

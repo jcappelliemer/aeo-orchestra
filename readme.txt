@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.12
+Stable tag: 3.40.13
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,13 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.13 =
+* P1.13 - Frontend SEO fallback banner. v3.40.12 wired the backend refund + tracker fields (`_llm_failed`, `_fallback_reason`, `_refunded`, `_refunded_credits`) on /ai/analyze symmetric to v3.40.5 AEO. v3.40.13 adds the matching frontend banner in displayAnalysisResults so SEO retry-exhausted responses now render the same red banner used by displayAEOResults: "Analisi SEO non completata - l'AI non ha rispettato lo schema dopo 5 tentativi (motivo: <reason>). N crediti rimborsati automaticamente. Riprova tra qualche minuto." Wallet UI auto-refreshes via fetchCredits().
+* P1.13 - keyword_research fallback response shape standardized. The endpoint already refunded via refund_reservation and returned `fallback_used`/`fallback_reason`/`credits_refunded`/`_llm_failed`. v3.40.13 adds the standard fields `_fallback_reason`/`_refunded`/`_refunded_credits` (mirror of AEO+SEO endpoints) so a single frontend banner handler works across all three endpoints. Legacy fields preserved for back-compat.
+* DEFERRED to v3.40.14 - P1.4 Setup Wizard step 6 "Compatibilita Sito" (wizard refactor), P1.6 chart bar value visual rendering (low priority; text is readable per Chrome MCP v3.40.12 verify), P1.8 Premium upgrade CTAs (audit every premium-gate marker), P1.9 Setup step 6/7 button visibility + completed-step inline summaries (button orphan logic). P1.10 "Pesca da Research" dynamic ID resolution - confirmed via Chrome MCP audit that the hardcoded "Research 2" string is not in any current page; the keyword-set picker already reads dynamically from ajax_keyword_sets_list (which the user can call to populate count + niche labels), so no action needed.
+* DEFERRED to v3.41.0 - per-builder surgical editors batch (Elementor / Divi / WPBakery / Beaver / Bricks / Oxygen + headless WPGraphQL / SSG modes), ~7-10h plus PHPUnit fixtures.
+* Pre-launch ops audit (PA1 Redis rate-limit, PA2 email lowercase, PA3 CORS, PA4 registration transactionality, PA5 Backblaze B2 backup, PA6 UptimeRobot) tracked as a separate operational verification cycle (not code) before DealFuel ship.
 
 = 3.40.12 =
 * P1.10-bis - Cronologia singular at render time. v3.40.11 patched the three saveHistory callsites in admin.js to encode the singular form at save time, but EXISTING history rows (stored before v3.40.11) still carry the literal "1 pagine analizzate" string. The render path now normalizes legacy titles at display time via three regex transforms (matches "^1 pagine analizzate$", "^1 pagine analizzate <suffix>$", and the completion-toast variant "^Analisi completata! 1 pagine analizzate,"). Retroactive fix - all existing history entries with count=1 now read "1 pagina analizzata" without DB migration. New entries continue to encode singular at save time.

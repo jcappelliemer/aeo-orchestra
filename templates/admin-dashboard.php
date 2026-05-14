@@ -866,7 +866,7 @@ wp_enqueue_style(
 
 <?php ob_start(); ?>
 /* ═══════════════════════════════════════════════════════════════════
-   AEO Orchestra — Orchestratore 2.3.0-beta
+   AEO Orchestra — Orchestratore 3.41.5
    Restyling fedele al mockup: Satoshi + General Sans, palette slate.
    Tutto scoped sotto .orchestra-v3 per non contaminare altre pagine WP.
    ═══════════════════════════════════════════════════════════════════ */

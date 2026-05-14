@@ -1679,14 +1679,30 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 case 'aeo_content':
                     $keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';
                     $aeo_post_id = isset($data['post_id']) ? (int) $data['post_id'] : 0;
-                    $result = $api->api_request('/ai/aeo-content', array(
-                        'topic' => $keyword,
-                        'keywords' => array($keyword),
-                        'target_engines' => array('google_ai', 'chatgpt', 'perplexity'),
-                        'include_schema' => true,
-                        'include_faq' => true,
-                        'language' => $this->get_ai_language(),
-                    ));
+                    // 3.41.2 - for GENERATE_SCHEMA route to the dedicated
+                    // schema endpoint which returns only the <script ld+json>
+                    // block - no 12KB article rewrite.
+                    if ($action_type === 'GENERATE_SCHEMA') {
+                        $aeo_page = $aeo_post_id > 0 ? get_post($aeo_post_id) : null;
+                        $result = $api->api_request('/ai/generate-schema', array(
+                            'page_title'  => $aeo_page ? (string) $aeo_page->post_title : '',
+                            'page_url'    => $aeo_post_id > 0 ? (string) get_permalink($aeo_post_id) : '',
+                            'keyword'     => $keyword,
+                            'body_text'   => $aeo_page ? substr(wp_strip_all_tags((string) $aeo_page->post_content), 0, 2000) : '',
+                            'h1'          => $aeo_page ? (string) $aeo_page->post_title : '',
+                            'schema_type_hint' => 'WebPage',
+                            'language'    => $this->get_ai_language(),
+                        ));
+                    } else {
+                        $result = $api->api_request('/ai/aeo-content', array(
+                            'topic' => $keyword,
+                            'keywords' => array($keyword),
+                            'target_engines' => array('google_ai', 'chatgpt', 'perplexity'),
+                            'include_schema' => true,
+                            'include_faq' => true,
+                            'language' => $this->get_ai_language(),
+                        ));
+                    }
                     if (isset($result['error'])) {
                         wp_send_json($result);
                         break;
@@ -1811,23 +1827,37 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 case 'authority_generator':
                 case 'intro_rewriter':
                 case 'snippet_optimizer':
+                    $agent_for_dispatch = $agent;  // 3.41.2 - keep original agent before reassignment for dispatch branching.
                     $agent = 'aeo_content';
-                    // Re-enter the aeo_content case by manual fall-through:
-                    // do the same work inline. We duplicate the small loop
-                    // body rather than goto so the diff stays surgical.
                     $aeo_keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';
                     $aeo_alias_post_id = isset($data['post_id']) ? (int) $data['post_id'] : 0;
                     $aeo_pre_modified = ($aeo_alias_post_id > 0)
                         ? (string) get_post_field('post_modified_gmt', $aeo_alias_post_id, 'raw')
                         : '';
-                    $alias_result = $api->api_request('/ai/aeo-content', array(
-                        'topic' => $aeo_keyword,
-                        'keywords' => array($aeo_keyword),
-                        'target_engines' => array('google_ai', 'chatgpt', 'perplexity'),
-                        'include_schema' => true,
-                        'include_faq' => true,
-                        'language' => $this->get_ai_language(),
-                    ));
+                    // 3.41.2 - schema_generator routes to the dedicated
+                    // /ai/generate-schema endpoint for JSON-LD only output.
+                    // All other aliases keep using /ai/aeo-content.
+                    if ($agent_for_dispatch === 'schema_generator' || $action_type === 'GENERATE_SCHEMA') {
+                        $aeo_alias_page = $aeo_alias_post_id > 0 ? get_post($aeo_alias_post_id) : null;
+                        $alias_result = $api->api_request('/ai/generate-schema', array(
+                            'page_title'  => $aeo_alias_page ? (string) $aeo_alias_page->post_title : '',
+                            'page_url'    => $aeo_alias_post_id > 0 ? (string) get_permalink($aeo_alias_post_id) : '',
+                            'keyword'     => $aeo_keyword,
+                            'body_text'   => $aeo_alias_page ? substr(wp_strip_all_tags((string) $aeo_alias_page->post_content), 0, 2000) : '',
+                            'h1'          => $aeo_alias_page ? (string) $aeo_alias_page->post_title : '',
+                            'schema_type_hint' => 'WebPage',
+                            'language'    => $this->get_ai_language(),
+                        ));
+                    } else {
+                        $alias_result = $api->api_request('/ai/aeo-content', array(
+                            'topic' => $aeo_keyword,
+                            'keywords' => array($aeo_keyword),
+                            'target_engines' => array('google_ai', 'chatgpt', 'perplexity'),
+                            'include_schema' => true,
+                            'include_faq' => true,
+                            'language' => $this->get_ai_language(),
+                        ));
+                    }
                     if (isset($alias_result['error'])) {
                         wp_send_json($alias_result);
                         break;

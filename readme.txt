@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.41.1
+Stable tag: 3.41.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,15 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.41.2 =
+* HOTFIX P0 - GENERATE_SCHEMA was producing article rewrite content instead of JSON-LD. Verified Chrome MCP on v3.41.1 against aeo-orchestra.com Page id=69: clicking Esegui on a Schema action triggered AI generation (29s), the manual-mode modal opened with 12,133 chars of <h2>article prose</h2> ("Che cos'e l'Answer Engine Optimization...") and zero `<script type="application/ld+json">` blocks. REST GET ?_fields=meta._seo_aeo_custom_schema_html showed the meta unchanged. Root cause: v3.40.6 wired GENERATE_SCHEMA to /ai/aeo-content (the full article generator) with `include_schema:true` flag - the AI may or may not include a script block buried inside 12KB of prose, and even when it does the user pays for an article to extract maybe 200 bytes of schema.
+* Fix: new dedicated /ai/generate-schema FastAPI endpoint that prompts ONLY for a single JSON-LD block. System message specifies "La tua risposta DEVE essere ESATTAMENTE: <script type=\"application/ld+json\">{...}</script>. NESSUNA prosa, NESSUN <h2>, NESSUNA spiegazione." Output extracted by regex; bare JSON also accepted (wrapped at the server). On failure (no JSON-LD block in response) the endpoint refunds credits via wallet.add_credits(source="schema_fallback_refund") and returns `_llm_failed:true` + `_refunded_credits:N` so the frontend banner renders the same way as v3.40.5 AEO / v3.40.12 SEO fallbacks. credit_cost defaults to 3 (cheap; falls back to 3 if `generate_schema` not yet in CREDIT_COSTS table).
+* Plugin dispatch (class-ajax-handlers.php): both the v3.40.6 `aeo_content` case (when action_type === 'GENERATE_SCHEMA') AND the v3.40.7 `schema_generator` alias case now route to /ai/generate-schema instead of /ai/aeo-content. Other aliases (faq_generator / authority_generator / intro_rewriter / snippet_optimizer) continue to use /ai/aeo-content - their content types ARE article prose with sectioned markup.
+* New helper variable `$agent_for_dispatch` saved before the `$agent = 'aeo_content'` reassignment so the alias case can branch on the original agent name for routing.
+
+After v3.41.2 the schema generation path is end-to-end correct:
+  Plugin click -> /ai/generate-schema -> AI emits <script ld+json> block -> regex extracts -> SEO_AEO_Schema_Sanitizer preserves wrapper (v3.41.1) -> post_meta stores canonical JSON-LD -> wp_head priority 12 echoes valid HTML -> Google Rich Results parses it.
 
 = 3.41.1 =
 * HOTFIX - Schema <script> wrapper preserved. Found during v3.41.0 acceptance run on aeo-orchestra.com Page id=69: REST GET ?_fields=meta._seo_aeo_custom_schema_html returned 114-char bare JSON ({@context:https://schema.org,...}) instead of the expected 183-char <script type=application/ld+json>{...}</script> wrapper. Root cause: v3.40.6 wrote the meta via wp_kses_post() which strips ALL <script> tags by default for XSS safety, destroying the JSON-LD wrapper. When wp_head emitted the bare JSON in <head> the HTML was invalid and Google Rich Results would not parse it.

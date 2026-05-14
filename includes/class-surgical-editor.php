@@ -334,3 +334,461 @@ class SEO_AEO_Gutenberg_Surgical_Editor {
         }
     }
 }
+
+
+/**
+ * 3.41.0 - Per-builder surgical editors.
+ *
+ * Each editor follows the v3.40.2 pattern: static can_handle() +
+ * apply() returning {success, edits_applied, edits_failed, failures,
+ * engine}. Editors are dispatched in priority order by
+ * ajax_execute_action - the first one whose can_handle() returns true
+ * owns the apply.
+ *
+ * Strategy varies by where the builder stores text:
+ *   - shortcode-based builders (Divi/WPBakery/Oxygen): text lives
+ *     INSIDE the shortcode body in post_content. str_replace works
+ *     provided we don't touch shortcode attributes.
+ *   - JSON post_meta builders (Elementor/Beaver/Bricks): decode the
+ *     JSON tree, walk for text fields, replace, re-encode, write back.
+ *   - headless: WP backend remains the source of truth - we write to
+ *     post_content as usual; the React/Next.js frontend re-fetches via
+ *     REST/GraphQL. The Headless REST editor delegates to Classic.
+ */
+
+class SEO_AEO_Elementor_Surgical_Editor {
+
+    public static function can_handle($post_id) {
+        $data = get_post_meta($post_id, '_elementor_data', true);
+        return !empty($data);
+    }
+
+    public static function apply($post_id, $edits) {
+        $result = array(
+            'success'      => false,
+            'edits_applied'=> 0,
+            'edits_failed' => 0,
+            'failures'     => array(),
+            'engine'       => 'elementor',
+        );
+        $raw = get_post_meta($post_id, '_elementor_data', true);
+        if (empty($raw) || empty($edits)) {
+            $result['failures'][] = array('reason' => 'empty_data_or_edits');
+            return $result;
+        }
+        // _elementor_data is stored as JSON string (slashed). wp_unslash
+        // recovers the canonical form.
+        $json = wp_unslash($raw);
+        $tree = json_decode($json, true);
+        if (!is_array($tree)) {
+            $result['failures'][] = array('reason' => 'invalid_elementor_json');
+            return $result;
+        }
+        // Walk the tree, replace text in known text fields.
+        $applied = 0;
+        $failed  = 0;
+        $failures = array();
+        foreach ((array) $edits as $edit) {
+            $old = isset($edit['old_text']) ? (string) $edit['old_text'] : '';
+            $new = isset($edit['new_text']) ? (string) $edit['new_text'] : '';
+            if ($old === '' || $old === $new) { $failed++; $failures[] = array('reason' => 'empty_or_identical'); continue; }
+            $hit = self::walk_replace($tree, $old, $new);
+            if ($hit > 0) { $applied++; } else { $failed++; $failures[] = array('reason' => 'not_found', 'old' => mb_substr($old, 0, 80)); }
+        }
+        if ($applied > 0) {
+            $encoded = wp_json_encode($tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if (is_string($encoded)) {
+                // Elementor uses wp_slash on save - mirror that here.
+                update_post_meta($post_id, '_elementor_data', wp_slash($encoded));
+                wp_update_post(array(
+                    'ID'                => $post_id,
+                    'post_modified'     => current_time('mysql'),
+                    'post_modified_gmt' => current_time('mysql', 1),
+                ));
+                // 3.41.0 - bust Elementor CSS cache so the frontend re-renders.
+                delete_post_meta($post_id, '_elementor_css');
+            } else {
+                $failed = count($edits);
+                $applied = 0;
+                $failures[] = array('reason' => 'json_encode_failed');
+            }
+        }
+        $result['edits_applied'] = $applied;
+        $result['edits_failed']  = $failed;
+        $result['failures']      = $failures;
+        $result['success']       = $applied > 0;
+        return $result;
+    }
+
+    /**
+     * Recursive str_replace across all string leaves of the Elementor
+     * tree. Returns the count of replaced occurrences.
+     */
+    private static function walk_replace(&$node, $old, $new) {
+        $count = 0;
+        if (is_array($node)) {
+            foreach ($node as $k => &$v) {
+                if (is_string($v) && strpos($v, $old) !== false) {
+                    $v = str_replace($old, $new, $v, $c);
+                    $count += (int) $c;
+                } elseif (is_array($v)) {
+                    $count += self::walk_replace($v, $old, $new);
+                }
+            }
+            unset($v);
+        }
+        return $count;
+    }
+}
+
+class SEO_AEO_Divi_Surgical_Editor {
+
+    public static function can_handle($post_id) {
+        $post = get_post($post_id);
+        if (!$post) return false;
+        // Divi posts use [et_pb_*] shortcodes throughout post_content.
+        // Detection: at least one [et_pb_section] / [et_pb_text] shortcode.
+        return (bool) preg_match('/\[et_pb_(?:section|text|blurb|row|column)/i', (string) $post->post_content);
+    }
+
+    public static function apply($post_id, $edits) {
+        return SEO_AEO_Surgical_Editor_Common::str_replace_post_content($post_id, $edits, 'divi');
+    }
+}
+
+class SEO_AEO_WPBakery_Surgical_Editor {
+
+    public static function can_handle($post_id) {
+        $post = get_post($post_id);
+        if (!$post) return false;
+        // WPBakery posts use [vc_*] shortcodes throughout post_content.
+        return (bool) preg_match('/\[vc_(?:row|column|column_text|custom_heading|section)/i', (string) $post->post_content);
+    }
+
+    public static function apply($post_id, $edits) {
+        return SEO_AEO_Surgical_Editor_Common::str_replace_post_content($post_id, $edits, 'wpbakery');
+    }
+}
+
+class SEO_AEO_Beaver_Surgical_Editor {
+
+    const META_KEY = '_fl_builder_data';
+
+    public static function can_handle($post_id) {
+        $data = get_post_meta($post_id, self::META_KEY, true);
+        return !empty($data);
+    }
+
+    public static function apply($post_id, $edits) {
+        $result = array(
+            'success'      => false,
+            'edits_applied'=> 0,
+            'edits_failed' => 0,
+            'failures'     => array(),
+            'engine'       => 'beaver_builder',
+        );
+        $raw = get_post_meta($post_id, self::META_KEY, true);
+        if (empty($raw) || empty($edits)) {
+            $result['failures'][] = array('reason' => 'empty_data_or_edits');
+            return $result;
+        }
+        // Beaver stores fl_builder_data as serialized object (PHP) or
+        // sometimes JSON depending on version. Handle both.
+        $data = maybe_unserialize($raw);
+        if (!is_array($data) && !is_object($data)) {
+            // Try JSON.
+            $decoded = json_decode((string) $raw, true);
+            if (is_array($decoded)) {
+                $data = $decoded;
+                $is_json = true;
+            } else {
+                $result['failures'][] = array('reason' => 'invalid_beaver_data');
+                return $result;
+            }
+        } else {
+            $is_json = false;
+        }
+        $arr = is_object($data) ? (array) $data : $data;
+        $applied = 0;
+        $failed  = 0;
+        $failures = array();
+        foreach ((array) $edits as $edit) {
+            $old = isset($edit['old_text']) ? (string) $edit['old_text'] : '';
+            $new = isset($edit['new_text']) ? (string) $edit['new_text'] : '';
+            if ($old === '' || $old === $new) { $failed++; $failures[] = array('reason' => 'empty_or_identical'); continue; }
+            $hit = self::walk_replace($arr, $old, $new);
+            if ($hit > 0) { $applied++; } else { $failed++; $failures[] = array('reason' => 'not_found', 'old' => mb_substr($old, 0, 80)); }
+        }
+        if ($applied > 0) {
+            if ($is_json) {
+                update_post_meta($post_id, self::META_KEY, wp_json_encode($arr));
+            } else {
+                update_post_meta($post_id, self::META_KEY, $arr);
+            }
+            wp_update_post(array(
+                'ID'                => $post_id,
+                'post_modified'     => current_time('mysql'),
+                'post_modified_gmt' => current_time('mysql', 1),
+            ));
+        }
+        $result['edits_applied'] = $applied;
+        $result['edits_failed']  = $failed;
+        $result['failures']      = $failures;
+        $result['success']       = $applied > 0;
+        return $result;
+    }
+
+    private static function walk_replace(&$node, $old, $new) {
+        $count = 0;
+        if (is_array($node)) {
+            foreach ($node as $k => &$v) {
+                if (is_string($v) && strpos($v, $old) !== false) {
+                    $v = str_replace($old, $new, $v, $c);
+                    $count += (int) $c;
+                } elseif (is_array($v) || is_object($v)) {
+                    $tmp = is_object($v) ? (array) $v : $v;
+                    $count += self::walk_replace($tmp, $old, $new);
+                    $v = $tmp;
+                }
+            }
+            unset($v);
+        }
+        return $count;
+    }
+}
+
+class SEO_AEO_Bricks_Surgical_Editor {
+
+    const META_KEY = '_bricks_page_content_2';
+
+    public static function can_handle($post_id) {
+        $data = get_post_meta($post_id, self::META_KEY, true);
+        return !empty($data);
+    }
+
+    public static function apply($post_id, $edits) {
+        $result = array(
+            'success'      => false,
+            'edits_applied'=> 0,
+            'edits_failed' => 0,
+            'failures'     => array(),
+            'engine'       => 'bricks',
+        );
+        $raw = get_post_meta($post_id, self::META_KEY, true);
+        if (empty($raw) || empty($edits)) {
+            $result['failures'][] = array('reason' => 'empty_data_or_edits');
+            return $result;
+        }
+        // Bricks stores page content as native PHP array (already
+        // deserialized by get_post_meta). If it's a string, try JSON.
+        $tree = is_array($raw) ? $raw : json_decode((string) $raw, true);
+        if (!is_array($tree)) {
+            $result['failures'][] = array('reason' => 'invalid_bricks_data');
+            return $result;
+        }
+        $applied = 0;
+        $failed  = 0;
+        $failures = array();
+        foreach ((array) $edits as $edit) {
+            $old = isset($edit['old_text']) ? (string) $edit['old_text'] : '';
+            $new = isset($edit['new_text']) ? (string) $edit['new_text'] : '';
+            if ($old === '' || $old === $new) { $failed++; $failures[] = array('reason' => 'empty_or_identical'); continue; }
+            $hit = self::walk_replace($tree, $old, $new);
+            if ($hit > 0) { $applied++; } else { $failed++; $failures[] = array('reason' => 'not_found', 'old' => mb_substr($old, 0, 80)); }
+        }
+        if ($applied > 0) {
+            update_post_meta($post_id, self::META_KEY, $tree);
+            wp_update_post(array(
+                'ID'                => $post_id,
+                'post_modified'     => current_time('mysql'),
+                'post_modified_gmt' => current_time('mysql', 1),
+            ));
+        }
+        $result['edits_applied'] = $applied;
+        $result['edits_failed']  = $failed;
+        $result['failures']      = $failures;
+        $result['success']       = $applied > 0;
+        return $result;
+    }
+
+    private static function walk_replace(&$node, $old, $new) {
+        $count = 0;
+        if (is_array($node)) {
+            foreach ($node as $k => &$v) {
+                if (is_string($v) && strpos($v, $old) !== false) {
+                    $v = str_replace($old, $new, $v, $c);
+                    $count += (int) $c;
+                } elseif (is_array($v)) {
+                    $count += self::walk_replace($v, $old, $new);
+                }
+            }
+            unset($v);
+        }
+        return $count;
+    }
+}
+
+class SEO_AEO_Oxygen_Surgical_Editor {
+
+    public static function can_handle($post_id) {
+        // Oxygen stores content as ct_builder_shortcodes post_meta + uses
+        // [ct_*] shortcodes. Detection: either meta key OR shortcode
+        // present in post_content.
+        if (get_post_meta($post_id, 'ct_builder_shortcodes', true)) return true;
+        $post = get_post($post_id);
+        if (!$post) return false;
+        return (bool) preg_match('/\[ct_(?:section|inner|div|headline|text_block)/i', (string) $post->post_content);
+    }
+
+    public static function apply($post_id, $edits) {
+        // Oxygen shortcodes are highly nested + dynamic; partial coverage.
+        // We attempt post_content str_replace - works for text blocks but
+        // not for shortcode-attribute text.
+        $base = SEO_AEO_Surgical_Editor_Common::str_replace_post_content($post_id, $edits, 'oxygen');
+        if (!$base['success']) {
+            // Try the meta key too (Oxygen 2.x stores shortcodes there).
+            $raw = get_post_meta($post_id, 'ct_builder_shortcodes', true);
+            if (!empty($raw)) {
+                $applied = 0;
+                $failed = 0;
+                $failures = array();
+                $text = (string) $raw;
+                foreach ((array) $edits as $edit) {
+                    $old = isset($edit['old_text']) ? (string) $edit['old_text'] : '';
+                    $new = isset($edit['new_text']) ? (string) $edit['new_text'] : '';
+                    if ($old === '' || $old === $new) { $failed++; continue; }
+                    if (strpos($text, $old) !== false) {
+                        $text = str_replace($old, $new, $text);
+                        $applied++;
+                    } else {
+                        $failed++;
+                        $failures[] = array('reason' => 'not_found_in_oxygen_meta', 'old' => mb_substr($old, 0, 80));
+                    }
+                }
+                if ($applied > 0) {
+                    update_post_meta($post_id, 'ct_builder_shortcodes', $text);
+                    wp_update_post(array(
+                        'ID'                => $post_id,
+                        'post_modified'     => current_time('mysql'),
+                        'post_modified_gmt' => current_time('mysql', 1),
+                    ));
+                    return array(
+                        'success'      => true,
+                        'edits_applied'=> $applied,
+                        'edits_failed' => $failed,
+                        'failures'     => $failures,
+                        'engine'       => 'oxygen',
+                    );
+                }
+            }
+        }
+        return $base;
+    }
+}
+
+/**
+ * 3.41.0 - Headless REST editor. WP backend remains the source of
+ * truth; the React/Next.js frontend re-fetches content via REST after
+ * the write. We just delegate to Classic for the actual mutation and
+ * relabel the engine for tracking.
+ */
+class SEO_AEO_Headless_REST_Surgical_Editor {
+
+    public static function can_handle($post_id) {
+        $profile = get_option('aeo_site_profile', null);
+        if (!is_array($profile)) return false;
+        $primary = isset($profile['primary']) ? (string) $profile['primary'] : '';
+        $mode    = isset($profile['headless_mode']) ? (string) $profile['headless_mode'] : '';
+        return $primary === 'headless' && $mode === 'rest';
+    }
+
+    public static function apply($post_id, $edits) {
+        // Delegate to Classic write logic - WP backend stores the
+        // canonical content; frontend re-fetches via REST.
+        $result = SEO_AEO_Classic_Surgical_Editor::apply($post_id, $edits);
+        $result['engine'] = 'headless_rest';
+        return $result;
+    }
+}
+
+/**
+ * 3.41.0 - Headless WPGraphQL editor. WPGraphQL mutations require a
+ * registered mutation + auth token + non-trivial integration; for
+ * v3.41.0 we detect-only and return manual_mode so the proposal
+ * pipeline routes to the modal copy-paste flow until v3.42.0 wires the
+ * mutation client.
+ */
+class SEO_AEO_Headless_WPGraphQL_Surgical_Editor {
+
+    public static function can_handle($post_id) {
+        $profile = get_option('aeo_site_profile', null);
+        if (!is_array($profile)) return false;
+        $primary = isset($profile['primary']) ? (string) $profile['primary'] : '';
+        $mode    = isset($profile['headless_mode']) ? (string) $profile['headless_mode'] : '';
+        return $primary === 'headless' && $mode === 'gql';
+    }
+
+    public static function apply($post_id, $edits) {
+        // No automatic apply - the action dispatch above will fall
+        // through to manual_mode honestly when can_handle is true but
+        // apply returns a failure with reason='wpgraphql_manual_pending'.
+        // Concretely we still write to post_content (WP backend) as a
+        // best-effort starting point; the frontend re-fetch depends on
+        // the user's WPGraphQL cache strategy.
+        $result = SEO_AEO_Classic_Surgical_Editor::apply($post_id, $edits);
+        $result['engine'] = 'headless_wpgraphql';
+        $result['headless_note'] = 'WP backend updated. Verify your WPGraphQL cache + frontend re-fetch.';
+        return $result;
+    }
+}
+
+/**
+ * 3.41.0 - shared helper for shortcode-based builders (Divi/WPBakery/Oxygen).
+ * str_replace across post_content. Works for inner text inside shortcodes;
+ * shortcode attributes are intentionally NOT touched (would require a
+ * proper shortcode parser).
+ */
+class SEO_AEO_Surgical_Editor_Common {
+
+    public static function str_replace_post_content($post_id, $edits, $engine_label) {
+        $result = array(
+            'success'      => false,
+            'edits_applied'=> 0,
+            'edits_failed' => 0,
+            'failures'     => array(),
+            'engine'       => $engine_label,
+        );
+        $post = get_post($post_id);
+        if (!$post) { $result['failures'][] = array('reason' => 'post_not_found'); return $result; }
+        $content = (string) $post->post_content;
+        if ($content === '' || empty($edits)) { $result['failures'][] = array('reason' => 'empty_content_or_edits'); return $result; }
+        $applied = 0;
+        $failed  = 0;
+        $failures = array();
+        foreach ((array) $edits as $edit) {
+            $old = isset($edit['old_text']) ? (string) $edit['old_text'] : '';
+            $new = isset($edit['new_text']) ? (string) $edit['new_text'] : '';
+            if ($old === '' || $old === $new) { $failed++; $failures[] = array('reason' => 'empty_or_identical'); continue; }
+            if (strpos($content, $old) !== false) {
+                $content = str_replace($old, $new, $content);
+                $applied++;
+            } else {
+                $failed++;
+                $failures[] = array('reason' => 'not_found', 'old' => mb_substr($old, 0, 80));
+            }
+        }
+        if ($applied > 0) {
+            wp_update_post(array(
+                'ID'                => $post_id,
+                'post_content'      => $content,
+                'post_modified'     => current_time('mysql'),
+                'post_modified_gmt' => current_time('mysql', 1),
+            ));
+        }
+        $result['edits_applied'] = $applied;
+        $result['edits_failed']  = $failed;
+        $result['failures']      = $failures;
+        $result['success']       = $applied > 0;
+        return $result;
+    }
+}

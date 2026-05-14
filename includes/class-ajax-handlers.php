@@ -1597,10 +1597,28 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 }
                 $builder_now = get_option('aeo_site_builder', 'unknown');
                 $editor_class = null;
-                if (class_exists('SEO_AEO_Gutenberg_Surgical_Editor') && SEO_AEO_Gutenberg_Surgical_Editor::can_handle($surgical_post_id)) {
-                    $editor_class = 'SEO_AEO_Gutenberg_Surgical_Editor';
-                } elseif (class_exists('SEO_AEO_Classic_Surgical_Editor') && SEO_AEO_Classic_Surgical_Editor::can_handle($surgical_post_id)) {
-                    $editor_class = 'SEO_AEO_Classic_Surgical_Editor';
+                // 3.41.0 - try builder-specific editors first (most specific to
+                // most generic), fall back to Gutenberg/Classic. Detection is
+                // mutually exclusive: an Elementor post has _elementor_data
+                // (Elementor wins), a Divi post has [et_pb_*] shortcodes (Divi
+                // wins after Elementor check), etc.
+                $aeo_editor_chain = array(
+                    'SEO_AEO_Headless_WPGraphQL_Surgical_Editor',
+                    'SEO_AEO_Headless_REST_Surgical_Editor',
+                    'SEO_AEO_Elementor_Surgical_Editor',
+                    'SEO_AEO_Divi_Surgical_Editor',
+                    'SEO_AEO_WPBakery_Surgical_Editor',
+                    'SEO_AEO_Beaver_Surgical_Editor',
+                    'SEO_AEO_Bricks_Surgical_Editor',
+                    'SEO_AEO_Oxygen_Surgical_Editor',
+                    'SEO_AEO_Gutenberg_Surgical_Editor',
+                    'SEO_AEO_Classic_Surgical_Editor',
+                );
+                foreach ($aeo_editor_chain as $aeo_candidate) {
+                    if (class_exists($aeo_candidate) && call_user_func(array($aeo_candidate, 'can_handle'), $surgical_post_id)) {
+                        $editor_class = $aeo_candidate;
+                        break;
+                    }
                 }
                 if (!$editor_class) {
                     wp_send_json(array(

@@ -44,11 +44,17 @@ class SEO_AEO_Capability_Matrix {
         'classic'       => array('surgical_text' => 'full',   'block_append' => 'full',    'schema' => 'full'),
         'gutenberg'     => array('surgical_text' => 'high',   'block_append' => 'full',    'schema' => 'full'),
         'elementor'     => array('surgical_text' => 'high',   'block_append' => 'medium',  'schema' => 'full'),
-        'divi'          => array('surgical_text' => 'medium', 'block_append' => 'medium',  'schema' => 'full'),
-        'wpbakery'      => array('surgical_text' => 'medium', 'block_append' => 'medium',  'schema' => 'full'),
-        'beaver'        => array('surgical_text' => 'medium', 'block_append' => 'medium',  'schema' => 'full'),
-        'bricks'        => array('surgical_text' => 'low',    'block_append' => 'low',     'schema' => 'full'),
-        'oxygen'        => array('surgical_text' => 'low',    'block_append' => 'low',     'schema' => 'full'),
+        'divi'          => array('surgical_text' => 'high',   'block_append' => 'medium',  'schema' => 'full'),
+        'wpbakery'      => array('surgical_text' => 'high',   'block_append' => 'medium',  'schema' => 'full'),
+        // 3.41.0 - per-builder surgical editor coverage upgrade.
+        // Numbers come from the per-builder capability targets in the
+        // v3.41.0 spec. surgical_text gets the highest mode the editor
+        // confidently supports; block_append degrades 1 tier because
+        // appending FAQ sections to opaque widget trees is harder than
+        // editing existing text.
+        'beaver'        => array('surgical_text' => 'high',   'block_append' => 'medium',  'schema' => 'full'),
+        'bricks'        => array('surgical_text' => 'medium', 'block_append' => 'low',     'schema' => 'full'),
+        'oxygen'        => array('surgical_text' => 'medium', 'block_append' => 'low',     'schema' => 'full'),
         'headless_rest' => array('surgical_text' => 'high',   'block_append' => 'high',    'schema' => 'full'),
         'headless_gql'  => array('surgical_text' => 'medium', 'block_append' => 'medium',  'schema' => 'full'),
         'headless_ssg'  => array('surgical_text' => 'manual', 'block_append' => 'manual',  'schema' => 'high'),

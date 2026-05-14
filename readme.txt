@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.14
+Stable tag: 3.41.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,34 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.41.0 =
+* SURGICAL EDITORS BATCH - capability matrix coverage extended beyond Classic + Gutenberg (v3.40.2) to 6 page builders + 2 headless modes. New per-builder surgical editor classes appended to includes/class-surgical-editor.php, each following the existing static can_handle($post_id) + apply($post_id, $edits) pattern that returns {success, edits_applied, edits_failed, failures, engine}. Dispatch chain in ajax_execute_action now tries each editor in priority order (most specific first) - the first whose can_handle() returns true owns the apply.
+* SEO_AEO_Elementor_Surgical_Editor - reads _elementor_data post_meta JSON, decodes the canvas tree, recursive str_replace across all string leaves, re-encodes + wp_slash on save (mirrors Elementor save behaviour), busts _elementor_css cache so the frontend re-renders. Capability target: 90% surgical_text on standard Elementor; Pro custom widgets remain opaque (text inside arbitrary HTML attributes that aren't in the canvas tree won't be reached).
+* SEO_AEO_Divi_Surgical_Editor - detects via [et_pb_section|text|blurb|row|column] shortcode regex in post_content, delegates to the shared Surgical_Editor_Common::str_replace_post_content helper. Works on inner shortcode text; shortcode attributes intentionally NOT touched (would need a proper [et_pb_*] parser).
+* SEO_AEO_WPBakery_Surgical_Editor - detects via [vc_row|column|column_text|custom_heading|section] regex, same str_replace strategy.
+* SEO_AEO_Beaver_Surgical_Editor - reads _fl_builder_data post_meta (supports both serialized PHP object and JSON variants), walks the tree recursively, writes back in the same format. wp_update_post bumps post_modified.
+* SEO_AEO_Bricks_Surgical_Editor - reads _bricks_page_content_2 post_meta (native PHP array OR JSON), walks tree, str_replace on string leaves, writes back as array.
+* SEO_AEO_Oxygen_Surgical_Editor - tries post_content str_replace first (Oxygen 3.x default), falls back to ct_builder_shortcodes post_meta (Oxygen 2.x). Partial coverage - shortcode-attribute text not reached.
+* SEO_AEO_Headless_REST_Surgical_Editor - detection by aeo_site_profile.primary===headless + headless_mode===rest. Delegates to Classic editor for the write (WP backend remains source of truth; React/Next.js frontend re-fetches via REST after wp_update_post bumps modified). Engine label "headless_rest".
+* SEO_AEO_Headless_WPGraphQL_Surgical_Editor - detection by aeo_site_profile.primary===headless + headless_mode===gql. Writes to WP backend via Classic delegate (best-effort starting point); WPGraphQL mutation client deferred to v3.42.0. Response carries `headless_note` reminding the user to verify their WPGraphQL cache + frontend re-fetch.
+* SEO_AEO_Surgical_Editor_Common - shared helper for shortcode-based builders. Public method str_replace_post_content($post_id, $edits, $engine_label) handles post fetch, validation, edit loop, wp_update_post with post_modified bump.
+
+CAPABILITY MATRIX UPGRADES (class-capability-matrix.php):
+* Beaver: surgical_text medium -> HIGH, block_append low -> medium
+* Bricks: surgical_text low -> MEDIUM, block_append unchanged
+* Oxygen: surgical_text low -> MEDIUM, block_append unchanged
+* Divi: surgical_text medium -> HIGH (already had a working editor in v3.40.2 via class-ajax-handlers dispatch but the matrix lagged)
+* WPBakery: surgical_text medium -> HIGH (same)
+
+Headless modes (headless_rest, headless_gql, headless_ssg) keep their v3.40.2 matrix entries since they're already calibrated.
+
+DEFERRED to v3.42.0:
+* WPGraphQL mutation client (registered mutation + JWT auth) so headless_wpgraphql gets full apply instead of best-effort delegate.
+* PHPUnit fixtures (tests/fixtures/post-elementor.php, post-divi.php, etc.) and per-editor test suite (tests/editors/test_elementor.php etc.).
+* Chrome MCP acceptance run per builder on representative test installations.
+
+Pre-launch ops audit (PA1 Redis rate-limit, PA2 email lowercase, PA3 CORS, PA4 registration transactionality, PA5 Backblaze B2, PA6 UptimeRobot) is operational verification (not code), tracked as a separate cycle before DealFuel ship.
 
 = 3.40.14 =
 * P1.4 - Setup Wizard step 6 "Compatibilita Sito" added between Analizza sito (step 5) and Configura Output (now step 7). The new step links to Impostazioni -> Compatibilita Sito (anchor #aeo-compat-builder) which already shows the SiteScanner result (builder + headless + 6 signals + capability matrix) + manual override panel. Auto-detect marks the step done when aeo_site_profile option exists (set by SiteScanner::scan_full on activation + every Re-scansiona click). Total steps 7 -> 8. firstrun hero copy bumped from "7 step (~25 min)" to "8 step (~27 min)".

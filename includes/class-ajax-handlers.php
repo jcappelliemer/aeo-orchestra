@@ -1711,7 +1711,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                             $schema_html = $sm[0];
                         }
                         if ($schema_html !== '') {
-                            update_post_meta($aeo_post_id, '_seo_aeo_custom_schema_html', wp_kses_post($schema_html));
+                            update_post_meta($aeo_post_id, '_seo_aeo_custom_schema_html', class_exists('SEO_AEO_Schema_Sanitizer') ? SEO_AEO_Schema_Sanitizer::sanitize($schema_html) : wp_kses_post($schema_html));
                             // 3.40.7 P0c - bump post_modified for REST verification.
                             wp_update_post(array(
                                 'ID' => $aeo_post_id,
@@ -1905,7 +1905,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                             $alias_schema = $sm[0];
                         }
                         if ($alias_schema !== '') {
-                            update_post_meta($aeo_alias_post_id, '_seo_aeo_custom_schema_html', wp_kses_post($alias_schema));
+                            update_post_meta($aeo_alias_post_id, '_seo_aeo_custom_schema_html', class_exists('SEO_AEO_Schema_Sanitizer') ? SEO_AEO_Schema_Sanitizer::sanitize($alias_schema) : wp_kses_post($alias_schema));
                             // 3.40.7 P0c - bump post_modified so the user can verify
                             // the change landed via REST GET /wp-json/wp/v2/<type>/N.
                             wp_update_post(array(

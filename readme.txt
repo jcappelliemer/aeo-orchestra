@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.41.0
+Stable tag: 3.41.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,11 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.41.1 =
+* HOTFIX - Schema <script> wrapper preserved. Found during v3.41.0 acceptance run on aeo-orchestra.com Page id=69: REST GET ?_fields=meta._seo_aeo_custom_schema_html returned 114-char bare JSON ({@context:https://schema.org,...}) instead of the expected 183-char <script type=application/ld+json>{...}</script> wrapper. Root cause: v3.40.6 wrote the meta via wp_kses_post() which strips ALL <script> tags by default for XSS safety, destroying the JSON-LD wrapper. When wp_head emitted the bare JSON in <head> the HTML was invalid and Google Rich Results would not parse it.
+* Fix: new SEO_AEO_Schema_Sanitizer helper class in class-surgical-editor.php uses wp_kses with a custom allowed-tag list ('script' with type/id/class attributes) plus a defensive preg_replace_callback that drops any <script> whose type is NOT application/ld+json (e.g. AI mistakenly emitting type=text/javascript). Safe-by-default - only JSON-LD <script> blocks survive.
+* Wired into the two schema persistence call sites in ajax_execute_action: the v3.40.6 GENERATE_SCHEMA branch in aeo_content case (line 1714) and the v3.40.7 schema_generator alias branch (line 1908). Both now read:  so the fallback covers any environment where the surgical-editor file failed to autoload.
 
 = 3.41.0 =
 * SURGICAL EDITORS BATCH - capability matrix coverage extended beyond Classic + Gutenberg (v3.40.2) to 6 page builders + 2 headless modes. New per-builder surgical editor classes appended to includes/class-surgical-editor.php, each following the existing static can_handle($post_id) + apply($post_id, $edits) pattern that returns {success, edits_applied, edits_failed, failures, engine}. Dispatch chain in ajax_execute_action now tries each editor in priority order (most specific first) - the first whose can_handle() returns true owns the apply.

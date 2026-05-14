@@ -792,3 +792,41 @@ class SEO_AEO_Surgical_Editor_Common {
         return $result;
     }
 }
+
+
+/**
+ * 3.41.1 - JSON-LD schema sanitizer. wp_kses_post() strips <script>
+ * tags from any content (WP allowed-tag list excludes script for XSS
+ * safety). For JSON-LD we explicitly need the <script type="application/ld+json">
+ * wrapper preserved. This helper uses wp_kses with a custom whitelist
+ * that allows ONLY application/ld+json script tags (no other script
+ * types, no inline JS) - safe-by-default.
+ */
+class SEO_AEO_Schema_Sanitizer {
+
+    public static function sanitize($schema_html) {
+        if (!is_string($schema_html) || $schema_html === '') return '';
+        $allowed = array(
+            'script' => array(
+                'type' => array(),  // allow type attribute (we filter value below)
+                'id'   => array(),
+                'class' => array(),
+            ),
+        );
+        $clean = wp_kses($schema_html, $allowed);
+        // Defensive: drop any <script> whose type is NOT
+        // application/ld+json (e.g. AI mistakenly emitted type="text/javascript").
+        $clean = preg_replace_callback(
+            '#<script\b([^>]*)>(.*?)</script>#si',
+            function ($m) {
+                $attrs = $m[1];
+                if (stripos($attrs, 'application/ld+json') === false) {
+                    return '';  // drop non-JSON-LD script blocks
+                }
+                return '<script' . $attrs . '>' . $m[2] . '</script>';
+            },
+            $clean
+        );
+        return (string) $clean;
+    }
+}

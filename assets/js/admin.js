@@ -2472,18 +2472,31 @@
                 // data-action-type so the backend dispatch can resolve the
                 // action_type even when the JSON parsing of data-action-data
                 // surfaces just the data subdict.
+                // 3.41.4 - double-quoted attribute + full HTML-attr escape
+                // (&, <, >, ", ') so JSON containing apostrophes / quotes /
+                // entities can't truncate or break parse. Per-field redundancy
+                // (data-post-id, data-url, data-keyword, data-topic) lets the
+                // dispatch handlers recover even if JSON.parse fails.
                 var planActionData = Object.assign({}, action.data || {}, action.action_type ? {action_type: action.action_type} : {});
+                var planAttrJson = String(JSON.stringify(planActionData)).replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'})[c]; });
+                var planAttrFallback = ''
+                    + ' data-post-id="' + (planActionData.post_id || 0) + '"'
+                    + ' data-url="' + String(planActionData.url || '').replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'})[c]; }) + '"'
+                    + ' data-keyword="' + String(planActionData.keyword || '').replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'})[c]; }) + '"'
+                    + ' data-topic="' + String(planActionData.topic || '').replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\u0027':'&#39;'})[c]; }) + '"';
                 planHtml += '<button type="button" class="button orch-action-btn orch-preview-btn" ';
                 planHtml += 'data-agent="' + (action.agent || '') + '" ';
                 planHtml += 'data-action-type="' + (action.action_type || '') + '" ';
-                planHtml += 'data-action-data=\'' + JSON.stringify(planActionData) + '\' ';
+                planHtml += 'data-action-data="' + planAttrJson + '" ';
+                planHtml += planAttrFallback + ' ';
                 planHtml += 'data-idx="' + idx + '" ';
                 planHtml += 'title="' + SeoAeoOrchestra.t('Anteprima delle modifiche prima di applicarle') + '">';
                 planHtml += '👁 ' + SeoAeoOrchestra.t('Mostra modifiche') + '</button> ';
                 planHtml += '<button type="button" class="button button-primary orch-action-btn orch-execute-btn" ';
                 planHtml += 'data-agent="' + (action.agent || '') + '" ';
                 planHtml += 'data-action-type="' + (action.action_type || '') + '" ';
-                planHtml += 'data-action-data=\'' + JSON.stringify(planActionData) + '\' ';
+                planHtml += 'data-action-data="' + planAttrJson + '" ';
+                planHtml += planAttrFallback + ' ';
                 planHtml += 'data-idx="' + idx + '">';
                 planHtml += '<span class="dashicons dashicons-controls-play"></span> ' + SeoAeoOrchestra.t('Esegui') + '</button>';
                 planHtml += '<div id="orch-action-result-' + idx + '" class="orch-action-result" style="display:none;"></div>';
@@ -2884,18 +2897,31 @@
                         var creditsLabel = credits ? ' (' + credits + ' cr)' : '';
                         // 3.39.6 — preview button precedes Esegui on Problemi cards too.
                         // 3.40.9 - emit data-action-type + fold into data-action-data.
+                        // 3.41.4 - double-quoted attribute + full HTML-attr
+                        // escape (&, <, >, ", ') so JSON with apostrophes /
+                        // entities can't truncate or break parse. Per-field
+                        // redundancy (data-post-id, data-url, data-keyword,
+                        // data-topic) lets dispatch handlers recover even if
+                        // JSON.parse fails.
                         var problemActionData = Object.assign({}, matchAction.data || {}, matchAction.action_type ? {action_type: matchAction.action_type} : {});
-                        var problemActionDataJson = JSON.stringify(problemActionData).replace(/\'/g, '&apos;');
+                        var problemAttrJson = escHtml(JSON.stringify(problemActionData));
+                        var problemAttrFallback = ''
+                            + ' data-post-id="' + (problemActionData.post_id || 0) + '"'
+                            + ' data-url="' + escHtml(String(problemActionData.url || '')) + '"'
+                            + ' data-keyword="' + escHtml(String(problemActionData.keyword || '')) + '"'
+                            + ' data-topic="' + escHtml(String(problemActionData.topic || '')) + '"';
                         out += '<button type="button" class="button orch-preview-btn orch-problem-preview" ';
                         out += 'data-agent="' + escHtml(matchAction.agent) + '" ';
                         out += 'data-action-type="' + escHtml(matchAction.action_type || '') + '" ';
-                        out += 'data-action-data=\'' + problemActionDataJson + '\' ';
+                        out += 'data-action-data="' + problemAttrJson + '" ';
+                        out += problemAttrFallback + ' ';
                         out += 'title="' + SeoAeoOrchestra.t('Anteprima delle modifiche prima di applicarle') + '">';
                         out += '👁 ' + SeoAeoOrchestra.t('Mostra modifiche') + '</button> ';
                         out += '<button type="button" class="button button-primary orch-execute-btn orch-problem-exec" ';
                         out += 'data-agent="' + escHtml(matchAction.agent) + '" ';
                         out += 'data-action-type="' + escHtml(matchAction.action_type || '') + '" ';
-                        out += 'data-action-data=\'' + problemActionDataJson + '\'>';
+                        out += 'data-action-data="' + problemAttrJson + '"';
+                        out += problemAttrFallback + '>';
                         out += '⚡ ' + SeoAeoOrchestra.t('Esegui automaticamente') + creditsLabel + '</button>';
                     }
                     out += '<button type="button" class="button orch-problem-toggle-pages" data-target="' + cardId + '-pages">';
@@ -3194,6 +3220,20 @@
             rawData = String(rawData).replace(/&apos;/g, "'");
             var actionData;
             try { actionData = JSON.parse(rawData); } catch (err) { actionData = {}; }
+            // 3.41.4 - per-attr fallback. If JSON.parse failed or returned an
+            // empty/truncated object, recover the essential fields from the
+            // separate data-post-id / data-url / data-keyword / data-topic
+            // attributes (added in the v3.41.4 renderer). This eliminates the
+            // class of bugs where HTML-attribute escaping clips the JSON.
+            if (!actionData || typeof actionData !== 'object') actionData = {};
+            var attrPostId = parseInt($btn.attr('data-post-id') || '0', 10);
+            var attrUrl = $btn.attr('data-url') || '';
+            var attrKeyword = $btn.attr('data-keyword') || '';
+            var attrTopic = $btn.attr('data-topic') || '';
+            if (!actionData.post_id && attrPostId > 0) actionData.post_id = attrPostId;
+            if (!actionData.url && attrUrl) actionData.url = attrUrl;
+            if (!actionData.keyword && attrKeyword) actionData.keyword = attrKeyword;
+            if (!actionData.topic && attrTopic) actionData.topic = attrTopic;
 
             if (agent === 'manual_review') {
                 SeoAeoOrchestra.showPreviewModal({
@@ -3513,7 +3553,23 @@
             e.preventDefault();
             var $btn = $(this);
             var agent = $btn.data('agent');
-            var actionData = $btn.data('action-data');
+            // 3.41.4 - read from raw attribute + manual JSON.parse so we can
+            // catch parse failures and fall back to per-attr reads. jQuery's
+            // $.data() auto-parses but silently returns the raw string on
+            // failure, which leads to empty payloads reaching the backend.
+            var rawData = $btn.attr('data-action-data') || '{}';
+            rawData = String(rawData).replace(/&apos;/g, "'");
+            var actionData;
+            try { actionData = JSON.parse(rawData); } catch (err) { actionData = {}; }
+            if (!actionData || typeof actionData !== 'object') actionData = {};
+            var attrPostId = parseInt($btn.attr('data-post-id') || '0', 10);
+            var attrUrl = $btn.attr('data-url') || '';
+            var attrKeyword = $btn.attr('data-keyword') || '';
+            var attrTopic = $btn.attr('data-topic') || '';
+            if (!actionData.post_id && attrPostId > 0) actionData.post_id = attrPostId;
+            if (!actionData.url && attrUrl) actionData.url = attrUrl;
+            if (!actionData.keyword && attrKeyword) actionData.keyword = attrKeyword;
+            if (!actionData.topic && attrTopic) actionData.topic = attrTopic;
             var actionType = $btn.data('action-type') || (actionData && actionData.action_type) || '';
             var idx = $btn.data('idx');
             // 3.40.8 P0c-A - resolve a result container that ALWAYS exists.

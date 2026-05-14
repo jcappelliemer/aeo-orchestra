@@ -113,6 +113,15 @@ if (empty($prefill_topic) && !empty($prefill_keyword)) {
                 <small style="opacity:0.9;font-weight:400;margin-left:6px;">(<?php SEO_AEO_T::e('testo + immagine + meta'); ?>)</small>
                 — <span class="credit-cost" data-cost-key="complete_article">25</span> <?php SEO_AEO_T::e('crediti'); ?>
             </button>
+            <?php else: ?>
+            <?php // 3.40.14 P1.8 - Upgrade CTA so Standard users see the gated feature + path to unlock. ?>
+            <a href="<?php echo esc_url('https://aeo-orchestra.com/upgrade?plan=premium'); ?>" target="_blank" rel="noopener"
+               style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;text-decoration:none;font-size:13px;font-weight:600;margin-right:8px;">
+                <span class="dashicons dashicons-lock"></span>
+                🌟 <?php SEO_AEO_T::e('Sblocca Articolo Completo AI'); ?>
+                <small style="opacity:0.9;font-weight:400;">(<?php SEO_AEO_T::e('testo + immagine + meta — disponibile su piano Premium'); ?>)</small>
+                — <?php SEO_AEO_T::e('Upgrade Premium →'); ?>
+            </a>
             <?php endif; ?>
 
             <button type="button"

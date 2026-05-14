@@ -37,6 +37,10 @@ class SEO_AEO_Setup_Progress {
         'keyword_research',
         'brand_voice',
         'orchestrator',
+        // 3.40.14 P1.4 - Compatibilita Sito step. Mark done when the
+        // SiteScanner profile (aeo_site_profile option) exists. The user
+        // edits override + re-scans from Impostazioni -> Compatibilita Sito.
+        'site_compat',
         'native_output',
         'auto_pilot',
     );
@@ -203,6 +207,16 @@ class SEO_AEO_Setup_Progress {
 
             case 'orchestrator':
                 return self::history_has('orchestrator') || self::history_has('analysis');
+
+            case 'site_compat':
+                // 3.40.14 - done when the SiteScanner has run at least once.
+                // aeo_site_profile is written by SEO_AEO_Site_Scanner::scan_full,
+                // which runs on plugin activation (v3.40.2) and on every
+                // Re-scansiona click. Existing installations may not have it
+                // until the first manual rescan, in which case the step shows
+                // as TODO with the "Apri Impostazioni" button.
+                $profile = get_option('aeo_site_profile', null);
+                return is_array($profile) && !empty($profile['builder']);
 
             case 'native_output':
                 return (bool) get_option('seo_aeo_native_output_enabled', false);

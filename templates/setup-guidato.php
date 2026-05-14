@@ -119,8 +119,23 @@ $steps_catalog = array(
         'skippable' => false,
         'badge'     => $T('PRIMA PAGINA GRATIS'),
     ),
-    'native_output' => array(
+    'site_compat' => array(
         'num'      => 6,
+        'icon'     => '🧩',
+        'title'    => $T('Compatibilità Sito'),
+        'time'     => '2 min',
+        'cost'     => $T('gratis'),
+        'desc'     => $T('Verifica come AEO Orchestra interagisce col tuo ambiente: page builder rilevato, modalità headless, capacità per ogni azione AI. Sovrascrivi manualmente se la detection è sbagliata.'),
+        'outcomes' => array(
+            $T('Page builder identificato (Classic/Gutenberg/Elementor/Divi/...)'),
+            $T('Headless detection con 6 segnali + confidence score'),
+            $T('Capability matrix per azione (Schema/FAQ/Intro/Authority)'),
+        ),
+        'url'      => admin_url('admin.php?page=seo-aeo-settings#aeo-compat-builder'),
+        'skippable' => true,
+    ),
+    'native_output' => array(
+        'num'      => 7,
         'icon'     => '⚡',
         'title'    => $T('Configura SEO + AEO Output'),
         'time'     => '2 min',
@@ -135,7 +150,7 @@ $steps_catalog = array(
         'skippable' => false,
     ),
     'auto_pilot' => array(
-        'num'      => 7,
+        'num'      => 8,
         'icon'     => '🤖',
         'title'    => $T('Pianifica produzione contenuti'),
         'time'     => '5 min setup',
@@ -160,7 +175,7 @@ $progress_pct = $total_steps > 0 ? round(($done_count / $total_steps) * 100) : 0
     <section class="orch-setup-firstrun-hero">
         <div class="orch-setup-firstrun-inner">
             <h1 class="orch-setup-firstrun-title">🎉 <?php echo esc_html($T('Benvenuto in AEO Orchestra!')); ?></h1>
-            <p class="orch-setup-firstrun-sub"><?php echo esc_html($T('In 7 step (~25 min) configuriamo il plugin sul tuo sito così il tuo brand sia visibile sia su Google che su ChatGPT, Claude, Perplexity, Gemini.')); ?></p>
+            <p class="orch-setup-firstrun-sub"><?php echo esc_html($T('In 8 step (~27 min) configuriamo il plugin sul tuo sito così il tuo brand sia visibile sia su Google che su ChatGPT, Claude, Perplexity, Gemini.')); ?></p>
             <p class="orch-setup-firstrun-gift">⭐ <strong><?php echo esc_html($T('La prima analisi della home è gratis')); ?></strong> — <?php echo esc_html($T('offerta da AEO Orchestra')); ?></p>
             <div class="orch-setup-firstrun-cta">
                 <button type="button" class="orch3-btn orch3-btn-primary orch3-btn-large" id="orch-setup-firstrun-start">→ <?php echo esc_html($T('Inizia il setup')); ?></button>

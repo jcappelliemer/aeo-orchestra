@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.13
+Stable tag: 3.40.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,15 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.14 =
+* P1.4 - Setup Wizard step 6 "Compatibilita Sito" added between Analizza sito (step 5) and Configura Output (now step 7). The new step links to Impostazioni -> Compatibilita Sito (anchor #aeo-compat-builder) which already shows the SiteScanner result (builder + headless + 6 signals + capability matrix) + manual override panel. Auto-detect marks the step done when aeo_site_profile option exists (set by SiteScanner::scan_full on activation + every Re-scansiona click). Total steps 7 -> 8. firstrun hero copy bumped from "7 step (~25 min)" to "8 step (~27 min)".
+* P1.8 - Upgrade Premium CTA in content-generator.php. The "Articolo Completo AI" button was wrapped in `if (\$is_premium)` and Standard users saw nothing - no indication the feature exists, no path to unlock. v3.40.14 adds an `else` branch that renders an "Sblocca Articolo Completo AI - Upgrade Premium ->" CTA linking to https://aeo-orchestra.com/upgrade?plan=premium. Same gradient styling, lock icon, opens in new tab.
+* P1.9 audit - the existing step rendering at templates/setup-guidato.php:415-435 correctly handles done/skipped/todo branches with either an "Apri Step" link (when cat.url is set) or an inline "Compila ora" button (when cat.inline is true). All 8 catalog entries set one of those fields, so every step renders a button. The "missing buttons on step 6/7" symptom reported earlier could not be reproduced from the code path - likely a CSS visibility issue tied to a specific page state. The orch-setup-step-preview "Dati salvati" block already renders inline per-step summary when previews[sid] is populated (a parallel store auto-filled from BP / Brand Voice / etc. state).
+
+DEFERRED to v3.41.0 - per-builder surgical editors batch (Elementor / Divi / WPBakery / Beaver / Bricks / Oxygen + headless WPGraphQL / SSG modes), ~7-10h plus PHPUnit fixtures.
+
+Pre-launch ops audit (PA1 Redis rate-limit, PA2 email lowercase, PA3 CORS, PA4 registration transactionality, PA5 Backblaze B2, PA6 UptimeRobot) is operational verification (not code), tracked as a separate cycle before DealFuel ship.
 
 = 3.40.13 =
 * P1.13 - Frontend SEO fallback banner. v3.40.12 wired the backend refund + tracker fields (`_llm_failed`, `_fallback_reason`, `_refunded`, `_refunded_credits`) on /ai/analyze symmetric to v3.40.5 AEO. v3.40.13 adds the matching frontend banner in displayAnalysisResults so SEO retry-exhausted responses now render the same red banner used by displayAEOResults: "Analisi SEO non completata - l'AI non ha rispettato lo schema dopo 5 tentativi (motivo: <reason>). N crediti rimborsati automaticamente. Riprova tra qualche minuto." Wallet UI auto-refreshes via fetchCredits().

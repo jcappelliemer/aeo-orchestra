@@ -1683,13 +1683,34 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     // schema endpoint which returns only the <script ld+json>
                     // block - no 12KB article rewrite.
                     if ($action_type === 'GENERATE_SCHEMA') {
+                        // 3.41.3 - defensive context resolution. If post_id is
+                        // 0 (analyze flow on a URL that didn't resolve to a
+                        // WP post), try url_to_postid; if still 0, derive
+                        // page_title from $data['topic'] or URL host so the
+                        // backend never receives an empty payload.
+                        $sg_url = isset($data['url']) ? (string) $data['url'] : '';
+                        $sg_topic = isset($data['topic']) ? (string) $data['topic'] : '';
+                        $sg_issue = isset($data['issue']) ? (string) $data['issue'] : '';
+                        if ($aeo_post_id <= 0 && $sg_url) {
+                            $sg_resolved = function_exists('url_to_postid') ? url_to_postid($sg_url) : 0;
+                            if ($sg_resolved > 0) $aeo_post_id = $sg_resolved;
+                        }
                         $aeo_page = $aeo_post_id > 0 ? get_post($aeo_post_id) : null;
+                        $sg_title = $aeo_page ? (string) $aeo_page->post_title : '';
+                        if ($sg_title === '') $sg_title = $sg_topic;
+                        if ($sg_title === '' && $sg_url) {
+                            $sg_host = wp_parse_url($sg_url, PHP_URL_HOST);
+                            if ($sg_host) $sg_title = (string) $sg_host;
+                        }
+                        $sg_page_url = $aeo_post_id > 0 ? (string) get_permalink($aeo_post_id) : $sg_url;
+                        $sg_body = $aeo_page ? substr(wp_strip_all_tags((string) $aeo_page->post_content), 0, 2000) : '';
+                        if ($sg_body === '') $sg_body = $sg_issue;
                         $result = $api->api_request('/ai/generate-schema', array(
-                            'page_title'  => $aeo_page ? (string) $aeo_page->post_title : '',
-                            'page_url'    => $aeo_post_id > 0 ? (string) get_permalink($aeo_post_id) : '',
+                            'page_title'  => $sg_title,
+                            'page_url'    => $sg_page_url,
                             'keyword'     => $keyword,
-                            'body_text'   => $aeo_page ? substr(wp_strip_all_tags((string) $aeo_page->post_content), 0, 2000) : '',
-                            'h1'          => $aeo_page ? (string) $aeo_page->post_title : '',
+                            'body_text'   => $sg_body,
+                            'h1'          => $sg_title,
                             'schema_type_hint' => 'WebPage',
                             'language'    => $this->get_ai_language(),
                         ));
@@ -1838,13 +1859,30 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     // /ai/generate-schema endpoint for JSON-LD only output.
                     // All other aliases keep using /ai/aeo-content.
                     if ($agent_for_dispatch === 'schema_generator' || $action_type === 'GENERATE_SCHEMA') {
+                        // 3.41.3 - same defensive context resolution as site #1.
+                        $sga_url = isset($data['url']) ? (string) $data['url'] : '';
+                        $sga_topic = isset($data['topic']) ? (string) $data['topic'] : '';
+                        $sga_issue = isset($data['issue']) ? (string) $data['issue'] : '';
+                        if ($aeo_alias_post_id <= 0 && $sga_url) {
+                            $sga_resolved = function_exists('url_to_postid') ? url_to_postid($sga_url) : 0;
+                            if ($sga_resolved > 0) $aeo_alias_post_id = $sga_resolved;
+                        }
                         $aeo_alias_page = $aeo_alias_post_id > 0 ? get_post($aeo_alias_post_id) : null;
+                        $sga_title = $aeo_alias_page ? (string) $aeo_alias_page->post_title : '';
+                        if ($sga_title === '') $sga_title = $sga_topic;
+                        if ($sga_title === '' && $sga_url) {
+                            $sga_host = wp_parse_url($sga_url, PHP_URL_HOST);
+                            if ($sga_host) $sga_title = (string) $sga_host;
+                        }
+                        $sga_page_url = $aeo_alias_post_id > 0 ? (string) get_permalink($aeo_alias_post_id) : $sga_url;
+                        $sga_body = $aeo_alias_page ? substr(wp_strip_all_tags((string) $aeo_alias_page->post_content), 0, 2000) : '';
+                        if ($sga_body === '') $sga_body = $sga_issue;
                         $alias_result = $api->api_request('/ai/generate-schema', array(
-                            'page_title'  => $aeo_alias_page ? (string) $aeo_alias_page->post_title : '',
-                            'page_url'    => $aeo_alias_post_id > 0 ? (string) get_permalink($aeo_alias_post_id) : '',
+                            'page_title'  => $sga_title,
+                            'page_url'    => $sga_page_url,
                             'keyword'     => $aeo_keyword,
-                            'body_text'   => $aeo_alias_page ? substr(wp_strip_all_tags((string) $aeo_alias_page->post_content), 0, 2000) : '',
-                            'h1'          => $aeo_alias_page ? (string) $aeo_alias_page->post_title : '',
+                            'body_text'   => $sga_body,
+                            'h1'          => $sga_title,
                             'schema_type_hint' => 'WebPage',
                             'language'    => $this->get_ai_language(),
                         ));

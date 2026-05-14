@@ -1848,7 +1848,13 @@
                 $.each(items, function(i, item) {
                     html += '<div class="history-item" data-type="' + (item.type || '') + '" data-idx="' + i + '">';
                     html += '<div style="flex:1;cursor:pointer;" onclick="jQuery(this).parent().next(\'.history-detail\').slideToggle(200);">';
-                    html += '<span class="hi-title">' + (item.title || SeoAeoOrchestra.t('Senza titolo')) + '</span><br>';
+                    // 3.40.12 P1.10-bis - normalize legacy stored titles for count=1.
+                    var hiTitle = item.title || SeoAeoOrchestra.t('Senza titolo');
+                    hiTitle = String(hiTitle)
+                        .replace(/^1 pagine analizzate$/, '1 pagina analizzata')
+                        .replace(/^1 pagine analizzate (.*)$/, '1 pagina analizzata $1')
+                        .replace(/^Analisi completata! 1 pagine analizzate,/, 'Analisi completata! 1 pagina analizzata,');
+                    html += '<span class="hi-title">' + hiTitle + '</span><br>';
                     html += '<span class="hi-meta">' + (item.date || '') + ' &mdash; ' + (item.type || '') + '</span>';
                     html += '</div>';
                     html += '<div style="display:flex;align-items:center;gap:8px;">';

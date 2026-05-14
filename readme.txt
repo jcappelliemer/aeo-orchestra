@@ -4,7 +4,7 @@ Tags: seo, aeo, llms-txt, schema, chatgpt
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 3.40.11
+Stable tag: 3.40.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -105,6 +105,12 @@ Open a ticket on the [WordPress.org support forum](https://wordpress.org/support
 5. Service plans: tier comparison for AI generation, Brand Voice and analytics
 
 == Changelog ==
+
+= 3.40.12 =
+* P1.10-bis - Cronologia singular at render time. v3.40.11 patched the three saveHistory callsites in admin.js to encode the singular form at save time, but EXISTING history rows (stored before v3.40.11) still carry the literal "1 pagine analizzate" string. The render path now normalizes legacy titles at display time via three regex transforms (matches "^1 pagine analizzate$", "^1 pagine analizzate <suffix>$", and the completion-toast variant "^Analisi completata! 1 pagine analizzate,"). Retroactive fix - all existing history entries with count=1 now read "1 pagina analizzata" without DB migration. New entries continue to encode singular at save time.
+* P1.13 - SEO fallback refund + per-tier tracking. v3.40.5 wired the auto-refund + api_logs tracker fields (`aeo_fallback`, `aeo_refunded`, `aeo_tier`, `aeo_retry_log`, `aeo_fallback_reason`) for /ai/aeo-analyze. v3.40.12 extends the same pattern to /ai/analyze (SEO): when HARDCODED_SEO_FALLBACK fires, wallet.add_credits refunds credit_cost with source="seo_fallback_refund", api_logs gets parallel fields (`seo_fallback`, `seo_refunded`, `seo_tier`, `seo_fallback_reason`), credits_consumed = 0 when refunded. Response carries `_refunded:true` + `_refunded_credits:N` + `_fallback_reason` for the frontend banner.
+* DEFERRED to v3.40.13 - P1.4 Setup Wizard step 6 "Compatibilita Sito" (wizard refactor), P1.6 chart "Consumo Giornaliero" bar value rendering (needs visual debug to reproduce the merged-text symptom), P1.8 Premium upgrade CTAs (locate every premium gate marker), P1.9 Setup step 6/7 button visibility + completed-step inline summaries, P1.10 (residual) "Pesca da Research <N>" dynamic ID (requires backend endpoint exposing latest research job_id). Frontend banner for SEO fallback symmetric to displayAEOResults banner also pending v3.40.13.
+* DEFERRED to v3.41.0 - per-builder surgical editors (Elementor / Divi / WPBakery / Beaver / Bricks / Oxygen + headless WPGraphQL / SSG modes).
 
 = 3.40.11 =
 * P1.1 - Si -> Si with accent in the Compatibilita Sito section. The headless row affirmative read "Si (rest)" (no accent); both the PHP render and the JS reload path now read "Si" with proper Italian accent (Yes affirmation).

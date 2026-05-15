@@ -1468,19 +1468,24 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             $page_url_for_ai   = $post_id > 0 ? (string) get_permalink($post_id) : $url;
             $body_text_for_ai  = $page ? substr(wp_strip_all_tags((string) $page->post_content), 0, 2000) : $issue;
 
-            // 3.41.7 - hard guard on content_generator (Tier DANGER).
-            // The Orchestratore must NEVER invoke content_generator directly;
-            // it lives behind a dedicated multi-step flow (v3.41.8) with
-            // typed-confirm + auto-backup. Reject 403 on any caller missing
-            // the explicit confirmation flag.
+            // 3.41.8 - hard 403 guard on content_generator (Tier DANGER).
+            // Tightened from v3.41.7 to use wp_send_json_error + explicit
+            // status_header so the response is HTTP 403 (not 200 with a
+            // payload), and accept the dedicated flow's request_origin marker.
             if ($agent === 'content_generator' || $action_type === 'EXPAND_CONTENT' || $action_type === 'REGENERATE_CONTENT') {
                 $typed_confirm = isset($_POST['typed_confirm']) ? sanitize_text_field(wp_unslash($_POST['typed_confirm'])) : '';
-                if ($typed_confirm !== 'riscrivi') {
-                    wp_send_json(array(
-                        'error'      => 'forbidden_tier_danger',
-                        'tier'       => 'DANGER',
-                        'action_type'=> $action_type,
-                        'message'    => 'Questa azione richiede il flow dedicato "Rigenera intera pagina" con conferma esplicita. Disponibile dalla v3.41.8.',
+                $request_origin = isset($_POST['request_origin']) ? sanitize_text_field(wp_unslash($_POST['request_origin'])) : '';
+                $is_dedicated = ($request_origin === 'content_regenerate_dedicated_flow') && (strtolower(trim($typed_confirm)) === 'riscrivi');
+                if (!$is_dedicated) {
+                    if (function_exists('seo_aeo_debug_log')) {
+                        seo_aeo_debug_log('[v3.41.8] 403 forbidden_path on preview: agent=' . $agent . ' action_type=' . $action_type . ' origin=' . $request_origin);
+                    }
+                    status_header(403);
+                    wp_send_json_error(array(
+                        'code'        => 'forbidden_path',
+                        'tier'        => 'DANGER',
+                        'action_type' => $action_type,
+                        'message'     => 'Questa azione e\' disponibile solo dal flow dedicato "Rigenera intera pagina".',
                     ), 403);
                     return;
                 }
@@ -1676,18 +1681,23 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             if (!$api) return;
             $agent = isset($_POST['agent']) ? sanitize_text_field(wp_unslash($_POST['agent'])) : '';
             $data = isset($_POST['action_data']) ? (array)$_POST['action_data'] : array();
-            // 3.41.7 - Tier DANGER hard guard (mirrors ajax_preview_action).
-            // content_generator / EXPAND_CONTENT / REGENERATE_CONTENT require
-            // typed_confirm='riscrivi' to proceed. Without it: 403.
-            $aeo_v3417_action_type_peek = isset($_POST['action_type']) ? sanitize_text_field(wp_unslash($_POST['action_type'])) : '';
-            if ($agent === 'content_generator' || $aeo_v3417_action_type_peek === 'EXPAND_CONTENT' || $aeo_v3417_action_type_peek === 'REGENERATE_CONTENT') {
-                $aeo_v3417_typed_confirm = isset($_POST['typed_confirm']) ? sanitize_text_field(wp_unslash($_POST['typed_confirm'])) : '';
-                if ($aeo_v3417_typed_confirm !== 'riscrivi') {
-                    wp_send_json(array(
-                        'error'      => 'forbidden_tier_danger',
-                        'tier'       => 'DANGER',
-                        'action_type'=> $aeo_v3417_action_type_peek,
-                        'message'    => 'Questa azione richiede il flow dedicato "Rigenera intera pagina" con conferma esplicita. Disponibile dalla v3.41.8.',
+            // 3.41.8 - Tier DANGER hard guard (mirrors ajax_preview_action).
+            // Real 403 status + origin marker acceptance.
+            $aeo_v3418_action_type_peek = isset($_POST['action_type']) ? sanitize_text_field(wp_unslash($_POST['action_type'])) : '';
+            if ($agent === 'content_generator' || $aeo_v3418_action_type_peek === 'EXPAND_CONTENT' || $aeo_v3418_action_type_peek === 'REGENERATE_CONTENT') {
+                $aeo_v3418_typed_confirm = isset($_POST['typed_confirm']) ? sanitize_text_field(wp_unslash($_POST['typed_confirm'])) : '';
+                $aeo_v3418_request_origin = isset($_POST['request_origin']) ? sanitize_text_field(wp_unslash($_POST['request_origin'])) : '';
+                $aeo_v3418_is_dedicated = ($aeo_v3418_request_origin === 'content_regenerate_dedicated_flow') && (strtolower(trim($aeo_v3418_typed_confirm)) === 'riscrivi');
+                if (!$aeo_v3418_is_dedicated) {
+                    if (function_exists('seo_aeo_debug_log')) {
+                        seo_aeo_debug_log('[v3.41.8] 403 forbidden_path on execute: agent=' . $agent . ' action_type=' . $aeo_v3418_action_type_peek . ' origin=' . $aeo_v3418_request_origin);
+                    }
+                    status_header(403);
+                    wp_send_json_error(array(
+                        'code'        => 'forbidden_path',
+                        'tier'        => 'DANGER',
+                        'action_type' => $aeo_v3418_action_type_peek,
+                        'message'     => 'Questa azione e\' disponibile solo dal flow dedicato "Rigenera intera pagina".',
                     ), 403);
                     return;
                 }
@@ -4117,7 +4127,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
      * Bug originale (auto-draft): WP rifiuta serve preview di post in stato 'auto-draft'
      * (sono placeholder, ritornano 404 quando ci si naviga). Fix: usiamo 'draft' standard
      * + marker meta `_seo_aeo_preview_only=1`. Pulizia: il garbage collector
-     * (`maybe_cleanup_preview_drafts`) cancella i draft con quel marker più' vecchi di 24h.
+     * (`maybe_cleanup_preview_drafts`) cancella i draft con quel marker più vecchi di 24h.
      */
     public function ajax_create_preview_draft() {
         try {
@@ -4192,7 +4202,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
     }
 
     /**
-     * Cancella le bozze marcate come "preview only" più' vecchie di 24h.
+     * Cancella le bozze marcate come "preview only" più vecchie di 24h.
      * Limite di sicurezza: max 50 cancellazioni per chiamata.
      */
     public static function cleanup_preview_drafts() {

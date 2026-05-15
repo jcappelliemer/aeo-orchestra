@@ -66,6 +66,7 @@ class SEO_AEO_Orchestra_Admin_UI {
 
         // ─── CREAZIONE ───
         add_submenu_page('seo-aeo-orchestra', $tt('Orchestratore'),           $tt('🎯 Orchestratore'),           'manage_options', 'seo-aeo-orchestratore',       array($this, 'render_admin_page'),           38);
+        add_submenu_page('seo-aeo-orchestra', $tt('Rigenera intera pagina'),  $tt('🔥 Rigenera intera pagina'),  'manage_options', 'seo-aeo-content-regenerate',  array('SEO_AEO_Regenerate_Content', 'render_page'), 39); // 3.41.8 DANGER flow
         add_submenu_page('seo-aeo-orchestra', $tt('Brand Voice'),             $tt('🎙️ Brand Voice'),             'manage_options', 'seo-aeo-brand-voice',         array($this, 'render_brand_voice_page'),     110);
         add_submenu_page('seo-aeo-orchestra', $tt('Contenuti AEO'),           $tt('💬 Contenuti AEO'),           'manage_options', 'seo-aeo-aeo-content',         array($this, 'render_aeo_content_page'),     120);
         add_submenu_page('seo-aeo-orchestra', $tt('Contenuti AI'),            $tt('✨ Contenuti AI'),            'manage_options', 'seo-aeo-content',             array($this, 'render_content_page'),         130);

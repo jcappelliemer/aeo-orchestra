@@ -55,7 +55,7 @@ class SEO_AEO_Classic_Surgical_Editor {
      * @param array $edits   list of {old_text, new_text, tag_type?}
      * @return array         result shape (see file header)
      */
-    public static function apply($post_id, $edits) {
+    public static function apply($post_id, $edits, $dry_run = false) {
         $result = array(
             'success'      => false,
             'edits_applied'=> 0,
@@ -107,6 +107,16 @@ class SEO_AEO_Classic_Surgical_Editor {
         }
 
         if ($result['edits_applied'] === 0) {
+            return $result;
+        }
+
+        // 3.41.9 M1 — dry_run short-circuit: return preview shape before writing.
+        if ($dry_run) {
+            $result['dry_run']  = true;
+            $result['preview']  = true;
+            $result['current']  = array('post_content' => $content);
+            $result['proposed'] = array('post_content' => $modified);
+            $result['success']  = true;
             return $result;
         }
 
@@ -190,7 +200,7 @@ class SEO_AEO_Gutenberg_Surgical_Editor {
         return has_blocks($post->post_content);
     }
 
-    public static function apply($post_id, $edits) {
+    public static function apply($post_id, $edits, $dry_run = false) {
         $result = array(
             'success'      => false,
             'edits_applied'=> 0,
@@ -236,6 +246,15 @@ class SEO_AEO_Gutenberg_Surgical_Editor {
         }
 
         $new_content = serialize_blocks($blocks);
+        // 3.41.9 M1 — dry_run short-circuit (Gutenberg).
+        if ($dry_run) {
+            $result['dry_run']  = true;
+            $result['preview']  = true;
+            $result['current']  = array('post_content' => $post->post_content);
+            $result['proposed'] = array('post_content' => $new_content);
+            $result['success']  = true;
+            return $result;
+        }
         $update = wp_update_post(array(
             'ID'           => $post_id,
             'post_content' => $new_content,
@@ -363,7 +382,7 @@ class SEO_AEO_Elementor_Surgical_Editor {
         return !empty($data);
     }
 
-    public static function apply($post_id, $edits) {
+    public static function apply($post_id, $edits, $dry_run = false) {
         $result = array(
             'success'      => false,
             'edits_applied'=> 0,
@@ -399,6 +418,15 @@ class SEO_AEO_Elementor_Surgical_Editor {
             $encoded = wp_json_encode($tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             if (is_string($encoded)) {
                 // Elementor uses wp_slash on save - mirror that here.
+                // 3.41.9 M1 — dry_run short-circuit (Elementor).
+                if ($dry_run) {
+                    $result['dry_run']  = true;
+                    $result['preview']  = true;
+                    $result['current']  = array('_elementor_data' => $raw);
+                    $result['proposed'] = array('_elementor_data' => $encoded);
+                    $result['success']  = true;
+                    return $result;
+                }
                 update_post_meta($post_id, '_elementor_data', wp_slash($encoded));
                 wp_update_post(array(
                     'ID'                => $post_id,
@@ -446,13 +474,11 @@ class SEO_AEO_Divi_Surgical_Editor {
     public static function can_handle($post_id) {
         $post = get_post($post_id);
         if (!$post) return false;
-        // Divi posts use [et_pb_*] shortcodes throughout post_content.
-        // Detection: at least one [et_pb_section] / [et_pb_text] shortcode.
         return (bool) preg_match('/\[et_pb_(?:section|text|blurb|row|column)/i', (string) $post->post_content);
     }
 
-    public static function apply($post_id, $edits) {
-        return SEO_AEO_Surgical_Editor_Common::str_replace_post_content($post_id, $edits, 'divi');
+    public static function apply($post_id, $edits, $dry_run = false) {
+        return SEO_AEO_Surgical_Editor_Common::str_replace_post_content($post_id, $edits, 'divi', $dry_run);
     }
 }
 
@@ -461,12 +487,11 @@ class SEO_AEO_WPBakery_Surgical_Editor {
     public static function can_handle($post_id) {
         $post = get_post($post_id);
         if (!$post) return false;
-        // WPBakery posts use [vc_*] shortcodes throughout post_content.
         return (bool) preg_match('/\[vc_(?:row|column|column_text|custom_heading|section)/i', (string) $post->post_content);
     }
 
-    public static function apply($post_id, $edits) {
-        return SEO_AEO_Surgical_Editor_Common::str_replace_post_content($post_id, $edits, 'wpbakery');
+    public static function apply($post_id, $edits, $dry_run = false) {
+        return SEO_AEO_Surgical_Editor_Common::str_replace_post_content($post_id, $edits, 'wpbakery', $dry_run);
     }
 }
 
@@ -479,7 +504,7 @@ class SEO_AEO_Beaver_Surgical_Editor {
         return !empty($data);
     }
 
-    public static function apply($post_id, $edits) {
+    public static function apply($post_id, $edits, $dry_run = false) {
         $result = array(
             'success'      => false,
             'edits_applied'=> 0,
@@ -521,8 +546,25 @@ class SEO_AEO_Beaver_Surgical_Editor {
         }
         if ($applied > 0) {
             if ($is_json) {
+                // 3.41.9 M1 — dry_run guard for Beaver (returns proposed before write).
+                if ($dry_run) {
+                    $result['dry_run']  = true;
+                    $result['preview']  = true;
+                    $result['current']  = array(self::META_KEY => $orig);
+                    $result['proposed'] = array(self::META_KEY => $arr);
+                    $result['success']  = true;
+                    return $result;
+                }
                 update_post_meta($post_id, self::META_KEY, wp_json_encode($arr));
             } else {
+                if ($dry_run) {
+                    $result['dry_run']  = true;
+                    $result['preview']  = true;
+                    $result['current']  = array(self::META_KEY => $orig);
+                    $result['proposed'] = array(self::META_KEY => $arr);
+                    $result['success']  = true;
+                    return $result;
+                }
                 update_post_meta($post_id, self::META_KEY, $arr);
             }
             wp_update_post(array(
@@ -566,7 +608,7 @@ class SEO_AEO_Bricks_Surgical_Editor {
         return !empty($data);
     }
 
-    public static function apply($post_id, $edits) {
+    public static function apply($post_id, $edits, $dry_run = false) {
         $result = array(
             'success'      => false,
             'edits_applied'=> 0,
@@ -597,6 +639,15 @@ class SEO_AEO_Bricks_Surgical_Editor {
             if ($hit > 0) { $applied++; } else { $failed++; $failures[] = array('reason' => 'not_found', 'old' => mb_substr($old, 0, 80)); }
         }
         if ($applied > 0) {
+            // 3.41.9 M1 — dry_run guard for Bricks.
+            if ($dry_run) {
+                $result['dry_run']  = true;
+                $result['preview']  = true;
+                $result['current']  = array(self::META_KEY => $orig);
+                $result['proposed'] = array(self::META_KEY => $tree);
+                $result['success']  = true;
+                return $result;
+            }
             update_post_meta($post_id, self::META_KEY, $tree);
             wp_update_post(array(
                 'ID'                => $post_id,
@@ -640,7 +691,7 @@ class SEO_AEO_Oxygen_Surgical_Editor {
         return (bool) preg_match('/\[ct_(?:section|inner|div|headline|text_block)/i', (string) $post->post_content);
     }
 
-    public static function apply($post_id, $edits) {
+    public static function apply($post_id, $edits, $dry_run = false) {
         // Oxygen shortcodes are highly nested + dynamic; partial coverage.
         // We attempt post_content str_replace - works for text blocks but
         // not for shortcode-attribute text.
@@ -666,6 +717,15 @@ class SEO_AEO_Oxygen_Surgical_Editor {
                     }
                 }
                 if ($applied > 0) {
+                    // 3.41.9 M1 — dry_run guard for Oxygen.
+                    if ($dry_run) {
+                        $result['dry_run']  = true;
+                        $result['preview']  = true;
+                        $result['current']  = array('ct_builder_shortcodes' => $orig);
+                        $result['proposed'] = array('ct_builder_shortcodes' => $text);
+                        $result['success']  = true;
+                        return $result;
+                    }
                     update_post_meta($post_id, 'ct_builder_shortcodes', $text);
                     wp_update_post(array(
                         'ID'                => $post_id,
@@ -702,10 +762,10 @@ class SEO_AEO_Headless_REST_Surgical_Editor {
         return $primary === 'headless' && $mode === 'rest';
     }
 
-    public static function apply($post_id, $edits) {
+    public static function apply($post_id, $edits, $dry_run = false) {
         // Delegate to Classic write logic - WP backend stores the
         // canonical content; frontend re-fetches via REST.
-        $result = SEO_AEO_Classic_Surgical_Editor::apply($post_id, $edits);
+        $result = SEO_AEO_Classic_Surgical_Editor::apply($post_id, $edits, $dry_run);
         $result['engine'] = 'headless_rest';
         return $result;
     }
@@ -728,16 +788,14 @@ class SEO_AEO_Headless_WPGraphQL_Surgical_Editor {
         return $primary === 'headless' && $mode === 'gql';
     }
 
-    public static function apply($post_id, $edits) {
-        // No automatic apply - the action dispatch above will fall
-        // through to manual_mode honestly when can_handle is true but
-        // apply returns a failure with reason='wpgraphql_manual_pending'.
-        // Concretely we still write to post_content (WP backend) as a
-        // best-effort starting point; the frontend re-fetch depends on
-        // the user's WPGraphQL cache strategy.
-        $result = SEO_AEO_Classic_Surgical_Editor::apply($post_id, $edits);
+    public static function apply($post_id, $edits, $dry_run = false) {
+        // Delegate to Classic write logic; M2 (v3.42.0) wires the WPGraphQL
+        // mutation client for true headless writes.
+        $result = SEO_AEO_Classic_Surgical_Editor::apply($post_id, $edits, $dry_run);
         $result['engine'] = 'headless_wpgraphql';
-        $result['headless_note'] = 'WP backend updated. Verify your WPGraphQL cache + frontend re-fetch.';
+        $result['headless_note'] = $dry_run
+            ? 'WPGraphQL dry-run via Classic delegate.'
+            : 'WP backend updated. Verify your WPGraphQL cache + frontend re-fetch.';
         return $result;
     }
 }
@@ -750,7 +808,7 @@ class SEO_AEO_Headless_WPGraphQL_Surgical_Editor {
  */
 class SEO_AEO_Surgical_Editor_Common {
 
-    public static function str_replace_post_content($post_id, $edits, $engine_label) {
+    public static function str_replace_post_content($post_id, $edits, $engine_label, $dry_run = false) {
         $result = array(
             'success'      => false,
             'edits_applied'=> 0,
@@ -778,6 +836,18 @@ class SEO_AEO_Surgical_Editor_Common {
             }
         }
         if ($applied > 0) {
+            // 3.41.9 M1 — dry_run short-circuit for Common helper (Divi + WPBakery).
+            if ($dry_run) {
+                $result['edits_applied'] = $applied;
+                $result['edits_failed']  = $failed;
+                $result['failures']      = $failures;
+                $result['success']       = true;
+                $result['dry_run']       = true;
+                $result['preview']       = true;
+                $result['current']       = array('post_content' => $post->post_content);
+                $result['proposed']      = array('post_content' => $content);
+                return $result;
+            }
             wp_update_post(array(
                 'ID'                => $post_id,
                 'post_content'      => $content,

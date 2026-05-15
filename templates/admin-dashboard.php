@@ -4064,6 +4064,30 @@ jQuery(document).ready(function($) {
                 'media':   { icon: '🟡', label: T('media priorità'),   klass: 'med' },
                 'bassa':   { icon: '🟢', label: T('bassa priorità'),   klass: 'low' }
             };
+            // 3.42.0 M4 — tier dot indicator on Prossimi passi cards (consistency
+            // with Piano d'Azione Prioritizzato badge shipped in v3.41.7).
+            // Mirrors SEO_AEO_Action_Targets agent → tier mapping (PHP) so we
+            // stay aligned with the canonical TARGETS map without an AJAX hop.
+            var AGENT_TIER = {
+                'schema_generator':         'safe',
+                'faq_generator':            'safe',
+                'internal_links_generator': 'safe',
+                'manual_review':            'safe',
+                'meta_optimizer':           'caution',
+                'keyword_optimizer':        'caution',
+                'intro_rewriter':           'caution',
+                'authority_generator':      'caution',
+                'snippet_optimizer':        'caution',
+                'heading_optimizer':        'caution',
+                'content_generator':        'danger'
+            };
+            function agentTierDot(agent) {
+                var tier = AGENT_TIER[String(agent || '')];
+                if (!tier) return '';
+                var color = tier === 'safe' ? '#22c55e' : (tier === 'caution' ? '#eab308' : '#ef4444');
+                var label = tier === 'safe' ? 'SAFE' : (tier === 'caution' ? 'CAUTION' : 'DANGER');
+                return '<span class="tier-dot tier-' + tier + '" title="Tier: ' + label + '" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:8px;vertical-align:middle;"> </span>';
+            }
 
             var html = '<div class="orch3-card orch6-todo orch6-todo-tiles" data-has-todos="1">' +
                 '<div class="orch3-card-head orch6-todo-head">' +
@@ -4093,7 +4117,7 @@ jQuery(document).ready(function($) {
                             '<span class="orch6-todo-mark"></span>' +
                         '</label>' +
                         '<div class="orch6-tile-body">' +
-                            '<div class="orch6-tile-action">' + esc(t.title) + '</div>' +
+                            '<div class="orch6-tile-action">' + agentTierDot(t.agent) + esc(t.title) + '</div>' +
                             (t.page_title ? '<div class="orch6-tile-page" title="' + esc(t.page_title) + '">' + esc(t.page_title) + '</div>' : '') +
                             (t.page_url ? '<a href="' + esc(t.page_url) + '" target="_blank" class="orch6-tile-url">' + esc(t.page_url) + '</a>' : '') +
                         '</div>' +

@@ -1381,11 +1381,29 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
         return isset($map[$builder]) ? $map[$builder] : $map['classic'];
     }
 
+    /**
+     * @deprecated 3.42.0 Use seo_aeo_orchestra_propose instead. Legacy alias
+     *             retained for backward compat; will be removed in v3.43.0.
+     *             Body kept here (rather than moved to ajax_propose) so the
+     *             v3.42.0-rc1 propose-aliases-preview wiring keeps working
+     *             without an extra hop. The deprecation marker + Sentry log
+     *             fire on every legacy invocation so we can track migration.
+     */
     public function ajax_preview_action() {
         // 3.41.6 - rewrote to converge with ajax_execute_action.
         // Pre-3.41.6: switch on $agent with 5 cases; renamed semantic agents
         // (schema_generator etc) fell into manual_review/default stub, telling
         // user "manual review required" while execute would auto-apply.
+        // 3.42.0 M4 - deprecation tracking: log every legacy call so we can
+        // measure migration to ajax_propose before removing in v3.43.0.
+        // Note we DON'T call wp_die_handler('_deprecated_function') here
+        // because that would surface to admin notices on every AJAX request,
+        // which is too noisy. Sentry-level logging via seo_aeo_debug_log is
+        // the right tool for the migration-tracking job.
+        $is_legacy_alias = isset($_POST['action']) && $_POST['action'] === 'seo_aeo_orchestra_preview_action';
+        if ($is_legacy_alias && function_exists('seo_aeo_debug_log')) {
+            seo_aeo_debug_log('[v3.42.0 M4] legacy_preview_action_called: prefer ajax_propose. referer=' . (isset($_SERVER['HTTP_REFERER']) ? (string) $_SERVER['HTTP_REFERER'] : ''));
+        }
         try {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
             if (!current_user_can('edit_posts')) {

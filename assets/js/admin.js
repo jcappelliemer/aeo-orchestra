@@ -2479,6 +2479,21 @@
                 }
                 planHtml += '<div class="orch-action-item">';
                 planHtml += '<span class="priority-badge priority-' + action.priority + '">' + SeoAeoOrchestra.t(action.priority) + '</span>';
+                // 3.41.7 - tier badge (SAFE / CAUTION / DANGER) computed from action_type.
+                var tierVal = action.tier || SeoAeoOrchestra.tierForActionType(action.action_type);
+                if (tierVal) {
+                    var tierStyle = tierVal === 'SAFE'    ? 'background:#dcfce7;color:#166534;border:1px solid #86efac;'
+                                  : tierVal === 'CAUTION' ? 'background:#fef9c3;color:#854d0e;border:1px solid #fde047;'
+                                  : tierVal === 'DANGER'  ? 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;'
+                                  : '';
+                    var tierTitle = tierVal === 'SAFE'    ? SeoAeoOrchestra.t('Modifica sicura, additiva o sidecar. Reversibile.')
+                                  : tierVal === 'CAUTION' ? SeoAeoOrchestra.t('Modifica chirurgica al contenuto. Backup automatico, reversibile.')
+                                  : tierVal === 'DANGER'  ? SeoAeoOrchestra.t('Modifica sostanziale. Disponibile solo nel flow dedicato Rigenera intera pagina.')
+                                  : '';
+                    if (tierStyle) {
+                        planHtml += ' <span class="orch-tier-badge orch-tier-' + tierVal.toLowerCase() + '" title="' + tierTitle + '" style="' + tierStyle + 'padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;letter-spacing:0.5px;margin-left:6px;">' + tierVal + '</span>';
+                    }
+                }
                 planHtml += '<div style="flex:1;">';
                 planHtml += '<strong>' + (action.label || '') + '</strong>';
                 planHtml += '<br><small style="color:#666;">' + (action.page_title || '') + '</small>';
@@ -2815,6 +2830,27 @@
             return '<em>' + T('Apri il Piano d\'Azione (sopra) per vedere azioni eseguibili o configura Brand Voice + Profilo Business per analisi piu\' mirate.') + '</em>';
         },
 
+        // 3.41.7 - mirror of SEO_AEO_Action_Targets::get_tier (PHP).
+        // Keep in sync when adding new action_types.
+        tierForActionType: function(action_type) {
+            var map = {
+                'GENERATE_SCHEMA':           'SAFE',
+                'ADD_FAQ_SECTION':           'SAFE',
+                'ADD_INTERNAL_LINKS':        'SAFE',
+                'REWRITE_META':              'CAUTION',
+                'OPTIMIZE_KEYWORDS':         'CAUTION',
+                'REWRITE_INTRO':             'CAUTION',
+                'ADD_AUTHORITY_SIGNALS':     'CAUTION',
+                'OPTIMIZE_FEATURED_SNIPPET': 'CAUTION',
+                'FIX_HEADING_STRUCTURE':     'CAUTION',
+                'EXPAND_CONTENT':            'DANGER',
+                'REGENERATE_CONTENT':        'DANGER',
+                'FIX_DUPLICATE_CONTENT':     'DANGER',
+                'MANUAL_REVIEW':             'SAFE',
+            };
+            return map[action_type] || '';
+        },
+
         getActionDetailDescription: function(action) {
             var T = SeoAeoOrchestra.t;
             var label = '<strong>' + T('Cosa fara:') + '</strong> ';
@@ -2827,6 +2863,10 @@
                     return label + T('Generera contenuto ottimizzato per le risposte AI (Google AI Overviews, ChatGPT, Perplexity). Riscrivera i paragrafi in formato domanda-risposta, aggiungera Schema.org FAQ e Article markup, migliorera la citabilita del contenuto.');
                 case 'content_generator':
                     return label + T('Rigenerera il contenuto della pagina con ottimizzazione SEO + AEO. Il nuovo articolo avra: struttura H2/H3 corretta, keyword integrate naturalmente, sezione FAQ, formato ottimizzato per Featured Snippet e risposte AI.');
+                case 'internal_links_generator':
+                    return label + T('Analizzo le altre pagine del sito e propongo 3-5 internal link contestuali da inserire in questa pagina con anchor text ottimizzati. Migliora authority distribution e crawl. ~2 minuti.');
+                case 'heading_optimizer':
+                    return label + T('Rianalizzo la struttura titoli e propongo una gerarchia H1→H2→H3 corretta con keyword integrate naturalmente. Operazione chirurgica sui singoli heading. ~3 minuti.');
                 default:
                     return action.description || '';
             }

@@ -43,6 +43,7 @@ class SEO_AEO_Action_Targets {
      */
     const TARGETS = array(
         'GENERATE_SCHEMA' => array(
+            'tier' => 'SAFE',
             'where' => array(
                 'type'    => 'post_meta',
                 'key'     => '_seo_aeo_custom_schema_html',
@@ -57,6 +58,7 @@ class SEO_AEO_Action_Targets {
             'notes'             => 'Dedicated endpoint /ai/generate-schema (v3.41.2). Sanitizer preserves <script type="application/ld+json"> via custom wp_kses whitelist (v3.41.1).',
         ),
         'REWRITE_META' => array(
+            'tier' => 'CAUTION',
             'where' => array(
                 'type'    => 'post_meta_dual',
                 'engines' => array('yoast', 'rankmath', 'aioseo', 'native'),
@@ -77,6 +79,7 @@ class SEO_AEO_Action_Targets {
             'notes'             => 'Dual-write: active SEO plugin keys + Orchestra native keys (via SEO_AEO_Engine_Bridge::write_meta). Restore via Engine_Bridge::restore_meta.',
         ),
         'OPTIMIZE_KEYWORDS' => array(
+            'tier' => 'CAUTION',
             'where' => array(
                 'type'    => 'post_meta_dual',
                 'engines' => array('yoast', 'rankmath', 'aioseo', 'native'),
@@ -97,6 +100,7 @@ class SEO_AEO_Action_Targets {
             'notes'             => 'Same dual-write path as REWRITE_META but only the keywords field.',
         ),
         'ADD_FAQ_SECTION' => array(
+            'tier' => 'SAFE',
             'where' => array(
                 'type'    => 'post_content',
                 'section' => 'append',
@@ -112,6 +116,7 @@ class SEO_AEO_Action_Targets {
             'notes'             => 'Appended at end of post_content, idempotently wrapped with HTML comments for re-application detection.',
         ),
         'ADD_AUTHORITY_SIGNALS' => array(
+            'tier' => 'CAUTION',
             'where' => array(
                 'type'    => 'post_content',
                 'section' => 'replace_substring',
@@ -126,6 +131,7 @@ class SEO_AEO_Action_Targets {
             'notes'             => 'Surgical text replacement via the appropriate editor (Classic / Gutenberg / Elementor / Divi / WPBakery / Beaver / Bricks / Oxygen / Headless REST / Headless WPGraphQL).',
         ),
         'REWRITE_INTRO' => array(
+            'tier' => 'CAUTION',
             'where' => array(
                 'type'    => 'post_content',
                 'section' => 'replace_substring',
@@ -140,6 +146,7 @@ class SEO_AEO_Action_Targets {
             'notes'             => 'Surgical text replacement of the first paragraph(s).',
         ),
         'OPTIMIZE_FEATURED_SNIPPET' => array(
+            'tier' => 'CAUTION',
             'where' => array(
                 'type'    => 'post_content',
                 'section' => 'replace_substring',
@@ -154,6 +161,7 @@ class SEO_AEO_Action_Targets {
             'notes'             => 'Replaces a paragraph with a featured-snippet-optimized version (40-50 word answer-box format).',
         ),
         'ADD_INTERNAL_LINKS' => array(
+            'tier' => 'SAFE',
             'where' => array(
                 'type'    => 'post_content',
                 'section' => 'append',
@@ -161,13 +169,14 @@ class SEO_AEO_Action_Targets {
             ),
             'operation'         => 'append',
             'reversible'        => true,
-            'backup_via'        => 'snapshot_manager',
+            'backup_via'        => 'field_backup_and_snapshot',
             'fallback'          => 'manual_mode_modal',
-            'endpoint'          => '/ai/generate-content',
-            'estimated_credits' => 15,
-            'notes'             => 'Currently returns manual_mode by default — full auto-apply lands in v3.42.0. Plugin appends generated link block when surgical editor accepts.',
+            'endpoint'          => '/ai/generate-internal-links',
+            'estimated_credits' => 2,
+            'notes'             => '3.41.7 — dedicated /ai/generate-internal-links endpoint, focused 5-link prompt, Standard tier (2cr) vs the prior incorrect 15cr article-rewrite path.',
         ),
         'MANUAL_REVIEW' => array(
+            'tier' => 'SAFE',
             'where' => array(
                 'type'    => 'none',
                 'emit_at' => 'no automatic write',
@@ -182,6 +191,29 @@ class SEO_AEO_Action_Targets {
         ),
     );
 
+    /**
+     * 3.41.7 - public accessor for the tier of an action_type.
+     * Returns 'SAFE' | 'CAUTION' | 'DANGER' (DANGER reserved for
+     * content_generator-class actions gated behind the dedicated flow).
+     */
+    public static function get_tier($action_type) {
+        // 3.41.7 fix: direct TARGETS lookup so unknown action_types don't
+        // mask the DANGER list via get_target's MANUAL_REVIEW fallback.
+        if (isset(self::TARGETS[$action_type]) && isset(self::TARGETS[$action_type]['tier'])) {
+            return self::TARGETS[$action_type]['tier'];
+        }
+        // content_generator-class actions not in TARGETS default to DANGER.
+        if (in_array($action_type, array('EXPAND_CONTENT', 'REGENERATE_CONTENT', 'FIX_DUPLICATE_CONTENT'), true)) {
+            return 'DANGER';
+        }
+        // surgical_text actions not in TARGETS default to CAUTION.
+        if (in_array($action_type, array('FIX_HEADING_STRUCTURE',), true)) {
+            return 'CAUTION';
+        }
+        // Unknown action_type → MANUAL_REVIEW-class → SAFE.
+        return 'SAFE';
+    }
+
     public static function get_target($action_type) {
         if (isset(self::TARGETS[$action_type])) {
             return self::TARGETS[$action_type];
@@ -195,13 +227,16 @@ class SEO_AEO_Action_Targets {
      * accessible from any caller.
      */
     const AGENT_TO_TYPE = array(
-        'schema_generator'    => 'GENERATE_SCHEMA',
-        'faq_generator'       => 'ADD_FAQ_SECTION',
-        'authority_generator' => 'ADD_AUTHORITY_SIGNALS',
-        'intro_rewriter'      => 'REWRITE_INTRO',
-        'snippet_optimizer'   => 'OPTIMIZE_FEATURED_SNIPPET',
-        'keyword_optimizer'   => 'OPTIMIZE_KEYWORDS',
-        'meta_optimizer'      => 'REWRITE_META',
+        'schema_generator'         => 'GENERATE_SCHEMA',
+        'faq_generator'            => 'ADD_FAQ_SECTION',
+        'authority_generator'      => 'ADD_AUTHORITY_SIGNALS',
+        'intro_rewriter'           => 'REWRITE_INTRO',
+        'snippet_optimizer'        => 'OPTIMIZE_FEATURED_SNIPPET',
+        'keyword_optimizer'        => 'OPTIMIZE_KEYWORDS',
+        'meta_optimizer'           => 'REWRITE_META',
+        'internal_links_generator' => 'ADD_INTERNAL_LINKS',  // 3.41.7 - new agent, was wrongly content_generator
+        'heading_optimizer'        => 'FIX_HEADING_STRUCTURE', // 3.41.7 - new agent, was wrongly content_generator
+        'manual_review'            => 'MANUAL_REVIEW',          // 3.41.7
     );
 
     public static function infer_action_type($agent, $passed_action_type = '') {
@@ -373,6 +408,7 @@ class SEO_AEO_Action_Targets {
             'preview'              => true,
             'agent'                => $agent,
             'action_type'          => $action_type,
+            'tier'                 => self::get_tier($action_type),  // 3.41.7
             'mode'                 => $detect['mode'],
             'mode_label'           => $detect['mode_label'],
             'builder'              => $detect['builder'],

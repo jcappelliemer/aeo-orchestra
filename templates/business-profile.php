@@ -533,7 +533,7 @@ $is_section_open = function($key, $default = true) use ($bp_section_states) {
             <div class="orch-bp-section-body">
                 <div class="orch-bp-section-info">
                     <strong>Aiuta Orchestra a evitare interpretazioni errate del tuo sito da parte degli AI engine.</strong>
-                    Piu' preciso il contesto, piu' accurate le analisi. Questi campi vengono iniettati come blocco autoritativo in ogni analisi SEO/AEO.
+                    Più preciso il contesto, più accurate le analisi. Questi campi vengono iniettati come blocco autoritativo in ogni analisi SEO/AEO.
                 </div>
 
                 <div class="orch-bp-field" style="margin:8px 0 16px;">

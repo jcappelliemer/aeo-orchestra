@@ -781,7 +781,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'agent' => 'schema_generator',
                 'type'  => 'GENERATE_SCHEMA',
                 'title' => 'Genera schema JSON-LD per questa pagina',
-                'desc'  => 'Aggiungo automaticamente il markup Schema.org (Organization, Service o Article a seconda del tipo di pagina) come blocco JSON-LD. Migliora rich results su Google e citabilita\' AEO. ~3 minuti.',
+                'desc'  => 'Aggiungo automaticamente il markup Schema.org (Organization, Service o Article a seconda del tipo di pagina) come blocco JSON-LD. Migliora rich results su Google e citabilità AEO. ~3 minuti.',
                 'cr'    => 10,
             ),
             array(
@@ -801,27 +801,33 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'cr'    => 3,
             ),
             array(
+                // 3.41.7 - was content_generator (DANGER 15cr); now heading_optimizer
+                // (CAUTION 10cr, surgical text replacement of heading sections).
                 'rx'    => '/\bh1\b|\bh2\b|\bh3\b|intestazion|heading|gerarchia\s+titoli/i',
-                'agent' => 'content_generator',
+                'agent' => 'heading_optimizer',
                 'type'  => 'FIX_HEADING_STRUCTURE',
                 'title' => 'Riscrivi struttura H1/H2/H3 della pagina',
                 'desc'  => 'Rianalizzo la struttura titoli e propongo una gerarchia H1→H2→H3 corretta, con keyword integrate naturalmente. Migliora scannability + SEO. ~3 minuti.',
-                'cr'    => 15,
+                'cr'    => 10,
             ),
             array(
+                // 3.41.7 - was incorrectly routed to content_generator (DANGER, 15cr)
+                // which produced 3201-word prose previews instead of 1-5 link suggestions.
+                // Now routed to internal_links_generator (SAFE, 2cr) with dedicated
+                // /ai/generate-internal-links endpoint returning a short link list.
                 'rx'    => '/internal\s+link|link\s+intern|collegamenti?\s+intern/i',
-                'agent' => 'content_generator',
+                'agent' => 'internal_links_generator',
                 'type'  => 'ADD_INTERNAL_LINKS',
                 'title' => 'Suggerisci internal link contestuali',
                 'desc'  => 'Analizzo le altre pagine del sito e propongo 3-5 internal link contestuali da inserire in questa pagina con anchor text ottimizzati. Migliora authority distribution. ~3 minuti.',
-                'cr'    => 15,
+                'cr'    => 2,
             ),
             array(
                 'rx'    => '/intro|introduzion|focus\s+(sul|sulla)|prodotto|product\s+description|descrizione\s+prodotto|risponde\s+a\s+domand/i',
                 'agent' => 'intro_rewriter',
                 'type'  => 'REWRITE_INTRO',
                 'title' => 'Riscrivi intro pagina con focus problema-soluzione',
-                'desc'  => 'Riformulo i primi 200 caratteri della pagina per aprire con il problema del cliente e la soluzione, non con il prodotto. Migliora engagement e citabilita\' AEO. ~2 minuti.',
+                'desc'  => 'Riformulo i primi 200 caratteri della pagina per aprire con il problema del cliente e la soluzione, non con il prodotto. Migliora engagement e citabilità AEO. ~2 minuti.',
                 'cr'    => 10,
             ),
             array(
@@ -829,7 +835,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'agent' => 'authority_generator',
                 'type'  => 'ADD_AUTHORITY_SIGNALS',
                 'title' => 'Aggiungi segnali di autorità per AEO',
-                'desc'  => 'Riscrivo passaggi chiave inserendo segnali E-E-A-T (autore, data, fonti, dati verificabili) che le AI considerano nella valutazione di citabilita\'. ~4 minuti.',
+                'desc'  => 'Riscrivo passaggi chiave inserendo segnali E-E-A-T (autore, data, fonti, dati verificabili) che le AI considerano nella valutazione di citabilità. ~4 minuti.',
                 'cr'    => 10,
             ),
             array(
@@ -837,7 +843,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'agent' => 'snippet_optimizer',
                 'type'  => 'OPTIMIZE_FEATURED_SNIPPET',
                 'title' => 'Ottimizza per Featured Snippet (risposta diretta nei primi 2-3 paragrafi)',
-                'desc'  => 'Riformulo l\'apertura della pagina con una risposta diretta e citabile alla query principale (formato definizione/lista/tabella). Aumenta probabilita\' di apparire in Featured Snippet e AI Overviews. ~3 minuti.',
+                'desc'  => 'Riformulo l\'apertura della pagina con una risposta diretta e citabile alla query principale (formato definizione/lista/tabella). Aumenta probabilità di apparire in Featured Snippet e AI Overviews. ~3 minuti.',
                 'cr'    => 10,
             ),
             array(
@@ -853,7 +859,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'agent' => 'content_generator',
                 'type'  => 'EXPAND_CONTENT',
                 'title' => 'Espandi contenuto della pagina',
-                'desc'  => 'Genero 300-500 parole aggiuntive ottimizzate per la keyword principale, mantenendo il tono Brand Voice. Migliora ranking + segnali di qualita\'. ~5 minuti.',
+                'desc'  => 'Genero 300-500 parole aggiuntive ottimizzate per la keyword principale, mantenendo il tono Brand Voice. Migliora ranking + segnali di qualità. ~5 minuti.',
                 'cr'    => 15,
             ),
         );
@@ -1462,6 +1468,24 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             $page_url_for_ai   = $post_id > 0 ? (string) get_permalink($post_id) : $url;
             $body_text_for_ai  = $page ? substr(wp_strip_all_tags((string) $page->post_content), 0, 2000) : $issue;
 
+            // 3.41.7 - hard guard on content_generator (Tier DANGER).
+            // The Orchestratore must NEVER invoke content_generator directly;
+            // it lives behind a dedicated multi-step flow (v3.41.8) with
+            // typed-confirm + auto-backup. Reject 403 on any caller missing
+            // the explicit confirmation flag.
+            if ($agent === 'content_generator' || $action_type === 'EXPAND_CONTENT' || $action_type === 'REGENERATE_CONTENT') {
+                $typed_confirm = isset($_POST['typed_confirm']) ? sanitize_text_field(wp_unslash($_POST['typed_confirm'])) : '';
+                if ($typed_confirm !== 'riscrivi') {
+                    wp_send_json(array(
+                        'error'      => 'forbidden_tier_danger',
+                        'tier'       => 'DANGER',
+                        'action_type'=> $action_type,
+                        'message'    => 'Questa azione richiede il flow dedicato "Rigenera intera pagina" con conferma esplicita. Disponibile dalla v3.41.8.',
+                    ), 403);
+                    return;
+                }
+            }
+
             $proposed = null;
             $preview_credits = 0;
 
@@ -1476,6 +1500,17 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     'language'         => $this->get_ai_language(),
                 ));
                 $preview_credits = isset($skeleton['estimated_credits']) ? $skeleton['estimated_credits'] : 3;
+            } elseif ($action_type === 'ADD_INTERNAL_LINKS') {
+                // 3.41.7 - dedicated endpoint with focused prompt (5 links max,
+                // <500 bytes total). Standard tier (2cr) vs 15cr article path.
+                $proposed = $api->api_request('/ai/generate-internal-links', array(
+                    'page_title' => $page_title_for_ai,
+                    'page_url'   => $page_url_for_ai,
+                    'keyword'    => $keyword,
+                    'body_text'  => $body_text_for_ai,
+                    'language'   => $this->get_ai_language(),
+                ));
+                $preview_credits = 2;
             } elseif ($action_type === 'REWRITE_META' || $action_type === 'OPTIMIZE_KEYWORDS') {
                 $proposed = $api->api_request('/ai/generate-meta', array(
                     'title'    => $page_title_for_ai,
@@ -1641,6 +1676,22 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             if (!$api) return;
             $agent = isset($_POST['agent']) ? sanitize_text_field(wp_unslash($_POST['agent'])) : '';
             $data = isset($_POST['action_data']) ? (array)$_POST['action_data'] : array();
+            // 3.41.7 - Tier DANGER hard guard (mirrors ajax_preview_action).
+            // content_generator / EXPAND_CONTENT / REGENERATE_CONTENT require
+            // typed_confirm='riscrivi' to proceed. Without it: 403.
+            $aeo_v3417_action_type_peek = isset($_POST['action_type']) ? sanitize_text_field(wp_unslash($_POST['action_type'])) : '';
+            if ($agent === 'content_generator' || $aeo_v3417_action_type_peek === 'EXPAND_CONTENT' || $aeo_v3417_action_type_peek === 'REGENERATE_CONTENT') {
+                $aeo_v3417_typed_confirm = isset($_POST['typed_confirm']) ? sanitize_text_field(wp_unslash($_POST['typed_confirm'])) : '';
+                if ($aeo_v3417_typed_confirm !== 'riscrivi') {
+                    wp_send_json(array(
+                        'error'      => 'forbidden_tier_danger',
+                        'tier'       => 'DANGER',
+                        'action_type'=> $aeo_v3417_action_type_peek,
+                        'message'    => 'Questa azione richiede il flow dedicato "Rigenera intera pagina" con conferma esplicita. Disponibile dalla v3.41.8.',
+                    ), 403);
+                    return;
+                }
+            }
             // 3.40.0 — capability-matrix dispatch. When mode is manual/low for
             // this action_type + builder, refuse the automatic apply and tell
             // the frontend to surface the manual-mode UX. The AI proposal was

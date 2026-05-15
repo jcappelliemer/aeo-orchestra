@@ -22,7 +22,7 @@
  * -> webhook accredita topup_credits -> modal polla balance e auto-chiude
  * mostrando il nuovo saldo.
  *
- * Differenza vs 3.28.1 (Option A): non si esce piu' da WP-admin.
+ * Differenza vs 3.28.1 (Option A): non si esce più da WP-admin.
  */
 
 if (!defined('ABSPATH')) exit;

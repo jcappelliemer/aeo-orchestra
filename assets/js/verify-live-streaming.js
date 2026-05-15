@@ -219,7 +219,7 @@
 
         if (missing.length > 0) {
             html += '<div class="orch-vl-trans-cta">';
-            html += "<strong>&#x2139; Vuoi suggerimenti piu' precisi al tuo business?</strong> ";
+            html += "<strong>&#x2139; Vuoi suggerimenti più precisi al tuo business?</strong> ";
             html += 'Compila i campi mancanti del profilo identita.';
             var $card = $('#orch-vl-card');
             var editUrl = $card.attr('data-edit-identity-url') || '#';
@@ -655,7 +655,7 @@
         }
 
         html += '<div class="orch-vl-pv-footer">';
-        html += "  &#8505; Piu' questi dati sono completi, piu' i suggerimenti saranno precisi al tuo business reale.";
+        html += "  &#8505; Più questi dati sono completi, più i suggerimenti saranno precisi al tuo business reale.";
         html += '</div>';
 
         $('#orch-vl-preview-body').html(html);

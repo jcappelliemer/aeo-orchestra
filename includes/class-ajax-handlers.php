@@ -828,7 +828,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'rx'    => '/citab|cita(zione|bilita)|autorit|e[\-\s]?e[\-\s]?a[\-\s]?t|expertise|fonte/i',
                 'agent' => 'authority_generator',
                 'type'  => 'ADD_AUTHORITY_SIGNALS',
-                'title' => 'Aggiungi segnali di autorita\' per AEO',
+                'title' => 'Aggiungi segnali di autorità per AEO',
                 'desc'  => 'Riscrivo passaggi chiave inserendo segnali E-E-A-T (autore, data, fonti, dati verificabili) che le AI considerano nella valutazione di citabilita\'. ~4 minuti.',
                 'cr'    => 10,
             ),
@@ -1048,7 +1048,10 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 'priority' => $seo_score < 40 ? 'critica' : 'media',
                 'label' => 'Migliora SEO (Score: ' . $seo_score . ')',
                 'description' => !empty($top_issues) ? (is_string($top_issues[0]) ? $top_issues[0] : '') : 'Score SEO basso',
-                'data' => array('url' => $url, 'keyword' => $keyword)
+                'data' => array('url' => $url, 'keyword' => $keyword),
+                'is_summary' => true,        // 3.41.6 - non-clickable summary row
+                'auto_executable' => false,   // suppresses Anteprima + Esegui buttons
+                'action_type' => 'MANUAL_REVIEW',
             );
         }
 
@@ -1068,19 +1071,12 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             );
         }
 
-        if (isset($seo['suggestions']) && count($seo['suggestions']) > 2) {
-            $top_suggs = array();
-            foreach (array_slice($seo['suggestions'], 0, 2) as $s) {
-                $top_suggs[] = is_string($s) ? $s : (isset($s['description']) ? $s['description'] : '');
-            }
-            $actions[] = array(
-                'agent' => 'content_generator',
-                'priority' => 'bassa',
-                'label' => 'Rigenera contenuto',
-                'description' => !empty($top_suggs) ? implode('; ', array_filter($top_suggs)) : 'Il contenuto potrebbe essere migliorato per SEO + AEO',
-                'data' => array('topic' => $title, 'keyword' => $keyword)
-            );
-        }
+        // 3.41.6 - Pattern C hard guard: "Rigenera contenuto" REMOVED.
+        // The card produced a 10KB+ full-content overwrite of post_content
+        // with no diff, no estimated_credits, no destructive-action warning.
+        // Full-page regeneration is too dangerous for a one-click action;
+        // it will return as a dedicated multi-step flow in a future release
+        // ("Rigenera intera pagina") with explicit confirmation + auto-backup.
 
         // 3.39.0 — produce one structured action per AI-detected issue.
         // Without this, pages with aeo_score above the < 60 threshold but
@@ -1378,6 +1374,10 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
     }
 
     public function ajax_preview_action() {
+        // 3.41.6 - rewrote to converge with ajax_execute_action.
+        // Pre-3.41.6: switch on $agent with 5 cases; renamed semantic agents
+        // (schema_generator etc) fell into manual_review/default stub, telling
+        // user "manual review required" while execute would auto-apply.
         try {
             check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce');
             if (!current_user_can('edit_posts')) {
@@ -1388,42 +1388,36 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             if (!$api) return;
             $agent = isset($_POST['agent']) ? sanitize_text_field(wp_unslash($_POST['agent'])) : '';
             $data = isset($_POST['action_data']) ? (array) $_POST['action_data'] : array();
-            // 3.40.0 — capability-matrix mode dispatch.
             $action_type = isset($_POST['action_type']) ? sanitize_text_field(wp_unslash($_POST['action_type'])) : '';
-            // 3.40.9 P0c FINAL - infer action_type from agent name when the
-            // frontend didn't pass it. The semantic agent rename in v3.40.7
-            // (schema_generator / faq_generator / ...) carries the action_type
-            // implicitly, so any older renderer that doesn't emit data-action-type
-            // (or one that loses it through serialization quirks) still hits the
-            // real persistence path instead of falling into manual_mode.
-            if ($action_type === '') {
-                $aeo_agent_to_type = array(
-                    'schema_generator'    => 'GENERATE_SCHEMA',
-                    'faq_generator'       => 'ADD_FAQ_SECTION',
-                    'authority_generator' => 'ADD_AUTHORITY_SIGNALS',
-                    'intro_rewriter'      => 'REWRITE_INTRO',
-                    'snippet_optimizer'   => 'OPTIMIZE_FEATURED_SNIPPET',
-                    'keyword_optimizer'   => 'OPTIMIZE_KEYWORDS',
-                    'meta_optimizer'      => 'REWRITE_META',
-                );
-                if (isset($aeo_agent_to_type[$agent])) {
-                    $action_type = $aeo_agent_to_type[$agent];
-                }
+            // 3.41.6 - delegate inference to Action_Targets (single source of truth).
+            if (class_exists('SEO_AEO_Action_Targets')) {
+                $action_type = SEO_AEO_Action_Targets::infer_action_type($agent, $action_type);
             }
-            $mode = $this->get_action_mode($action_type);
-            $builder = get_option('aeo_site_builder', 'unknown');
-            $manual_instructions = (class_exists('SEO_AEO_Capability_Matrix') && SEO_AEO_Capability_Matrix::is_manual_mode($mode))
-                ? $this->get_manual_instructions_for_builder($builder)
-                : array();
-
-            // Collect "current" page state so the modal can show before/after.
-            $current = array();
             $post_id = isset($data['post_id']) ? intval($data['post_id']) : 0;
+            // 3.41.6 - resolve post_id from URL when 0 (URL-based analysis).
+            if ($post_id <= 0 && !empty($data['url']) && function_exists('url_to_postid')) {
+                $resolved = url_to_postid((string) $data['url']);
+                if ($resolved > 0) $post_id = $resolved;
+            }
+
+            // 3.41.6 - build the unified preview skeleton (mode + where + reversibility
+            // come from Action_Targets, single source of truth shared with execute).
+            $skeleton = class_exists('SEO_AEO_Action_Targets')
+                ? SEO_AEO_Action_Targets::build_preview_skeleton($agent, $action_type, $post_id)
+                : array('preview' => true, 'agent' => $agent, 'action_type' => $action_type);
+
+            $current_value = class_exists('SEO_AEO_Action_Targets')
+                ? SEO_AEO_Action_Targets::read_current_value($action_type, $post_id)
+                : null;
+
+            // Legacy `current` shape (page_title / page_url / meta_title / meta_description)
+            // kept for back-compat with existing showPreviewModal renderers.
+            $current = array();
             if ($post_id > 0) {
-                $current['post_id']     = $post_id;
-                $current['page_title']  = get_the_title($post_id);
-                $current['page_url']    = get_permalink($post_id);
-                $current['meta_title']  = (string) get_post_meta($post_id, '_seo_aeo_meta_title', true);
+                $current['post_id']          = $post_id;
+                $current['page_title']       = get_the_title($post_id);
+                $current['page_url']         = get_permalink($post_id);
+                $current['meta_title']       = (string) get_post_meta($post_id, '_seo_aeo_meta_title', true);
                 $current['meta_description'] = (string) get_post_meta($post_id, '_seo_aeo_meta_description', true);
                 if (empty($current['meta_description']) && class_exists('SEO_AEO_Engine_Bridge')) {
                     try {
@@ -1436,10 +1430,98 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                                 $current['meta_description'] = $bridge_data['meta_description'];
                             }
                         }
-                    } catch (Throwable $e) { /* ignore bridge failures in preview */ }
+                    } catch (Throwable $e) { /* ignore */ }
                 }
             }
+            $current['target_value'] = $current_value; // 3.41.6 - exact "Prima" payload
 
+            // 3.41.6 - if Action_Targets says manual (MANUAL_REVIEW or capability matrix
+            // says manual), short-circuit with the legacy manual-review payload so the
+            // frontend renders the manual-mode UI. NO AI call, NO credit burn.
+            if (!empty($skeleton['is_manual']) || $action_type === 'MANUAL_REVIEW' || $action_type === '') {
+                $payload = array_merge($skeleton, array(
+                    'current'                  => $current,
+                    'proposed'                 => array('manual_review' => true),
+                    'preview_credits_consumed' => 0,
+                    'apply_credits_estimated'  => isset($skeleton['estimated_credits']) ? $skeleton['estimated_credits'] : 0,
+                    'message'                  => 'Questa azione richiede una revisione manuale: apri la pagina nell\'editor WordPress.',
+                ));
+                wp_send_json($payload);
+                return;
+            }
+
+            // 3.41.6 - dispatch by action_type to the SAME backend endpoint
+            // ajax_execute_action would use. Returns proposed.value populated
+            // with the actual AI-generated content for the transparency panel.
+            $keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';
+            $topic   = isset($data['topic'])   ? sanitize_text_field($data['topic'])   : '';
+            $issue   = isset($data['issue'])   ? sanitize_text_field($data['issue'])   : '';
+            $url     = isset($data['url'])     ? esc_url_raw($data['url'])             : '';
+            $page    = $post_id > 0 ? get_post($post_id) : null;
+            $page_title_for_ai = $page ? (string) $page->post_title : ($topic !== '' ? $topic : '');
+            $page_url_for_ai   = $post_id > 0 ? (string) get_permalink($post_id) : $url;
+            $body_text_for_ai  = $page ? substr(wp_strip_all_tags((string) $page->post_content), 0, 2000) : $issue;
+
+            $proposed = null;
+            $preview_credits = 0;
+
+            if ($action_type === 'GENERATE_SCHEMA') {
+                $proposed = $api->api_request('/ai/generate-schema', array(
+                    'page_title'       => $page_title_for_ai,
+                    'page_url'         => $page_url_for_ai,
+                    'keyword'          => $keyword,
+                    'body_text'        => $body_text_for_ai,
+                    'h1'               => $page_title_for_ai,
+                    'schema_type_hint' => 'WebPage',
+                    'language'         => $this->get_ai_language(),
+                ));
+                $preview_credits = isset($skeleton['estimated_credits']) ? $skeleton['estimated_credits'] : 3;
+            } elseif ($action_type === 'REWRITE_META' || $action_type === 'OPTIMIZE_KEYWORDS') {
+                $proposed = $api->api_request('/ai/generate-meta', array(
+                    'title'    => $page_title_for_ai,
+                    'content'  => $body_text_for_ai,
+                    'keyword'  => $keyword,
+                    'language' => $this->get_ai_language(),
+                    'tier'     => 'standard',
+                ));
+                $preview_credits = isset($skeleton['estimated_credits']) ? $skeleton['estimated_credits'] : 2;
+            } else {
+                // ADD_FAQ_SECTION / ADD_AUTHORITY_SIGNALS / REWRITE_INTRO /
+                // OPTIMIZE_FEATURED_SNIPPET / ADD_INTERNAL_LINKS → /ai/aeo-content
+                // with cheap tier so preview cost stays low.
+                $proposed = $api->api_request('/ai/aeo-content', array(
+                    'topic'           => $keyword !== '' ? $keyword : $topic,
+                    'keywords'        => $keyword !== '' ? array($keyword) : array(),
+                    'target_engines'  => array('google_ai', 'chatgpt', 'perplexity'),
+                    'include_schema'  => $action_type === 'GENERATE_SCHEMA',
+                    'include_faq'     => $action_type === 'ADD_FAQ_SECTION',
+                    'language'        => $this->get_ai_language(),
+                    'tier'            => 'standard',
+                ));
+                $preview_credits = isset($skeleton['estimated_credits']) ? $skeleton['estimated_credits'] : 5;
+            }
+
+            if (is_array($proposed) && isset($proposed['error'])) {
+                wp_send_json(array_merge($skeleton, array(
+                    'current'                  => $current,
+                    'proposed'                 => $proposed,
+                    'preview_credits_consumed' => 0,
+                    'apply_credits_estimated'  => isset($skeleton['estimated_credits']) ? $skeleton['estimated_credits'] : 0,
+                    'error'                    => isset($proposed['message']) ? (string) $proposed['message'] : 'preview_failed',
+                )));
+                return;
+            }
+
+            wp_send_json(array_merge($skeleton, array(
+                'current'                  => $current,
+                'proposed'                 => $proposed,
+                'preview_credits_consumed' => (int) $preview_credits,
+                'apply_credits_estimated'  => isset($skeleton['estimated_credits']) ? (int) $skeleton['estimated_credits'] : 0,
+            )));
+            return;
+
+            // 3.41.6 - legacy switch below kept ONLY as a safety net for
+            // unmapped agents (none currently emit). Will be removed in v3.42.0.
             switch ($agent) {
                 case 'meta_tags':
                     $keyword = isset($data['keyword']) ? sanitize_text_field($data['keyword']) : '';

@@ -2461,6 +2461,22 @@
             var planHtml = '';
             actions.forEach(function(action, idx) {
                 var detailDesc = SeoAeoOrchestra.getActionDetailDescription(action);
+                // 3.41.6 - summary rows (is_summary:true or auto_executable:false)
+                // render as a non-clickable info card. No Anteprima, no Esegui.
+                // Use case: "Migliora SEO (Score: N)" — that's a header, not
+                // an executable action.
+                var isSummaryRow = (action.is_summary === true) || (action.auto_executable === false);
+                if (isSummaryRow) {
+                    planHtml += '<div class="orch-action-item orch-action-summary" style="background:#f1f5f9;border-left:4px solid #94a3b8;">';
+                    planHtml += '<span class="priority-badge priority-' + action.priority + '">' + SeoAeoOrchestra.t(action.priority) + '</span>';
+                    planHtml += '<div style="flex:1;">';
+                    planHtml += '<strong>' + (action.label || '') + '</strong>';
+                    planHtml += '<br><small style="color:#666;">' + (action.page_title || '') + '</small>';
+                    planHtml += '<div style="margin-top:6px;padding:8px 10px;background:#f8fafc;border-left:3px solid #94a3b8;border-radius:0 6px 6px 0;font-size:12px;color:#475569;">' + detailDesc + '</div>';
+                    planHtml += '<small style="display:block;margin-top:4px;color:#64748b;font-style:italic;">' + SeoAeoOrchestra.t('Riepilogo informativo - per agire usa le azioni qui sotto.') + '</small>';
+                    planHtml += '</div></div>';
+                    return;
+                }
                 planHtml += '<div class="orch-action-item">';
                 planHtml += '<span class="priority-badge priority-' + action.priority + '">' + SeoAeoOrchestra.t(action.priority) + '</span>';
                 planHtml += '<div style="flex:1;">';
@@ -3310,12 +3326,56 @@
             var agent = payload.agent || 'unknown';
             var current = payload.current || {};
             var proposed = payload.proposed || {};
-            var credits = payload.estimated_credits || 0;
+            var credits = payload.estimated_credits || payload.apply_credits_estimated || 0;
 
             function escHtml(s) {
                 return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
                     return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
                 });
+            }
+
+            // 3.41.6 - Transparency panel (top of modal). Renders ONLY when
+            // the v3.41.6+ unified payload fields are present (mode_label,
+            // where_label, reversible, backup_label). Backward compatible
+            // with v3.41.5 payloads that don't include these fields.
+            function renderTransparencyPanel(p) {
+                if (!p || !p.mode_label) return '';
+                var labelStyle = 'font-weight:600;color:#0f172a;display:inline-block;min-width:120px;';
+                var rowStyle = 'padding:6px 0;border-bottom:1px solid #e2e8f0;';
+                var html = '<div class="orch-apv-transparency" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;">';
+                html += '<h4 style="margin:0 0 10px 0;color:#0f172a;font-size:14px;">' + T('Cosa accade quando applichi') + '</h4>';
+                html += '<div style="' + rowStyle + '"><span style="' + labelStyle + '">' + T('Azione') + ':</span> ' + escHtml(p.action_type || agent || '-') + '</div>';
+                html += '<div style="' + rowStyle + '"><span style="' + labelStyle + '">' + T('Modalità') + ':</span> <span style="display:inline-block;padding:2px 8px;background:#dbeafe;color:#1e40af;border-radius:4px;font-weight:500;">' + escHtml(p.mode_label) + '</span>';
+                if (p.builder && p.builder !== 'unknown') {
+                    html += ' &middot; <span style="color:#64748b;">builder: ' + escHtml(p.builder) + '</span>';
+                }
+                html += '</div>';
+                if (p.where_label) {
+                    html += '<div style="' + rowStyle + '"><span style="' + labelStyle + '">' + T('Dove') + ':</span> <code style="background:#fff;padding:2px 6px;border:1px solid #cbd5e1;border-radius:3px;font-size:12px;">' + escHtml(p.where_label) + '</code></div>';
+                }
+                if (typeof p.operation === 'string' && p.operation && p.operation !== 'none') {
+                    var opTxt = p.operation === 'overwrite' ? T('sostituisce il valore esistente')
+                              : p.operation === 'append' ? T('aggiunge in coda')
+                              : p.operation === 'replace_substring' ? T('sostituisce un sotto-blocco')
+                              : p.operation === 'replace_section' ? T('sostituisce una sezione')
+                              : p.operation;
+                    html += '<div style="' + rowStyle + '"><span style="' + labelStyle + '">' + T('Operazione') + ':</span> ' + escHtml(opTxt) + '</div>';
+                }
+                if (p.backup_label) {
+                    var reversibleColor = p.reversible ? '#16a34a' : '#dc2626';
+                    var reversibleIcon = p.reversible ? '✓' : '⚠';
+                    html += '<div style="' + rowStyle + '"><span style="' + labelStyle + '">' + T('Reversibile') + ':</span> <span style="color:' + reversibleColor + ';">' + reversibleIcon + ' ' + escHtml(p.backup_label) + '</span></div>';
+                }
+                if (typeof p.preview_credits_consumed === 'number' || typeof p.apply_credits_estimated === 'number') {
+                    var pcc = typeof p.preview_credits_consumed === 'number' ? p.preview_credits_consumed : 0;
+                    var ace = typeof p.apply_credits_estimated === 'number' ? p.apply_credits_estimated : (payload.estimated_credits || 0);
+                    html += '<div style="padding:6px 0;"><span style="' + labelStyle + '">' + T('Crediti') + ':</span> ' +
+                            '<span style="color:#64748b;">' + T('Anteprima') + ': <strong>' + pcc + '</strong></span> &nbsp; ' +
+                            '<span style="color:#0f172a;">' + T('Applica') + ': <strong>' + ace + '</strong></span>' +
+                            '</div>';
+                }
+                html += '</div>';
+                return html;
             }
 
             function renderSideBySide(label, currentVal, proposedVal) {
@@ -3327,7 +3387,7 @@
                        '</div></div>';
             }
 
-            var bodyHtml = '';
+            var bodyHtml = renderTransparencyPanel(payload);
             var canApply = true;
             // 3.40.0 — manual-mode variant takes precedence over all per-agent
             // branches when the capability matrix says we can't apply

@@ -1400,6 +1400,13 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             // 3.41.6 - delegate inference to Action_Targets (single source of truth).
             if (class_exists('SEO_AEO_Action_Targets')) {
                 $action_type = SEO_AEO_Action_Targets::infer_action_type($agent, $action_type);
+                // 3.42.0-rc2 M3 — populate $agent when client omitted it
+                // (fetch-direct callers; UI click path normally sends it).
+                // Uses dispatcher reverse lookup to keep ONE routing table.
+                if ($agent === '' && class_exists('SEO_AEO_Action_Dispatcher')) {
+                    $resolved = SEO_AEO_Action_Dispatcher::resolve_agent($action_type, '');
+                    if ($resolved !== null) $agent = $resolved;
+                }
             }
             $post_id = isset($data['post_id']) ? intval($data['post_id']) : 0;
             // 3.41.6 - resolve post_id from URL when 0 (URL-based analysis).

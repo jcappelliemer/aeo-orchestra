@@ -103,6 +103,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             add_action('wp_ajax_seo_aeo_orchestra_execute_action', array($this, 'ajax_execute_action'));
             // 3.39.6 — Preview-before-apply UX.
             add_action('wp_ajax_seo_aeo_orchestra_preview_action', array($this, 'ajax_preview_action'));
+        // 3.42.0-rc1 M2 — propose is a thin alias of preview_action (single dispatch chain).
+        add_action('wp_ajax_seo_aeo_orchestra_propose', array($this, 'ajax_propose'));
             // 3.40.1 — manual-mode applied tracker.
             add_action('wp_ajax_seo_aeo_orchestra_mark_manual_applied', array($this, 'ajax_mark_manual_applied'));
             // 3.40.2 — re-scan site environment + return fresh profile.
@@ -1468,27 +1470,11 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             $page_url_for_ai   = $post_id > 0 ? (string) get_permalink($post_id) : $url;
             $body_text_for_ai  = $page ? substr(wp_strip_all_tags((string) $page->post_content), 0, 2000) : $issue;
 
-            // 3.41.8 - hard 403 guard on content_generator (Tier DANGER).
-            // Tightened from v3.41.7 to use wp_send_json_error + explicit
-            // status_header so the response is HTTP 403 (not 200 with a
-            // payload), and accept the dedicated flow's request_origin marker.
-            if ($agent === 'content_generator' || $action_type === 'EXPAND_CONTENT' || $action_type === 'REGENERATE_CONTENT') {
-                $typed_confirm = isset($_POST['typed_confirm']) ? sanitize_text_field(wp_unslash($_POST['typed_confirm'])) : '';
-                $request_origin = isset($_POST['request_origin']) ? sanitize_text_field(wp_unslash($_POST['request_origin'])) : '';
-                $is_dedicated = ($request_origin === 'content_regenerate_dedicated_flow') && (strtolower(trim($typed_confirm)) === 'riscrivi');
-                if (!$is_dedicated) {
-                    if (function_exists('seo_aeo_debug_log')) {
-                        seo_aeo_debug_log('[v3.41.8] 403 forbidden_path on preview: agent=' . $agent . ' action_type=' . $action_type . ' origin=' . $request_origin);
-                    }
-                    status_header(403);
-                    wp_send_json_error(array(
-                        'code'        => 'forbidden_path',
-                        'tier'        => 'DANGER',
-                        'action_type' => $action_type,
-                        'message'     => 'Questa azione e\' disponibile solo dal flow dedicato "Rigenera intera pagina".',
-                    ), 403);
-                    return;
-                }
+            // 3.42.0-rc1 M2 — centralised hard 403 guard via Action_Dispatcher.
+            // Single source of truth shared with execute_action + propose;
+            // closes the v3.41.7/v3.41.8 deviation class (preview vs execute drift).
+            if (class_exists('SEO_AEO_Action_Dispatcher')) {
+                SEO_AEO_Action_Dispatcher::enforce_hard_guard($agent, $action_type, $_POST);
             }
 
             $proposed = null;
@@ -1672,6 +1658,14 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
         wp_die();
     }
 
+
+    // 3.42.0-rc1 M2 — propose is a thin alias of preview_action (single
+    // dispatch chain). Both ajax handlers route through the same unified
+    // payload-building code so client-side renderers get identical shape
+    // regardless of which endpoint they hit.
+    public function ajax_propose() {
+        $this->ajax_preview_action();
+    }
     // -- Execute orchestrator action --
     public function ajax_execute_action() {
         try {
@@ -1681,26 +1675,21 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             if (!$api) return;
             $agent = isset($_POST['agent']) ? sanitize_text_field(wp_unslash($_POST['agent'])) : '';
             $data = isset($_POST['action_data']) ? (array)$_POST['action_data'] : array();
-            // 3.41.8 - Tier DANGER hard guard (mirrors ajax_preview_action).
-            // Real 403 status + origin marker acceptance.
-            $aeo_v3418_action_type_peek = isset($_POST['action_type']) ? sanitize_text_field(wp_unslash($_POST['action_type'])) : '';
-            if ($agent === 'content_generator' || $aeo_v3418_action_type_peek === 'EXPAND_CONTENT' || $aeo_v3418_action_type_peek === 'REGENERATE_CONTENT') {
-                $aeo_v3418_typed_confirm = isset($_POST['typed_confirm']) ? sanitize_text_field(wp_unslash($_POST['typed_confirm'])) : '';
-                $aeo_v3418_request_origin = isset($_POST['request_origin']) ? sanitize_text_field(wp_unslash($_POST['request_origin'])) : '';
-                $aeo_v3418_is_dedicated = ($aeo_v3418_request_origin === 'content_regenerate_dedicated_flow') && (strtolower(trim($aeo_v3418_typed_confirm)) === 'riscrivi');
-                if (!$aeo_v3418_is_dedicated) {
-                    if (function_exists('seo_aeo_debug_log')) {
-                        seo_aeo_debug_log('[v3.41.8] 403 forbidden_path on execute: agent=' . $agent . ' action_type=' . $aeo_v3418_action_type_peek . ' origin=' . $aeo_v3418_request_origin);
-                    }
-                    status_header(403);
-                    wp_send_json_error(array(
-                        'code'        => 'forbidden_path',
-                        'tier'        => 'DANGER',
-                        'action_type' => $aeo_v3418_action_type_peek,
-                        'message'     => 'Questa azione e\' disponibile solo dal flow dedicato "Rigenera intera pagina".',
-                    ), 403);
-                    return;
-                }
+            // 3.42.0-rc1 M2 — centralised hard 403 guard via Action_Dispatcher.
+            // Same single-source-of-truth guard preview_action + propose use.
+            $aeo_v3420_action_type_peek = isset($_POST['action_type']) ? sanitize_text_field(wp_unslash($_POST['action_type'])) : '';
+            if (class_exists('SEO_AEO_Action_Dispatcher')) {
+                SEO_AEO_Action_Dispatcher::enforce_hard_guard($agent, $aeo_v3420_action_type_peek, $_POST);
+            }
+
+            // 3.42.0-rc1 M2 — dry_run branch: execute_action with dry_run=1
+            // returns the SAME unified payload preview_action would, without
+            // any DB write. This is the architectural convergence: preview =
+            // propose = execute(dry_run=true) literal.
+            if (class_exists('SEO_AEO_Action_Dispatcher') && SEO_AEO_Action_Dispatcher::is_dry_run_request($_POST)) {
+                // Delegate to the preview path (which builds the unified payload).
+                $this->ajax_preview_action();
+                return;
             }
             // 3.40.0 — capability-matrix dispatch. When mode is manual/low for
             // this action_type + builder, refuse the automatic apply and tell

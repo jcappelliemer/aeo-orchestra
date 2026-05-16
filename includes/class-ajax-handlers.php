@@ -1444,6 +1444,34 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
      *             without an extra hop. The deprecation marker + Sentry log
      *             fire on every legacy invocation so we can track migration.
      */
+
+    /**
+     * 3.42.3.1 — cache-then-send wrapper used inside ajax_preview_action
+     * to persist a successful preview payload to the WP transient cache
+     * BEFORE handing off to wp_send_json. Replaces the broken v3.42.3
+     * ob_start callback which never fired (or never saw the buffer) in
+     * production AJAX flow.
+     *
+     * Skips cache_set if:
+     *   - payload contains 'error'
+     *   - payload lacks 'proposed' field (auth-fail / manual-review / etc)
+     *   - post_id <= 0
+     *   - SEO_AEO_Preview_Cache class missing
+     */
+    private function aeo_send_preview_with_cache($action_type, $post_id, $payload) {
+        if (
+            is_array($payload)
+            && empty($payload['error'])
+            && !empty($payload['proposed'])
+            && (int) $post_id > 0
+            && $action_type !== ''
+            && class_exists('SEO_AEO_Preview_Cache')
+        ) {
+            SEO_AEO_Preview_Cache::set($action_type, $post_id, $payload);
+        }
+        wp_send_json($payload);
+    }
+
     public function ajax_preview_action() {
         // 3.41.6 - rewrote to converge with ajax_execute_action.
         // Pre-3.41.6: switch on $agent with 5 cases; renamed semantic agents
@@ -1505,20 +1533,18 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     wp_send_json($aeo_cached_preview);
                     return;
                 }
-                // Cache SET via output buffer callback. wp_send_json calls
-                // echo wp_json_encode + wp_die; the buffer flush invokes
-                // our callback which parses JSON, persists if eligible,
-                // forwards the buffer unchanged to the client.
-                ob_start(function($aeo_buf) use ($action_type, $post_id) {
-                    if (!$aeo_buf) return $aeo_buf;
-                    $decoded = json_decode($aeo_buf, true);
-                    if (is_array($decoded) && empty($decoded['error']) && !empty($decoded['proposed'])) {
-                        if (class_exists('SEO_AEO_Preview_Cache')) {
-                            SEO_AEO_Preview_Cache::set($action_type, $post_id, $decoded);
-                        }
-                    }
-                    return $aeo_buf;
-                });
+                // 3.42.3.1 — Cache SET strategy switched from ob_start callback
+                // (broken in production; buffer flush didn't fire callback on
+                // wp_die path) to a TICK guard. Each wp_send_json site below
+                // remains untouched, but we register a shutdown function that
+                // captures the LAST args passed to wp_send_json by overriding
+                // it... actually simpler: track an $aeo_will_cache flag here
+                // and call cache_set() inline at the end of the AI flow,
+                // right before wp_send_json. See injected sites below.
+                $GLOBALS['aeo_pv_pending'] = array(
+                    'action_type' => $action_type,
+                    'post_id'     => (int) $post_id,
+                );
             }
 
             // 3.41.6 - build the unified preview skeleton (mode + where + reversibility
@@ -1567,7 +1593,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     'apply_credits_estimated'  => isset($skeleton['estimated_credits']) ? $skeleton['estimated_credits'] : 0,
                     'message'                  => 'Questa azione richiede una revisione manuale: apri la pagina nell\'editor WordPress.',
                 ));
-                wp_send_json($payload);
+                $this->aeo_send_preview_with_cache($action_type, $post_id, $payload);
                 return;
             }
 
@@ -1641,7 +1667,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             }
 
             if (is_array($proposed) && isset($proposed['error'])) {
-                wp_send_json(array_merge($skeleton, array(
+                $this->aeo_send_preview_with_cache($action_type, $post_id, array_merge($skeleton, array(
                     'current'                  => $current,
                     'proposed'                 => $proposed,
                     'preview_credits_consumed' => 0,
@@ -1651,7 +1677,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 return;
             }
 
-            wp_send_json(array_merge($skeleton, array(
+            $this->aeo_send_preview_with_cache($action_type, $post_id, array_merge($skeleton, array(
                 'current'                  => $current,
                 'proposed'                 => $proposed,
                 'preview_credits_consumed' => (int) $preview_credits,
@@ -1671,7 +1697,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'language' => $this->get_ai_language(),
                         'tier'     => 'standard', // 3.39.7 — cheap preview tier
                     ));
-                    wp_send_json(array(
+                    $this->aeo_send_preview_with_cache($action_type, $post_id, array(
                         'preview'           => true,
                         'mode'              => $mode,
                         'builder'           => $builder,
@@ -1695,7 +1721,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'language'        => $this->get_ai_language(),
                         'tier'            => 'standard', // 3.39.7 — cheap preview tier
                     ));
-                    wp_send_json(array(
+                    $this->aeo_send_preview_with_cache($action_type, $post_id, array(
                         'preview'           => true,
                         'mode'              => $mode,
                         'builder'           => $builder,
@@ -1719,7 +1745,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'language'    => $this->get_ai_language(),
                         'tier'        => 'standard', // 3.39.7 — cheap preview tier
                     ));
-                    wp_send_json(array(
+                    $this->aeo_send_preview_with_cache($action_type, $post_id, array(
                         'preview'           => true,
                         'mode'              => $mode,
                         'builder'           => $builder,
@@ -1741,7 +1767,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         'language' => $this->get_ai_language(),
                         'tier'     => 'standard', // 3.39.7 — cheap preview tier
                     ));
-                    wp_send_json(array(
+                    $this->aeo_send_preview_with_cache($action_type, $post_id, array(
                         'preview'           => true,
                         'mode'              => $mode,
                         'builder'           => $builder,
@@ -1756,7 +1782,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
 
                 case 'manual_review':
                 default:
-                    wp_send_json(array(
+                    $this->aeo_send_preview_with_cache($action_type, $post_id, array(
                         'preview'        => true,
                         'agent'          => $agent,
                         'current'        => $current,
@@ -1766,7 +1792,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     ));
             }
         } catch (Throwable $e) {
-            wp_send_json(array('error' => 'Errore preview azione: ' . $e->getMessage()));
+            $this->aeo_send_preview_with_cache($action_type, $post_id, array('error' => 'Errore preview azione: ' . $e->getMessage()));
         }
         wp_die();
     }

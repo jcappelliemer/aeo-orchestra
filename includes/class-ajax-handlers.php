@@ -1545,6 +1545,13 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     'action_type' => $action_type,
                     'post_id'     => (int) $post_id,
                 );
+                // 3.42.3.2 — set the in-preview guard so any post_meta writes
+                // OR wp_update_post calls during preview generation (schema
+                // persist, meta_title/desc preview save) skip cache
+                // invalidation. Real user edits outside this request still
+                // invalidate normally. wp_die ends the request so the guard
+                // doesn't leak beyond this AJAX call.
+                $GLOBALS['_seo_aeo_in_preview'] = true;
             }
 
             // 3.41.6 - build the unified preview skeleton (mode + where + reversibility

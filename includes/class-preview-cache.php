@@ -66,16 +66,17 @@ class SEO_AEO_Preview_Cache {
         if ($post_id <= 0) return null;
         $post = get_post($post_id);
         if (!$post) return null;
-        $all_meta = get_post_meta($post_id);
-        $relevant = array_intersect_key(
-            is_array($all_meta) ? $all_meta : array(),
-            array_flip(self::RELEVANT_META_KEYS)
-        );
-        // Sort keys to keep hash deterministic across runs.
-        ksort($relevant);
+        // 3.42.3.2 — content_hash is computed from post_content + post_title
+        // ONLY. Previous v3.42.3 implementation included post_meta keys
+        // (_seo_aeo_meta_*, schema_jsonld, faq_section, etc), but ajax_preview_action
+        // writes those exact meta keys during its own preview generation —
+        // call 1 mutated post_meta → call 2 computed a different hash →
+        // cache MISS every time. Body + title are stable across preview's
+        // own writes (preview never mutates body or title), so the cache
+        // key stays stable across back-to-back identical preview clicks.
+        // Real user edits to body/title still invalidate via save_post hook.
         $payload = (string) $post->post_content
-                 . '|' . (string) $post->post_title
-                 . '|' . wp_json_encode($relevant);
+                 . '|' . (string) $post->post_title;
         return substr(md5($payload), 0, 16);
     }
 
@@ -138,6 +139,17 @@ class SEO_AEO_Preview_Cache {
     public static function invalidate_post($post_id) {
         $post_id = (int) $post_id;
         if ($post_id <= 0) return 0;
+        // 3.42.3.2 — suppress invalidation during the preview AJAX path.
+        // ajax_preview_action writes post_meta as part of its preview
+        // generation (schema persist, meta_title/desc preview save).
+        // Those writes fire updated_post_meta + save_post which call this
+        // method in the SAME request — clearing the cache the wrapper
+        // is about to set. The request-scoped guard skips invalidation
+        // during that path. Real user edits (outside preview) still
+        // invalidate normally because the guard isn't set.
+        if (!empty($GLOBALS['_seo_aeo_in_preview'])) {
+            return 0;
+        }
         global $wpdb;
         $like = $wpdb->esc_like(self::TRANSIENT_PREFIX) . '%_' . $post_id . '_%';
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery

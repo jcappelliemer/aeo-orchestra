@@ -1145,6 +1145,38 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             update_post_meta($post_id, '_seo_aeo_last_analysis', current_time('mysql'));
         }
 
+        // 3.42.2 #3 — split is_summary items into a separate analysis_summary
+        // field so the frontend renders them as info-blue banner ABOVE the
+        // action list (not as a tiles-row that looks like an action). The
+        // v3.42.1 frontend banner mount condition was always false because
+        // backend never emitted the field — only the in-array is_summary
+        // flag. This explicit split makes the contract bidirectional.
+        // 3.42.2 #4 — enrich each emitted action with pricing_breakdown via
+        // Action_Targets helper so the card render shows inline cost upfront.
+        // v3.42.1 shipped pricing_breakdown only on /preview payloads; analyze
+        // action cards had no pricing → recurring SAFE-preview-then-CAUTION-
+        // apply surprise still possible. This closes the gap.
+        // Strategy: keep is_summary items IN $actions (the v3.42.1 frontend
+        // already filters them and mounts the banner) AND emit an explicit
+        // `analysis_summary` field on the response for auditability + future
+        // consumers. No frontend change required.
+        $analysis_summary_items = array();
+        $enriched_actions       = array();
+        foreach ($actions as $a3422) {
+            if (!is_array($a3422)) { $enriched_actions[] = $a3422; continue; }
+            if (!empty($a3422['is_summary'])) {
+                $analysis_summary_items[] = $a3422;
+                $enriched_actions[] = $a3422; // keep in main list for frontend filter back-compat
+                continue;
+            }
+            // Enrich with pricing_breakdown when action_type is known.
+            $at3422 = isset($a3422['action_type']) ? (string) $a3422['action_type'] : '';
+            if ($at3422 !== '' && class_exists('SEO_AEO_Action_Targets')) {
+                $a3422['pricing_breakdown'] = SEO_AEO_Action_Targets::build_pricing_breakdown($at3422);
+            }
+            $enriched_actions[] = $a3422;
+        }
+
         wp_send_json(array(
             'url' => $url,
             'title' => $title,
@@ -1156,7 +1188,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             'seo_issues' => isset($seo['issues']) ? count($seo['issues']) : 0,
             'aeo_issues' => isset($aeo['issues']) ? count($aeo['issues']) : 0,
             'has_meta' => $has_meta_title && $has_meta_desc,
-            'actions' => $actions,
+            'actions' => $enriched_actions,
+            'analysis_summary' => $analysis_summary_items,  // 3.42.2 #3
             'seo_detail' => $seo,
             'aeo_detail' => $aeo
         ));
@@ -1786,8 +1819,39 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     ));
                     return;
                 }
+                // 3.42.2 #2 — capture pre-content BEFORE apply so we can record
+                // a Modifiche-recenti snapshot post-success. The modern execute
+                // path was bypassing Snapshot_Manager entirely; only legacy
+                // proposal/keyword/link paths fed the sidebar. After this fix,
+                // every Esegui click via surgical editor produces an entry
+                // labeled by the executed agent (Schema/Meta/Intro/etc).
+                $aeo3422_pre_content = ($surgical_post_id > 0)
+                    ? (string) get_post_field('post_content', $surgical_post_id)
+                    : '';
                 $surgical_result = call_user_func(array($editor_class, 'apply'), $surgical_post_id, $data['edits']);
                 if ($surgical_result['success']) {
+                    if ($surgical_post_id > 0 && class_exists('SEO_AEO_Snapshot_Manager')) {
+                        $aeo3422_post_content = (string) get_post_field('post_content', $surgical_post_id);
+                        $aeo3422_byte_delta = strlen($aeo3422_post_content) - strlen($aeo3422_pre_content);
+                        $aeo3422_proposal_id = 'execute-' . sanitize_key($action_type) . '-' . time();
+                        $aeo3422_meta = array(
+                            'agent'      => $agent,
+                            'byte_delta' => $aeo3422_byte_delta,
+                        );
+                        try {
+                            SEO_AEO_Snapshot_Manager::create_snapshot(
+                                $surgical_post_id,
+                                $aeo3422_proposal_id,
+                                array('content' => $aeo3422_pre_content),
+                                array('content' => $aeo3422_post_content),
+                                $aeo3422_meta
+                            );
+                        } catch (Throwable $aeo3422_e) {
+                            if (function_exists('seo_aeo_debug_log')) {
+                                seo_aeo_debug_log('v3.42.2 snapshot create failed: ' . $aeo3422_e->getMessage());
+                            }
+                        }
+                    }
                     wp_send_json(array(
                         'success'        => true,
                         'surgical'       => true,

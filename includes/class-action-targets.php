@@ -401,26 +401,39 @@ class SEO_AEO_Action_Targets {
      * Build the unified preview payload "skeleton" that ajax_preview_action
      * augments with `proposed.value`, `current.value`, and `estimated_credits`.
      */
-    public static function build_preview_skeleton($agent, $action_type, $post_id) {
+    /**
+     * 3.42.2 #4 — extract pricing_breakdown into its own helper so the
+     * analyze response (ajax_orchestrate_single) can attach it to each
+     * action card upfront. Without this, tier+pricing was visible only
+     * on preview payloads — action list cards rendered without inline
+     * cost, which is what v3.42.1 walkthrough caught.
+     *
+     * Returns: { preview_cost, apply_cost, engine_model, tier_label }
+     */
+    public static function build_pricing_breakdown($action_type) {
         $target = self::get_target($action_type);
-        $detect = self::detect_mode_and_builder($post_id, $action_type);
-        // 3.42.1 #4 - pricing_breakdown single source of truth for the
-        // tier↔apply coherence bug class (recurring 3×: v3.41.7 + v3.41.8 + v3.42.0).
-        // Card UI + modal both read from this field — no more SAFE-preview-then-
-        // CAUTION-apply surprise charge jumps.
-        $tier = self::get_tier($action_type);
-        $apply_cost = isset($target['estimated_credits']) ? (int) $target['estimated_credits'] : 0;
-        $preview_cost = $apply_cost > 5 ? 1 : 0; // SAFE actions free preview, CAUTION+ premium → 1cr quick preview
+        $tier   = self::get_tier($action_type);
+        $apply_cost  = isset($target['estimated_credits']) ? (int) $target['estimated_credits'] : 0;
+        $preview_cost = $apply_cost > 5 ? 1 : 0;
         $engine_model = $tier === 'SAFE'    ? 'Gemini Flash (Standard)'
                       : ($tier === 'CAUTION' ? 'Claude Haiku 3.5 (Premium)'
                       : ($tier === 'DANGER'  ? 'Claude Sonnet 4.6 (Premium++)'
                       : 'Manual'));
-        $pricing_breakdown = array(
+        return array(
             'preview_cost' => $preview_cost,
             'apply_cost'   => $apply_cost,
             'engine_model' => $engine_model,
             'tier_label'   => $tier,
         );
+    }
+
+    public static function build_preview_skeleton($agent, $action_type, $post_id) {
+        $target = self::get_target($action_type);
+        $detect = self::detect_mode_and_builder($post_id, $action_type);
+        // 3.42.2 #4 - pricing_breakdown moved into helper for reuse by
+        // the analyze response. Same single-source-of-truth pattern.
+        $tier = self::get_tier($action_type);
+        $pricing_breakdown = self::build_pricing_breakdown($action_type);
 
         return array(
             'preview'              => true,

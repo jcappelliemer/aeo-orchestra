@@ -9,6 +9,45 @@ if (!defined('ABSPATH')) exit;
  * API Client for AEO Orchestra with domain locking.
  */
 class SEO_AEO_API_Client {
+    /**
+     * 3.42.3 P2 — defensive typo strip. Some AI generations emit Italian
+     * accented words followed by an apostrophe + space + lowercase (an
+     * artifact of LLM tokenization). e.g. "più' frequenti" → "più frequenti".
+     * v3.42.1 backend prompt rule added a tipographic instruction, but the
+     * AI sometimes ignores it. This filter walks the response post-fetch
+     * and silently strips the apostrophe.
+     *
+     * Recursive: handles arrays + nested objects so it sweeps the entire
+     * AI payload.
+     *
+     * @param mixed $value
+     * @return mixed
+     */
+    public static function strip_italian_apostrophe_typo($value) {
+        if (is_string($value)) {
+            return preg_replace(
+                "/(più|perché|città|autorità|qualità|probabilità|attività|università|comunità|società|perciò|già|piedistallo|né|sì)'(\\s+[a-zA-Z])/u",
+                '$1$2',
+                $value
+            );
+        }
+        if (is_array($value)) {
+            $out = array();
+            foreach ($value as $k => $v) {
+                $out[$k] = self::strip_italian_apostrophe_typo($v);
+            }
+            return $out;
+        }
+        if (is_object($value)) {
+            $copy = clone $value;
+            foreach ($copy as $k => $v) {
+                $copy->$k = self::strip_italian_apostrophe_typo($v);
+            }
+            return $copy;
+        }
+        return $value;
+    }
+
     private $api_url;
     private $license_key;
     private $domain;

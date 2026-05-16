@@ -4,7 +4,7 @@
  * Plugin Name: AEO Orchestra
  * Plugin URI: https://aeo-orchestra.com
  * Description: Plugin SEO + AEO completo: specialisti AI perfettamente orchestrati per meta tags, content generation, schema, llms.txt, sitemap, redirect manager, brand voice e altro.
- * Version: 3.42.2.2
+ * Version: 3.42.3
  * Requires at least: 5.8
  * Tested up to: 6.9
  * Requires PHP: 7.4
@@ -37,7 +37,7 @@ if (version_compare(PHP_VERSION, '7.4', '<')) {
     return;
 }
 
-define('SEO_AEO_VERSION', '3.42.2.2');
+define('SEO_AEO_VERSION', '3.42.3');
 define('SEO_AEO_AGENTS_COUNT', 13);  // 3.35.84.2: +Verify-Live  // mirrors backend/helpers/config.py AGENTS_COUNT — bump on every new agent
 define('SEO_AEO_TOOLS_COUNT', 22);   // 3.35.84.2: +Verify-Live, Profilo Business, AI Performance, AI Crawlers   // mirrors backend/helpers/config.py TOOLS_COUNT — bump on every new tool
 define('SEO_AEO_DIR', plugin_dir_path(__FILE__));
@@ -299,6 +299,9 @@ try {
     SEO_AEO_Debug_Snapshot::init();
     if (is_admin()) { SEO_AEO_Emergency_Disable::init_admin_notice(); }
     require_once SEO_AEO_DIR . 'includes/class-snapshot-manager.php';
+    // 3.42.3 P0 — WP transient preview cache (anti-credits-anomaly).
+    require_once SEO_AEO_DIR . 'includes/class-preview-cache.php';
+    SEO_AEO_Preview_Cache::register_hooks();
     require_once SEO_AEO_DIR . 'includes/class-seo-engine-bridge.php';
     require_once SEO_AEO_DIR . 'includes/class-output-renderer.php';
     require_once SEO_AEO_DIR . 'includes/class-sitemap.php';

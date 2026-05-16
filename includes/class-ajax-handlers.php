@@ -1488,6 +1488,39 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 if ($resolved > 0) $post_id = $resolved;
             }
 
+            // 3.42.3 P0 — WP transient preview cache (LAUNCH BLOCKER).
+            // Cache CHECK at entry: if the same (action_type, post_id,
+            // content_hash) was previewed in the last hour, return the
+            // cached payload with preview_cost:0 — saves credits on the
+            // back-to-back-clicks pattern that caused the v3.42.2.1 wallet
+            // anomaly (-105cr in 5min walkthrough).
+            if (class_exists('SEO_AEO_Preview_Cache') && (int) $post_id > 0 && $action_type !== '') {
+                $aeo_cached_preview = SEO_AEO_Preview_Cache::get($action_type, $post_id);
+                if (is_array($aeo_cached_preview)) {
+                    if (isset($aeo_cached_preview['pricing_breakdown']) && is_array($aeo_cached_preview['pricing_breakdown'])) {
+                        $aeo_cached_preview['pricing_breakdown']['preview_cost'] = 0;
+                    }
+                    $aeo_cached_preview['preview_credits_consumed'] = 0;
+                    $aeo_cached_preview['_cache_hit'] = true;
+                    wp_send_json($aeo_cached_preview);
+                    return;
+                }
+                // Cache SET via output buffer callback. wp_send_json calls
+                // echo wp_json_encode + wp_die; the buffer flush invokes
+                // our callback which parses JSON, persists if eligible,
+                // forwards the buffer unchanged to the client.
+                ob_start(function($aeo_buf) use ($action_type, $post_id) {
+                    if (!$aeo_buf) return $aeo_buf;
+                    $decoded = json_decode($aeo_buf, true);
+                    if (is_array($decoded) && empty($decoded['error']) && !empty($decoded['proposed'])) {
+                        if (class_exists('SEO_AEO_Preview_Cache')) {
+                            SEO_AEO_Preview_Cache::set($action_type, $post_id, $decoded);
+                        }
+                    }
+                    return $aeo_buf;
+                });
+            }
+
             // 3.41.6 - build the unified preview skeleton (mode + where + reversibility
             // come from Action_Targets, single source of truth shared with execute).
             $skeleton = class_exists('SEO_AEO_Action_Targets')

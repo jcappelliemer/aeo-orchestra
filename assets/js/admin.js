@@ -1,6 +1,6 @@
 (function($) {
     'use strict';
-/* AEO Orchestra v3.42.2.2 — defensive template hardening: Esegui-with-fallback + always-render meta-inline + structured analysis_summary banner */
+/* AEO Orchestra v3.42.3 — WP transient preview cache + cache-hit banner + retry on preview fail + typo defensive filter (server) */
 
     // 3.37.0 — Centralized typed-error handler. Backend (FastAPI) returns
     // {error:"<code>", message:"...", meta:{...}} on license/credit
@@ -3492,11 +3492,41 @@
                 console.error('[PREVIEW] fail', {status: xhr ? xhr.status : null, ajaxStatus: status, body: (xhr && xhr.responseText ? xhr.responseText.substring(0, 300) : '')});
                 var msg;
                 if (status === 'timeout') {
-                    msg = SeoAeoOrchestra.t('Preview impiega troppo tempo (>60s). Riprova tra qualche secondo.');
+                    msg = SeoAeoOrchestra.t('Preview impiega troppo tempo (>60s).');
                 } else {
                     msg = SeoAeoOrchestra.t('Errore di rete') + ' (' + (xhr ? xhr.status : '?') + ')';
                 }
-                SeoAeoOrchestra.showNotice(msg, 'error');
+                // 3.42.3 #5 — retry banner with Riprova / Esegui buttons.
+                // Replaces the v3.42.1 showNotice toast; user no longer has
+                // to find the original button to retry — banner sits next to
+                // it with inline controls. No duplicate credit charge: retry
+                // hits the same cache key.
+                var $card = $btn.closest('.orch-action-item');
+                $card.find('.aeo-preview-retry-banner').remove();
+                var T = SeoAeoOrchestra.t || function(s){return s;};
+                var $banner = jQuery(
+                    '<div class="aeo-preview-retry-banner" style="margin-top:8px;padding:8px 12px;background:#fee2e2;border:1px solid #fca5a5;border-left:4px solid #dc2626;border-radius:6px;font-size:12px;color:#7f1d1d;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+                    '<span class="aeo-retry-msg" style="flex:1;">' + (status === 'timeout' ? '⚠️ ' : '❌ ') + escapeHtml(msg) + '</span>' +
+                    '<button type="button" class="button button-small aeo-btn-retry-preview">🔄 ' + T('Riprova') + '</button>' +
+                    '<button type="button" class="button button-small aeo-btn-skip-preview">▶ ' + T('Esegui senza preview') + '</button>' +
+                    '<button type="button" class="button button-small aeo-btn-dismiss-retry" style="opacity:0.6;">✕</button>' +
+                    '</div>'
+                );
+                $card.append($banner);
+                $banner.find('.aeo-btn-retry-preview').on('click', function() {
+                    $banner.remove();
+                    $btn.trigger('click');
+                });
+                $banner.find('.aeo-btn-skip-preview').on('click', function() {
+                    $banner.remove();
+                    var $execBtn = $card.find('.orch-action-btn:not(.orch-preview-btn)').first();
+                    if ($execBtn.length) {
+                        $execBtn.trigger('click');
+                    } else {
+                        SeoAeoOrchestra.showNotice(T('Bottone Esegui non trovato'), 'warning');
+                    }
+                });
+                $banner.find('.aeo-btn-dismiss-retry').on('click', function() { $banner.remove(); });
             }).always(function() {
                 console.log('[PREVIEW] always — restoring button');
                 $btn.prop('disabled', false).html(origLabel);
@@ -3714,7 +3744,11 @@
                     '</div>' +
                     '<button type="button" class="orch-apv-close" aria-label="' + T('Chiudi') + '">×</button>' +
                   '</div>' +
-                  '<div class="orch-apv-body">' + bodyHtml + '</div>' +
+                  '<div class="orch-apv-body">' +
+                    (payload._cache_hit
+                      ? '<div class="aeo-cache-hit-banner" style="background:#dcfce7;border:1px solid #86efac;border-left:4px solid #16a34a;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#166534;">✅ ' + T('Preview riutilizzato dalla cache') + ' · <strong>0 cr</strong> ' + T('addebitati per questo preview') + '. ' + T('Le modifiche al contenuto invalidano automaticamente la cache.') + '</div>'
+                      : ''
+                    ) + bodyHtml + '</div>' +
                   '<div class="orch-apv-foot">' + ctaHtml + '</div>' +
                 '</div>' +
               '</div>';

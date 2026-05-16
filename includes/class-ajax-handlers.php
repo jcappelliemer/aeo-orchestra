@@ -1145,28 +1145,22 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             update_post_meta($post_id, '_seo_aeo_last_analysis', current_time('mysql'));
         }
 
-        // 3.42.2 #3 — split is_summary items into a separate analysis_summary
-        // field so the frontend renders them as info-blue banner ABOVE the
-        // action list (not as a tiles-row that looks like an action). The
-        // v3.42.1 frontend banner mount condition was always false because
-        // backend never emitted the field — only the in-array is_summary
-        // flag. This explicit split makes the contract bidirectional.
-        // 3.42.2 #4 — enrich each emitted action with pricing_breakdown via
-        // Action_Targets helper so the card render shows inline cost upfront.
-        // v3.42.1 shipped pricing_breakdown only on /preview payloads; analyze
-        // action cards had no pricing → recurring SAFE-preview-then-CAUTION-
-        // apply surprise still possible. This closes the gap.
-        // Strategy: keep is_summary items IN $actions (the v3.42.1 frontend
-        // already filters them and mounts the banner) AND emit an explicit
-        // `analysis_summary` field on the response for auditability + future
-        // consumers. No frontend change required.
+        // 3.42.2.2 — reshape analysis_summary to a STRUCTURED OBJECT
+        // {score_seo, score_aeo, issues_detected, call_to_action} consumed
+        // directly by the frontend banner. The v3.42.2 array-of-items shape
+        // didn't match what the banner expected; user Chrome-MCP test showed
+        // banner div mounted but EMPTY. Now backend emits the exact shape
+        // the consumer needs. Also strip is_summary items OUT of actions[]
+        // (no more "Migliora SEO (Score: N)" card in the action list).
+        // 3.42.2 #4 enrichment preserved — each non-summary action gets
+        // pricing_breakdown via Action_Targets helper.
         $analysis_summary_items = array();
         $enriched_actions       = array();
         foreach ($actions as $a3422) {
             if (!is_array($a3422)) { $enriched_actions[] = $a3422; continue; }
             if (!empty($a3422['is_summary'])) {
                 $analysis_summary_items[] = $a3422;
-                $enriched_actions[] = $a3422; // keep in main list for frontend filter back-compat
+                // v3.42.2.2: do NOT keep is_summary item in actions[]
                 continue;
             }
             // Enrich with pricing_breakdown when action_type is known.
@@ -1175,6 +1169,34 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 $a3422['pricing_breakdown'] = SEO_AEO_Action_Targets::build_pricing_breakdown($at3422);
             }
             $enriched_actions[] = $a3422;
+        }
+
+        // 3.42.2.2 — build the structured analysis_summary contract. The
+        // first is_summary item's description carries the dominant issue;
+        // SEO+AEO issue counts come from $seo['issues'] and $aeo['issues'].
+        $aeo_summary_struct = null;
+        if (!empty($analysis_summary_items) || $seo_score !== null || $aeo_score !== null) {
+            $aeo_top = !empty($analysis_summary_items) ? $analysis_summary_items[0] : array();
+            $aeo_issues_arr = array();
+            if (isset($seo['issues']) && is_array($seo['issues'])) {
+                foreach (array_slice($seo['issues'], 0, 3) as $iss) {
+                    $iss_t = is_string($iss) ? $iss : (isset($iss['description']) ? $iss['description'] : '');
+                    if ($iss_t) $aeo_issues_arr[] = $iss_t;
+                }
+            }
+            if (isset($aeo['issues']) && is_array($aeo['issues'])) {
+                foreach (array_slice($aeo['issues'], 0, 3) as $iss) {
+                    $iss_t = is_string($iss) ? $iss : (isset($iss['description']) ? $iss['description'] : '');
+                    if ($iss_t) $aeo_issues_arr[] = $iss_t;
+                }
+            }
+            $aeo_summary_struct = array(
+                'score_seo'       => $seo_score,
+                'score_aeo'       => $aeo_score,
+                'issues_detected' => $aeo_issues_arr,
+                'call_to_action'  => !empty($aeo_top['description']) ? (string) $aeo_top['description'] : 'Agisci sulle azioni qui sotto',
+                'label'           => !empty($aeo_top['label']) ? (string) $aeo_top['label'] : '',
+            );
         }
 
         wp_send_json(array(
@@ -1189,7 +1211,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             'aeo_issues' => isset($aeo['issues']) ? count($aeo['issues']) : 0,
             'has_meta' => $has_meta_title && $has_meta_desc,
             'actions' => $enriched_actions,
-            'analysis_summary' => $analysis_summary_items,  // 3.42.2 #3
+            'analysis_summary' => $aeo_summary_struct,  // 3.42.2.2 structured object
             'seo_detail' => $seo,
             'aeo_detail' => $aeo
         ));

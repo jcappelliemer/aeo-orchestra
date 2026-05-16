@@ -1,6 +1,6 @@
 (function($) {
     'use strict';
-/* AEO Orchestra v3.42.2.1 — frontend consumer closure: AEO_AGENT_LABEL_MAP + structured analysis_summary */
+/* AEO Orchestra v3.42.2.2 — defensive template hardening: Esegui-with-fallback + always-render meta-inline + structured analysis_summary banner */
 
     // 3.37.0 — Centralized typed-error handler. Backend (FastAPI) returns
     // {error:"<code>", message:"...", meta:{...}} on license/credit
@@ -2492,25 +2492,53 @@
                 $host = jQuery('<div id="orch-analysis-summary-banner"></div>');
                 $plan.before($host);
             }
-            // v3.42.2.1 — coerce input to a flat array of summary items.
-            // Supports 3 shapes for back-compat:
-            //  - Array of summary items (v3.42.1 filter-from-actions path)
-            //  - Response object with .analysis_summary (v3.42.2 contract)
-            //  - Array of response objects (multi-page analysis)
+            // v3.42.2.2 — coerce input to a flat array of summary descriptors.
+            // Backend v3.42.2.2 emits `analysis_summary` as a STRUCTURED OBJECT
+            // {score_seo, score_aeo, issues_detected, call_to_action, label}.
+            // We still support legacy v3.42.1 array-of-items shape for back-
+            // compat with restoreFromHistory paths.
             var summaryItems = [];
+            function aeoNormalizeStructured(o) {
+                // Convert structured analysis_summary → single summary descriptor
+                if (!o || typeof o !== 'object') return null;
+                if (Array.isArray(o)) return null;
+                if (o.score_seo == null && o.score_aeo == null && !o.issues_detected) return null;
+                var scoreParts = [];
+                if (o.score_seo != null) scoreParts.push('SEO ' + o.score_seo);
+                if (o.score_aeo != null) scoreParts.push('AEO ' + o.score_aeo);
+                var labelTxt = o.label || ('Riepilogo analisi' + (scoreParts.length ? ' · ' + scoreParts.join(' · ') : ''));
+                var descLines = [];
+                if (Array.isArray(o.issues_detected) && o.issues_detected.length) {
+                    descLines.push('Problemi rilevati: ' + o.issues_detected.join('; '));
+                }
+                if (o.call_to_action) descLines.push(o.call_to_action);
+                return { label: labelTxt, description: descLines.join(' — '), _structured: true };
+            }
             if (Array.isArray(input)) {
                 input.forEach(function(it) {
                     if (!it) return;
-                    if (it.analysis_summary && Array.isArray(it.analysis_summary)) {
-                        // Per-page response object
-                        it.analysis_summary.forEach(function(s) { summaryItems.push(s); });
-                    } else if (typeof it === 'object') {
-                        // Treat as already-flat summary item
+                    if (it.analysis_summary) {
+                        if (Array.isArray(it.analysis_summary)) {
+                            it.analysis_summary.forEach(function(s) { summaryItems.push(s); });
+                        } else {
+                            var norm = aeoNormalizeStructured(it.analysis_summary);
+                            if (norm) summaryItems.push(norm);
+                        }
+                    } else if (typeof it === 'object' && !it.score_seo && !it.score_aeo) {
+                        // legacy: already-flat summary item from v3.42.1 filter path
                         summaryItems.push(it);
                     }
                 });
-            } else if (input && typeof input === 'object' && Array.isArray(input.analysis_summary)) {
-                summaryItems = input.analysis_summary.slice();
+            } else if (input && typeof input === 'object') {
+                if (Array.isArray(input.analysis_summary)) {
+                    summaryItems = input.analysis_summary.slice();
+                } else if (input.analysis_summary) {
+                    var n = aeoNormalizeStructured(input.analysis_summary);
+                    if (n) summaryItems.push(n);
+                } else {
+                    var n2 = aeoNormalizeStructured(input);
+                    if (n2) summaryItems.push(n2);
+                }
             }
             if (!summaryItems.length) { $host.empty(); return; }
             var T = SeoAeoOrchestra.t || function(s){return s;};
@@ -2518,7 +2546,7 @@
                 var label = (it.label || '').replace(/^Migliora\s+/i, '');
                 var desc  = it.description || '';
                 return '<div class="aeo-analysis-summary-banner" style="background:#dbeafe;border:1px solid #93c5fd;border-left:4px solid #3b82f6;border-radius:8px;padding:14px 18px;margin:14px 0;font-size:13px;color:#1e3a8a;">' +
-                       '<div style="font-weight:600;font-size:14px;margin-bottom:6px;">ℹ️ ' + T('Riepilogo analisi') + ' · ' + escapeHtml(it.label || '') + '</div>' +
+                       '<div style="font-weight:600;font-size:14px;margin-bottom:6px;">ℹ️ ' + T('Riepilogo analisi') + ' · ' + escapeHtml(label || it.label || '') + '</div>' +
                        (desc ? '<div style="margin:6px 0;color:#1e40af;">' + escapeHtml(desc) + '</div>' : '') +
                        '<div style="margin-top:6px;color:#475569;font-style:italic;font-size:12px;">↓ ' + T('Agisci sulle azioni qui sotto') + '</div>' +
                        '</div>';
@@ -2567,19 +2595,19 @@
                 planHtml += '<span class="priority-badge priority-' + action.priority + '">' + SeoAeoOrchestra.t(action.priority) + '</span>';
                 // 3.41.7 - tier badge (SAFE / CAUTION / DANGER) computed from action_type.
                 var tierVal = action.tier || SeoAeoOrchestra.tierForActionType(action.action_type);
-                // 3.42.1 #4 — pricing_breakdown inline (single source of truth).
-                // No more SAFE-preview-then-CAUTION-apply surprise charge jumps.
-                var pb = action.pricing_breakdown || null;
-                if (pb) {
-                    var previewCost = pb.preview_cost || 0;
-                    var applyCost = pb.apply_cost || 0;
-                    var engine = pb.engine_model || '';
-                    planHtml += ' <span style="display:inline-block;font-size:11px;color:#64748b;margin-left:8px;">' +
-                                'Preview <strong>' + previewCost + 'cr</strong> · ' +
-                                'Apply <strong>' + applyCost + 'cr</strong>' +
-                                (engine ? ' <em style="color:#94a3b8;">(' + escHtml(engine) + ')</em>' : '') +
-                                '</span>';
-                }
+                // 3.42.2.2 — card meta-inline ALWAYS renders with defensive
+                // fallbacks. The v3.42.1 `if (pb)` skipped the entire row when
+                // pricing_breakdown was undefined (legacy aggregate agents).
+                // Now: pricing_breakdown.* → action.estimated_credits → 0/UNKNOWN.
+                var pb = action.pricing_breakdown || {};
+                var previewCost = (pb.preview_cost != null) ? pb.preview_cost : 0;
+                var applyCost = (pb.apply_cost != null) ? pb.apply_cost : (action.estimated_credits != null ? action.estimated_credits : 0);
+                var engine = pb.engine_model || '';
+                planHtml += ' <span class="action-meta-inline" style="display:inline-block;font-size:11px;color:#64748b;margin-left:8px;">' +
+                            '<span class="preview-cost">Preview <strong>' + previewCost + 'cr</strong></span>' +
+                            ' · <span class="apply-cost">Apply <strong>' + applyCost + 'cr</strong></span>' +
+                            (engine ? ' <em style="color:#94a3b8;">(' + escHtml(engine) + ')</em>' : '') +
+                            '</span>';
                 if (tierVal) {
                     var tierStyle = tierVal === 'SAFE'    ? 'background:#dcfce7;color:#166534;border:1px solid #86efac;'
                                   : tierVal === 'CAUTION' ? 'background:#fef9c3;color:#854d0e;border:1px solid #fde047;'
@@ -2628,10 +2656,16 @@
                 planHtml += 'data-action-data="' + planAttrJson + '" ';
                 planHtml += planAttrFallback + ' ';
                 planHtml += 'data-idx="' + idx + '">';
-                // 3.42.1 #4 — Esegui button shows apply_cost explicitly.
-                var aeoApplyCostLabel = (action.pricing_breakdown && action.pricing_breakdown.apply_cost)
-                    ? ' (' + action.pricing_breakdown.apply_cost + 'cr)'
-                    : '';
+                // 3.42.2.2 — Esegui button ALWAYS shows cost with cascading
+                // fallback: pricing_breakdown.apply_cost → action.estimated_credits
+                // → '?'. The v3.42.1 conditional render produced empty label when
+                // apply_cost was 0 (DANGER tier) or pricing_breakdown undefined
+                // (legacy aggregate agents). Defensive emit means every button is
+                // self-describing.
+                var aeoApplyCostVal = (action.pricing_breakdown && (action.pricing_breakdown.apply_cost || action.pricing_breakdown.apply_cost === 0))
+                    ? action.pricing_breakdown.apply_cost
+                    : (action.estimated_credits != null ? action.estimated_credits : '?');
+                var aeoApplyCostLabel = ' (' + aeoApplyCostVal + 'cr)';
                 planHtml += '<span class="dashicons dashicons-controls-play"></span> ' + SeoAeoOrchestra.t('Esegui') + aeoApplyCostLabel + '</button>';
                 planHtml += '<div id="orch-action-result-' + idx + '" class="orch-action-result" style="display:none;"></div>';
                 planHtml += '</div>';

@@ -28,7 +28,7 @@ class SEO_AEO_Snapshot_Manager {
     /**
      * Crea uno snapshot. Ritorna snapshot_id o null.
      */
-    public function create_snapshot($post_id, $proposal_id, $previous_state, $applied_state) {
+    public function create_snapshot($post_id, $proposal_id, $previous_state, $applied_state, $meta = array()) {
         $post_id = intval($post_id);
         if ($post_id <= 0) {
             return null;
@@ -41,11 +41,27 @@ class SEO_AEO_Snapshot_Manager {
         $applied_by = get_current_user_id();
         $post       = get_post($post_id);
 
+        // 3.42.1 #1 — enrichment: derive agent + byte_delta + page_short
+        // from caller-supplied $meta for Modifiche recenti UI label rewrite.
+        $agent_name = isset($meta['agent']) ? (string) $meta['agent'] : '';
+        $byte_delta = isset($meta['byte_delta']) ? (int) $meta['byte_delta'] : 0;
+        if ($byte_delta === 0) {
+            // Fallback: compute from state strlen diff if both sides serializable.
+            $prev_size = is_string($previous_state) ? strlen($previous_state) : strlen(maybe_serialize($previous_state));
+            $next_size = is_string($applied_state) ? strlen($applied_state)  : strlen(maybe_serialize($applied_state));
+            $byte_delta = $next_size - $prev_size;
+        }
+        $page_title_full = $post ? $post->post_title : '';
+        $page_short = mb_strlen($page_title_full) > 40 ? (mb_substr($page_title_full, 0, 38) . '…') : $page_title_full;
+
         $data = array(
             'snapshot_id'    => $snapshot_id,
             'proposal_id'    => $proposal_id,
             'post_id'        => $post_id,
-            'post_title'     => $post ? $post->post_title : '',
+            'post_title'     => $page_title_full,
+            'page_short'     => $page_short,   // 3.42.1 #1
+            'agent'          => $agent_name,   // 3.42.1 #1
+            'byte_delta'     => $byte_delta,   // 3.42.1 #1
             'applied_at'     => $now,
             'applied_by'     => $applied_by,
             'expires_at'     => $now + self::TTL_SECONDS,
@@ -78,7 +94,10 @@ class SEO_AEO_Snapshot_Manager {
         $this->add_to_index(array(
             'snapshot_id' => $snapshot_id,
             'post_id'     => $post_id,
-            'post_title'  => $post ? $post->post_title : '',
+            'post_title'  => $page_title_full,
+            'page_short'  => $page_short,   // 3.42.1 #1
+            'agent'       => $agent_name,   // 3.42.1 #1
+            'byte_delta'  => $byte_delta,   // 3.42.1 #1
             'proposal_id' => $proposal_id,
             'applied_at'  => $now,
             'expires_at'  => $now + self::TTL_SECONDS,

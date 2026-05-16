@@ -2450,10 +2450,45 @@
         // 3.39.8 Bug A — Piano d'Azione renderer extracted so the
         // restoreFromHistory path uses identical HTML scaffolding as fresh.
         // Idempotent: clear-and-rebuild.
+        // 3.42.1 #3 — render the analysis summary as a separate info banner
+        // above the action list (not as a tiles-row that looks like an action).
+        renderAnalysisSummaryBanner: function(summaryItems) {
+            var $host = jQuery('#orch-analysis-summary-banner');
+            if (!$host.length) {
+                // Lazy-mount the banner anchor right before #orch-action-plan
+                var $plan = jQuery('#orch-action-plan');
+                if (!$plan.length) return;
+                $host = jQuery('<div id="orch-analysis-summary-banner"></div>');
+                $plan.before($host);
+            }
+            if (!summaryItems || summaryItems.length === 0) { $host.empty(); return; }
+            var T = SeoAeoOrchestra.t || function(s){return s;};
+            var html = summaryItems.map(function(it) {
+                var label = (it.label || '').replace(/^Migliora\s+/i, '');
+                var desc  = it.description || '';
+                return '<div style="background:#dbeafe;border:1px solid #93c5fd;border-left:4px solid #3b82f6;border-radius:8px;padding:14px 18px;margin:14px 0;font-size:13px;color:#1e3a8a;">' +
+                       '<div style="font-weight:600;font-size:14px;margin-bottom:6px;">ℹ️ ' + T('Riepilogo analisi') + ' · ' + escapeHtml(it.label || '') + '</div>' +
+                       (desc ? '<div style="margin:6px 0;color:#1e40af;">' + escapeHtml(desc) + '</div>' : '') +
+                       '<div style="margin-top:6px;color:#475569;font-style:italic;font-size:12px;">↓ ' + T('Agisci sulle azioni qui sotto') + '</div>' +
+                       '</div>';
+            }).join('');
+            $host.html(html);
+        },
+
         renderActionPlan: function(actions) {
             var $list = jQuery('#orch-action-plan');
             if (!$list.length) return;
             actions = Array.isArray(actions) ? actions : [];
+            // 3.42.1 #3 — split summary rows out into a separate banner above
+            // the action list (was rendered as a card MEDIA that looked like
+            // an action — confusing UX).
+            var summaryItems = actions.filter(function(a) { return a.is_summary === true; });
+            var actionableItems = actions.filter(function(a) { return a.is_summary !== true; });
+            // Render the banner FIRST (above) and replace the actions list with the actionable subset.
+            if (SeoAeoOrchestra.renderAnalysisSummaryBanner) {
+                SeoAeoOrchestra.renderAnalysisSummaryBanner(summaryItems);
+            }
+            actions = actionableItems;
             if (actions.length === 0) {
                 $list.html('<p style="color:#10B981;font-weight:bold;">' + SeoAeoOrchestra.t('Nessuna azione critica necessaria. Il sito e ben ottimizzato!') + '</p>');
                 return;
@@ -2481,6 +2516,19 @@
                 planHtml += '<span class="priority-badge priority-' + action.priority + '">' + SeoAeoOrchestra.t(action.priority) + '</span>';
                 // 3.41.7 - tier badge (SAFE / CAUTION / DANGER) computed from action_type.
                 var tierVal = action.tier || SeoAeoOrchestra.tierForActionType(action.action_type);
+                // 3.42.1 #4 — pricing_breakdown inline (single source of truth).
+                // No more SAFE-preview-then-CAUTION-apply surprise charge jumps.
+                var pb = action.pricing_breakdown || null;
+                if (pb) {
+                    var previewCost = pb.preview_cost || 0;
+                    var applyCost = pb.apply_cost || 0;
+                    var engine = pb.engine_model || '';
+                    planHtml += ' <span style="display:inline-block;font-size:11px;color:#64748b;margin-left:8px;">' +
+                                'Preview <strong>' + previewCost + 'cr</strong> · ' +
+                                'Apply <strong>' + applyCost + 'cr</strong>' +
+                                (engine ? ' <em style="color:#94a3b8;">(' + escHtml(engine) + ')</em>' : '') +
+                                '</span>';
+                }
                 if (tierVal) {
                     var tierStyle = tierVal === 'SAFE'    ? 'background:#dcfce7;color:#166534;border:1px solid #86efac;'
                                   : tierVal === 'CAUTION' ? 'background:#fef9c3;color:#854d0e;border:1px solid #fde047;'
@@ -2529,7 +2577,11 @@
                 planHtml += 'data-action-data="' + planAttrJson + '" ';
                 planHtml += planAttrFallback + ' ';
                 planHtml += 'data-idx="' + idx + '">';
-                planHtml += '<span class="dashicons dashicons-controls-play"></span> ' + SeoAeoOrchestra.t('Esegui') + '</button>';
+                // 3.42.1 #4 — Esegui button shows apply_cost explicitly.
+                var aeoApplyCostLabel = (action.pricing_breakdown && action.pricing_breakdown.apply_cost)
+                    ? ' (' + action.pricing_breakdown.apply_cost + 'cr)'
+                    : '';
+                planHtml += '<span class="dashicons dashicons-controls-play"></span> ' + SeoAeoOrchestra.t('Esegui') + aeoApplyCostLabel + '</button>';
                 planHtml += '<div id="orch-action-result-' + idx + '" class="orch-action-result" style="display:none;"></div>';
                 planHtml += '</div>';
             });

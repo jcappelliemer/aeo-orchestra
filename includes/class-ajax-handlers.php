@@ -2379,8 +2379,11 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
             $snapshot_id = null;
             if (class_exists('SEO_AEO_Snapshot_Manager')) {
                 $snapshot_mgr = new SEO_AEO_Snapshot_Manager();
+                // 3.42.1 #1 — pass agent + byte_delta for Modifiche recenti UX.
+                $aeo_agent_for_snap = isset($_POST['agent']) ? sanitize_text_field(wp_unslash($_POST['agent'])) : '';
                 $snapshot_id = $snapshot_mgr->create_snapshot($post_id, $proposal_id,
-                                                              $previous_state, $applied_state);
+                                                              $previous_state, $applied_state,
+                                                              array('agent' => $aeo_agent_for_snap));
             }
 
             wp_send_json(array(
@@ -3299,7 +3302,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                         $post_id,
                         $proposal_id_pseudo . '_kw',
                         array('meta_keywords' => $previous_keyword),
-                        array('meta_keywords' => $new_keyword)
+                        array('meta_keywords' => $new_keyword),
+                        array('agent' => 'keyword_optimizer')  // 3.42.1 #1
                     );
                     if ($snap_id) $snapshot_ids[] = $snap_id;
                 }
@@ -3354,7 +3358,8 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                             $post_id,
                             $proposal_id_pseudo . '_link',
                             array('post_content' => $previous_content),
-                            array('post_content' => $new_content)
+                            array('post_content' => $new_content),
+                            array('agent' => 'internal_links_generator')  // 3.42.1 #1
                         );
                         if ($snap_id) $snapshot_ids[] = $snap_id;
                     }

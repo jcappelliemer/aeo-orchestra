@@ -4973,6 +4973,38 @@ jQuery(document).ready(function($) {
                     if (!modsUserToggled) setModsCollapsed(true);
                     return;
                 }
+                // 3.42.1 #1 — agent → human action label + tier dot. Mirrors
+                // the M4 AGENT_TIER map for consistency.
+                var AGENT_ACTION_LABEL = {
+                    'schema_generator':          T('Schema JSON-LD aggiunto'),
+                    'faq_generator':             T('FAQ generata'),
+                    'intro_rewriter':            T('Intro pagina riscritta'),
+                    'meta_optimizer':            T('Meta tags riscritti'),
+                    'authority_generator':       T('Segnali autorità aggiunti'),
+                    'internal_links_generator':  T('Link interni suggeriti'),
+                    'snippet_optimizer':         T('Featured Snippet ottimizzato'),
+                    'heading_optimizer':         T('Heading H1-H6 riorganizzati'),
+                    'content_generator':         T('Contenuto rigenerato (full)')
+                };
+                var AGENT_TIER_DOT = {
+                    'schema_generator': 'safe', 'faq_generator': 'safe', 'internal_links_generator': 'safe',
+                    'meta_optimizer': 'caution', 'intro_rewriter': 'caution', 'authority_generator': 'caution',
+                    'snippet_optimizer': 'caution', 'heading_optimizer': 'caution',
+                    'content_generator': 'danger'
+                };
+                function tierDotHtml(tier) {
+                    if (!tier) return '';
+                    var color = tier === 'safe' ? '#22c55e' : (tier === 'caution' ? '#eab308' : '#ef4444');
+                    return '<span class="tier-dot tier-' + tier + '" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + color + ';margin-right:6px;vertical-align:middle;"></span>';
+                }
+                function formatByteDelta(d) {
+                    var n = parseInt(d || 0, 10);
+                    if (isNaN(n) || n === 0) return '';
+                    var sign = n > 0 ? '+' : '';
+                    var abs = Math.abs(n);
+                    var formatted = abs >= 1000 ? Math.round(abs / 100) / 10 + 'k' : abs;
+                    return sign + (n > 0 ? '' : '-') + formatted + ' byte';
+                }
                 var html = items.map(function(it) {
                     var daysLeft = parseInt(it.days_remaining || 0, 10);
                     var isExpired = it.is_expired || daysLeft <= 0;
@@ -4981,14 +5013,24 @@ jQuery(document).ready(function($) {
                                  : (daysLeft === 1 ? T('1 giorno rimasto') : T('{N} giorni rimasti').replace('{N}', daysLeft));
                     var when = it.applied_at ? timeAgo(it.applied_at) : '';
                     var sid = escapeHtml(it.snapshot_id);
-                    var detailsBtn = '<button type="button" class="rv-btn rv-btn-ghost rv-btn-xs rv-sidebar-details-btn" data-snapshot-id="' + sid + '">' + T('Dettagli') + '</button>';
+                    // 3.42.1 #1 — action-label (not page-title) as primary,
+                    // page_short as subtitle, byte_delta visible in foot,
+                    // snapshot_id moved to data-attribute on Dettagli only.
+                    var agent = (it.agent || '').toString();
+                    var actionLabel = AGENT_ACTION_LABEL[agent] || (agent ? agent.replace(/_/g, ' ') : T('Modifica applicata'));
+                    var tier = AGENT_TIER_DOT[agent] || '';
+                    var pageShort = it.page_short || it.post_title || ('Post #' + it.post_id);
+                    var byteDeltaText = formatByteDelta(it.byte_delta);
+                    var detailsBtn = '<button type="button" class="rv-btn rv-btn-ghost rv-btn-xs rv-sidebar-details-btn" data-snapshot-id="' + sid + '" title="' + sid + '">' + T('Dettagli') + '</button>';
                     var undoBtn = isExpired ? ''
                         : '<button type="button" class="rv-btn rv-btn-ghost rv-btn-xs rv-sidebar-undo-btn" data-snapshot-id="' + sid + '">' + T('Ripristina') + '</button>';
                     return '<div class="orch-mods-item"' + (isExpired ? ' style="opacity:0.55;"' : '') + '>' +
-                           '<div class="orch-mods-item-title">' + escapeHtml(it.post_title || 'Post #' + it.post_id) + '</div>' +
-                           '<div class="orch-mods-item-meta">' + escapeHtml(it.proposal_id || '') + (when ? ' · ' + escapeHtml(when) : '') + '</div>' +
+                           '<div class="orch-mods-item-title">' + tierDotHtml(tier) + escapeHtml(actionLabel) + '</div>' +
+                           '<div class="orch-mods-item-meta">' + escapeHtml(pageShort) + (when ? ' · ' + escapeHtml(when) : '') + '</div>' +
                            '<div class="orch-mods-item-foot">' +
-                             '<span class="orch-mods-remaining ' + remClass + '">' + remText + '</span>' +
+                             '<span class="orch-mods-remaining ' + remClass + '">' +
+                                (byteDeltaText ? escapeHtml(byteDeltaText) + ' · ' : '') + remText +
+                             '</span>' +
                              '<span class="orch-mods-item-actions">' + detailsBtn + undoBtn + '</span>' +
                            '</div>' +
                            '</div>';

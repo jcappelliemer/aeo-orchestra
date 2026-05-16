@@ -404,11 +404,30 @@ class SEO_AEO_Action_Targets {
     public static function build_preview_skeleton($agent, $action_type, $post_id) {
         $target = self::get_target($action_type);
         $detect = self::detect_mode_and_builder($post_id, $action_type);
+        // 3.42.1 #4 - pricing_breakdown single source of truth for the
+        // tier↔apply coherence bug class (recurring 3×: v3.41.7 + v3.41.8 + v3.42.0).
+        // Card UI + modal both read from this field — no more SAFE-preview-then-
+        // CAUTION-apply surprise charge jumps.
+        $tier = self::get_tier($action_type);
+        $apply_cost = isset($target['estimated_credits']) ? (int) $target['estimated_credits'] : 0;
+        $preview_cost = $apply_cost > 5 ? 1 : 0; // SAFE actions free preview, CAUTION+ premium → 1cr quick preview
+        $engine_model = $tier === 'SAFE'    ? 'Gemini Flash (Standard)'
+                      : ($tier === 'CAUTION' ? 'Claude Haiku 3.5 (Premium)'
+                      : ($tier === 'DANGER'  ? 'Claude Sonnet 4.6 (Premium++)'
+                      : 'Manual'));
+        $pricing_breakdown = array(
+            'preview_cost' => $preview_cost,
+            'apply_cost'   => $apply_cost,
+            'engine_model' => $engine_model,
+            'tier_label'   => $tier,
+        );
+
         return array(
             'preview'              => true,
             'agent'                => $agent,
             'action_type'          => $action_type,
-            'tier'                 => self::get_tier($action_type),  // 3.41.7
+            'tier'                 => $tier,  // 3.41.7
+            'pricing_breakdown'    => $pricing_breakdown,  // 3.42.1 #4 single source
             'mode'                 => $detect['mode'],
             'mode_label'           => $detect['mode_label'],
             'builder'              => $detect['builder'],

@@ -1,5 +1,6 @@
 (function($) {
     'use strict';
+/* AEO Orchestra v3.42.2.1 — frontend consumer closure: AEO_AGENT_LABEL_MAP + structured analysis_summary */
 
     // 3.37.0 — Centralized typed-error handler. Backend (FastAPI) returns
     // {error:"<code>", message:"...", meta:{...}} on license/credit
@@ -113,7 +114,37 @@
 
     $(function() { SeoAeoTypedError.bootstrap(); });
 
+    // v3.42.2.1 — canonical agent→label map. Mirror of the PHP-side
+    // map in admin-dashboard.php (Modifiche recenti) so future code in
+    // assets/js/admin.js can label snapshots/cards without duplicating.
+    // Values that depend on meta fields are functions returning a label.
+    var AEO_AGENT_LABEL_MAP = {
+        'schema_generator':           'Schema JSON-LD aggiunto',
+        'faq_generator':              function(meta) { return 'FAQ generata' + ((meta && meta.n_questions) ? ' (' + meta.n_questions + ' domande)' : ''); },
+        'intro_rewriter':             'Intro pagina riscritta',
+        'meta_optimizer':             'Meta tags riscritti',
+        'authority_generator':        'Segnali autorita aggiunti',
+        'internal_links_generator':   function(meta) { return 'Link interni suggeriti' + ((meta && meta.n_links) ? ' (' + meta.n_links + ')' : ''); },
+        'snippet_optimizer':          'Featured Snippet ottimizzato',
+        'featured_snippet_optimizer': 'Featured Snippet ottimizzato',
+        'heading_optimizer':          'Heading H1-H6 riorganizzati',
+        'content_generator':          'Contenuto rigenerato (full)',
+        'keyword_optimizer':          'Keyword ottimizzata'
+    };
+
     var SeoAeoOrchestra = {
+
+        // v3.42.2.1 — public action-label lookup. Used by future renderers
+        // that want to label a snapshot or action by agent without
+        // duplicating the map. Falls back to humanized agent slug, then
+        // generic "Modifica applicata".
+        aeoGetActionLabel: function(agent, meta) {
+            var entry = AEO_AGENT_LABEL_MAP[agent];
+            if (typeof entry === 'function') return entry(meta || {});
+            if (entry) return entry;
+            if (agent) return String(agent).replace(/_/g, ' ');
+            return 'Modifica applicata';
+        },
 
         // i18n helper (3.25.1): translate string via window.seoAeoOrchestra.i18n map.
         // Fallback all'originale italiano se chiave non in mappa o locale=it.
@@ -2452,7 +2483,7 @@
         // Idempotent: clear-and-rebuild.
         // 3.42.1 #3 — render the analysis summary as a separate info banner
         // above the action list (not as a tiles-row that looks like an action).
-        renderAnalysisSummaryBanner: function(summaryItems) {
+        renderAnalysisSummaryBanner: function(input) {
             var $host = jQuery('#orch-analysis-summary-banner');
             if (!$host.length) {
                 // Lazy-mount the banner anchor right before #orch-action-plan
@@ -2461,12 +2492,32 @@
                 $host = jQuery('<div id="orch-analysis-summary-banner"></div>');
                 $plan.before($host);
             }
-            if (!summaryItems || summaryItems.length === 0) { $host.empty(); return; }
+            // v3.42.2.1 — coerce input to a flat array of summary items.
+            // Supports 3 shapes for back-compat:
+            //  - Array of summary items (v3.42.1 filter-from-actions path)
+            //  - Response object with .analysis_summary (v3.42.2 contract)
+            //  - Array of response objects (multi-page analysis)
+            var summaryItems = [];
+            if (Array.isArray(input)) {
+                input.forEach(function(it) {
+                    if (!it) return;
+                    if (it.analysis_summary && Array.isArray(it.analysis_summary)) {
+                        // Per-page response object
+                        it.analysis_summary.forEach(function(s) { summaryItems.push(s); });
+                    } else if (typeof it === 'object') {
+                        // Treat as already-flat summary item
+                        summaryItems.push(it);
+                    }
+                });
+            } else if (input && typeof input === 'object' && Array.isArray(input.analysis_summary)) {
+                summaryItems = input.analysis_summary.slice();
+            }
+            if (!summaryItems.length) { $host.empty(); return; }
             var T = SeoAeoOrchestra.t || function(s){return s;};
             var html = summaryItems.map(function(it) {
                 var label = (it.label || '').replace(/^Migliora\s+/i, '');
                 var desc  = it.description || '';
-                return '<div style="background:#dbeafe;border:1px solid #93c5fd;border-left:4px solid #3b82f6;border-radius:8px;padding:14px 18px;margin:14px 0;font-size:13px;color:#1e3a8a;">' +
+                return '<div class="aeo-analysis-summary-banner" style="background:#dbeafe;border:1px solid #93c5fd;border-left:4px solid #3b82f6;border-radius:8px;padding:14px 18px;margin:14px 0;font-size:13px;color:#1e3a8a;">' +
                        '<div style="font-weight:600;font-size:14px;margin-bottom:6px;">ℹ️ ' + T('Riepilogo analisi') + ' · ' + escapeHtml(it.label || '') + '</div>' +
                        (desc ? '<div style="margin:6px 0;color:#1e40af;">' + escapeHtml(desc) + '</div>' : '') +
                        '<div style="margin-top:6px;color:#475569;font-style:italic;font-size:12px;">↓ ' + T('Agisci sulle azioni qui sotto') + '</div>' +
@@ -2681,6 +2732,14 @@
             // restoreFromHistory orchestrator branch both call the same code,
             // so the cards are always built from data (state.allActions),
             // never from stale outputs-map markup.
+            // v3.42.2.1 — additionally feed renderAnalysisSummaryBanner with
+            // the per-page response array so the explicit response.analysis_summary
+            // contract from v3.42.2 backend is consumed. The v3.42.1 filter-
+            // from-actions path still works as fallback (renderActionPlan
+            // calls renderAnalysisSummaryBanner with a summaryItems array).
+            if (SeoAeoOrchestra.renderAnalysisSummaryBanner) {
+                SeoAeoOrchestra.renderAnalysisSummaryBanner(results || []);
+            }
             SeoAeoOrchestra.renderActionPlan(allActions);
 
             // Build per-page results with full detail

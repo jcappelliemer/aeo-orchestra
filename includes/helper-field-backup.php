@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- helper functions use 'aeo_' prefix (short form of 'seo_aeo_'). Renaming would break ~30 caller sites across the plugin; aeo_ is a documented plugin namespace per CLAUDE.md.
 /**
  * SEO_AEO Field-Level Backup Helpers (v3.41.7)
  *

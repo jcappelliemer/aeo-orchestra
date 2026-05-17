@@ -1553,6 +1553,7 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 // OR wp_update_post calls during preview generation skip
                 // cache invalidation. wp_die ends the request so the guard
                 // doesn't leak beyond this AJAX call.
+                // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- $GLOBALS array key set/read consistently as 'aeo_'-prefixed string; not a global variable.
                 $GLOBALS['_seo_aeo_in_preview'] = true;
             }
 

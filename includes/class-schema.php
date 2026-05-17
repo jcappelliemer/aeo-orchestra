@@ -1241,12 +1241,13 @@ class SEO_AEO_Schema {
         if (!$post_id) return;
         $html = (string) get_post_meta($post_id, '_seo_aeo_custom_schema_html', true);
         if ($html === '') return;
-        // _seo_aeo_custom_schema_html was sanitized with wp_kses_post on save.
-        // We re-echo as-is so the <script type="application/ld+json"> block
-        // reaches the page.
-        echo "
-" . $html . "
-";
+        // _seo_aeo_custom_schema_html was sanitized via SEO_AEO_Schema_Sanitizer
+        // at save time. The value is JSON-LD wrapped in <script type=application/ld+json>
+        // which MUST be emitted as-is — escaping would corrupt the structured data
+        // block that search engines and AI crawlers parse.
+        // phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped
+        echo "\n" . $html . "\n";
+        // phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 }
 

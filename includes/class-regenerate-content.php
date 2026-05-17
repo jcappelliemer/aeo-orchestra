@@ -1,4 +1,9 @@
 <?php
+// phpcs:disable WordPress.Security.NonceVerification.Missing -- All AJAX handlers
+// call self::check_nonce_and_cap() as first statement; it invokes
+// check_ajax_referer('seo_aeo_orchestra_nonce', 'nonce') which validates the
+// session-bound nonce. Plugin Check cannot trace static method indirection,
+// so we document the verification via file-level disable.
 /**
  * SEO_AEO_Regenerate_Content — Dedicated flow "Rigenera intera pagina" (v3.41.8).
  *
@@ -224,7 +229,9 @@ class SEO_AEO_Regenerate_Content {
         }
 
         $post_id = isset($_POST['post_id']) ? (int) $_POST['post_id'] : 0;
-        $proposed_content = isset($_POST['proposed_content']) ? wp_unslash((string) $_POST['proposed_content']) : '';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- wp_kses_post applied on next line ($proposed_content).
+        $proposed_content_raw = isset($_POST['proposed_content']) ? wp_unslash((string) $_POST['proposed_content']) : '';
+        $proposed_content = wp_kses_post($proposed_content_raw);
         if ($post_id <= 0) {
             wp_send_json_error(array('code' => 'bad_post_id'), 400);
         }

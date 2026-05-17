@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- $nonce, $p, $post are local template-scope variables (template is included from within a class method via PHP include; not globals).
 /**
  * Template: Rigenera intera pagina (v3.41.8) — dedicated DANGER flow.
  */

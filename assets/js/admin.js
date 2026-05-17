@@ -1,6 +1,6 @@
 (function($) {
     'use strict';
-/* AEO Orchestra v3.42.3 — WP transient preview cache + cache-hit banner + retry on preview fail + typo defensive filter (server) */
+/* AEO Orchestra v3.42.7 — Modal Anteprima rendered preview: iframe sandbox + stats + Codice raw toggle */
 
     // 3.37.0 — Centralized typed-error handler. Backend (FastAPI) returns
     // {error:"<code>", message:"...", meta:{...}} on license/credit
@@ -3667,8 +3667,42 @@
                     bodyHtml += '<p class="orch-apv-err">' + T('Nessun contenuto generato dall\'AI.') + '</p>';
                     canApply = false;
                 } else {
-                    bodyHtml += '<div class="orch-apv-section"><h4>' + T('Contenuto proposto') + ' (' + (proposed.word_count || '~') + ' ' + T('parole') + ')</h4>';
-                    bodyHtml += '<div class="orch-apv-content-preview">' + content + '</div></div>';
+                    // 3.42.7 — stats list (parses proposed payload into
+                    // human-readable bullet list). Helps the user scan key
+                    // attributes (word count, FAQ count, target engines,
+                    // operation type, insertion point) WITHOUT reading raw
+                    // JSON. Always rendered above the iframe preview.
+                    var statsItems = [];
+                    if (proposed.word_count) statsItems.push((proposed.word_count) + ' ' + T('parole totali'));
+                    if (proposed.n_questions) statsItems.push((proposed.n_questions) + ' ' + T('domande FAQ'));
+                    if (Array.isArray(proposed.target_engines) && proposed.target_engines.length) {
+                        statsItems.push(T('Target') + ': ' + proposed.target_engines.join(' · '));
+                    }
+                    if (proposed.operation_type) statsItems.push(T('Operazione') + ': ' + proposed.operation_type);
+                    if (proposed.insertion_point) statsItems.push(T('Inserimento') + ': ' + proposed.insertion_point);
+                    if (statsItems.length) {
+                        bodyHtml += '<div class="orch-apv-section orch-apv-stats"><h4>' + T('📊 Statistiche') + '</h4><ul class="orch-apv-stats-list">';
+                        statsItems.forEach(function(it) { bodyHtml += '<li>' + escHtml(it) + '</li>'; });
+                        bodyHtml += '</ul></div>';
+                    }
+                    // 3.42.7 — iframe sandbox preview of proposed.content
+                    // (previously injected directly into the DOM via
+                    // .orch-apv-content-preview which mixed plugin admin
+                    // styles with AI-generated HTML in unpredictable ways).
+                    // sandbox attribute (no value) = maximally restrictive:
+                    // no scripts, no same-origin, no forms, no popups. The
+                    // srcdoc carries the HTML which renders in isolation.
+                    var iframeSrcdoc = String(content).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    var rawJson = JSON.stringify(proposed, null, 2);
+                    var rawJsonEscaped = escHtml(rawJson);
+                    bodyHtml += '<div class="orch-apv-section">' +
+                        '<div class="orch-apv-preview-header">' +
+                          '<h4>' + T('📄 Anteprima HTML') + ' (' + (proposed.word_count || '~') + ' ' + T('parole') + ')</h4>' +
+                          '<button type="button" class="orch-apv-toggle-raw">' + T('Codice raw ▼') + '</button>' +
+                        '</div>' +
+                        '<iframe class="orch-apv-iframe" sandbox srcdoc="' + iframeSrcdoc + '"></iframe>' +
+                        '<pre class="orch-apv-raw-json" style="display:none;">' + rawJsonEscaped + '</pre>' +
+                        '</div>';
                     if (proposed.schema) {
                         bodyHtml += '<div class="orch-apv-section"><h4>' + T('Schema JSON-LD incluso') + '</h4><pre class="orch-apv-code">' + escHtml(JSON.stringify(proposed.schema, null, 2)) + '</pre></div>';
                     }
@@ -3731,6 +3765,16 @@
                     '@media (max-width:680px){.orch-apv-diff{grid-template-columns:1fr;}}' +
                     '@keyframes orchApvSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}' +
                     '.dashicons.spin{animation:orchApvSpin 0.8s linear infinite;display:inline-block;}' +
+                    // 3.42.7 — new modal elements (stats list + iframe + toggle).
+                    '.orch-apv-stats-list{list-style:none;padding:0;margin:0;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;}' +
+                    '.orch-apv-stats-list li{padding:8px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#334155;}' +
+                    '.orch-apv-stats-list li:last-child{border-bottom:0;}' +
+                    '.orch-apv-preview-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}' +
+                    '.orch-apv-preview-header h4{margin:0;}' +
+                    '.orch-apv-toggle-raw{font-size:11px;padding:4px 10px;background:#fff;border:1px solid #d1d5db;border-radius:4px;cursor:pointer;color:#475569;}' +
+                    '.orch-apv-toggle-raw:hover{background:#f8fafc;border-color:#94a3b8;}' +
+                    '.orch-apv-iframe{width:100%;height:360px;border:1px solid #e5e7eb;border-radius:6px;background:#fff;}' +
+                    '.orch-apv-raw-json{max-height:360px;overflow:auto;background:#0F172A;color:#e0e7ff;padding:12px;border-radius:6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;line-height:1.5;}' +
                     '</style>'
                 );
             }
@@ -3757,6 +3801,22 @@
             function close() { $modal.remove(); }
             $modal.on('click', function(ev) { if (ev.target === $modal[0]) close(); });
             $modal.find('.orch-apv-close, .orch-apv-cancel').on('click', close);
+            // 3.42.7 — toggle iframe ↔ raw JSON via Codice raw button.
+            $modal.find('.orch-apv-toggle-raw').on('click', function() {
+                var $btn = jQuery(this);
+                var $iframe = $btn.closest('.orch-apv-section').find('.orch-apv-iframe');
+                var $raw = $btn.closest('.orch-apv-section').find('.orch-apv-raw-json');
+                var showingRaw = $raw.is(':visible');
+                if (showingRaw) {
+                    $raw.hide();
+                    $iframe.show();
+                    $btn.text(T('Codice raw ▼'));
+                } else {
+                    $iframe.hide();
+                    $raw.show();
+                    $btn.text(T('Anteprima ▲'));
+                }
+            });
             // 3.40.0 — manual-mode interactions.
             $modal.find('.orch-apv-copy').on('click', function() {
                 var targetId = $(this).data('copy-target');

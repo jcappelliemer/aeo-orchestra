@@ -39,8 +39,16 @@ class SEO_AEO_Preview_Cache {
      * Meta keys included in the content_hash computation. Editing any of
      * these via WP admin invalidates the cache (because the hash changes
      * AND save_post fires).
+     *
+     * v3.42.3.3 — ALLOW-LIST design (replaces v3.42.3.x deny-list approach).
+     * Only meta keys explicitly listed here participate in the content_hash
+     * + the invalidation hook. Third-party plugin meta (Polylang _pll_*,
+     * WPML _wpml_*, analytics, etc.) is automatically EXCLUDED.
+     *
+     * Maintenance: when adding a new agent that reads OR writes a new meta
+     * key the preview output depends on, add the key here AND to TRACKED_KEYS.
      */
-    const RELEVANT_META_KEYS = array(
+    const ALLOWED_META_KEYS = array(
         '_yoast_wpseo_title',
         '_yoast_wpseo_metadesc',
         '_yoast_wpseo_focuskw',
@@ -50,9 +58,31 @@ class SEO_AEO_Preview_Cache {
         '_seo_aeo_meta_title',
         '_seo_aeo_meta_description',
         '_seo_aeo_focus_keyword',
+        '_seo_aeo_custom_schema_html',
         'seo_aeo_schema_jsonld',
         'seo_aeo_faq_section',
+        'seo_aeo_identity_profile',
+        'seo_aeo_brand_voice',
     );
+
+    /**
+     * v3.42.3.3 — TRACKED_KEYS list for invalidation. When ANY of these
+     * meta keys is changed (via updated/added/deleted_post_meta hooks),
+     * the cache is invalidated. Writes to non-tracked keys (e.g. Polylang
+     * _pll_translations) are IGNORED — they don't affect what preview
+     * produces, so the cached entry remains valid.
+     *
+     * For simplicity, TRACKED_KEYS = ALLOWED_META_KEYS. They can diverge
+     * if a key influences preview WITHOUT being in the hash (rare).
+     */
+    const TRACKED_KEYS = self::ALLOWED_META_KEYS;
+
+    /**
+     * Backward-compatible alias for any external code referencing the
+     * old constant name.
+     * @deprecated since 3.42.3.3, use ALLOWED_META_KEYS.
+     */
+    const RELEVANT_META_KEYS = self::ALLOWED_META_KEYS;
 
     /**
      * Compute the content-fingerprint hash for a given post. Returns null
@@ -66,17 +96,30 @@ class SEO_AEO_Preview_Cache {
         if ($post_id <= 0) return null;
         $post = get_post($post_id);
         if (!$post) return null;
-        // 3.42.3.2 — content_hash is computed from post_content + post_title
-        // ONLY. Previous v3.42.3 implementation included post_meta keys
-        // (_seo_aeo_meta_*, schema_jsonld, faq_section, etc), but ajax_preview_action
-        // writes those exact meta keys during its own preview generation —
-        // call 1 mutated post_meta → call 2 computed a different hash →
-        // cache MISS every time. Body + title are stable across preview's
-        // own writes (preview never mutates body or title), so the cache
-        // key stays stable across back-to-back identical preview clicks.
-        // Real user edits to body/title still invalidate via save_post hook.
-        $payload = (string) $post->post_content
-                 . '|' . (string) $post->post_title;
+        // 3.42.3.3 — content_hash uses post_content + post_title + post_excerpt
+        // + an EXPLICIT allow-list of meta keys (ALLOWED_META_KEYS). Third-
+        // party plugin meta (Polylang _pll_*, WPML, analytics) is auto-
+        // excluded because allow-list is positive enumeration. This makes
+        // the cache key intrinsically resilient to ANY plugin that writes
+        // meta we don't know about — no maintenance burden when new plugins
+        // are installed.
+        //
+        // The v3.42.3.2 minimal hash (body + title only) was correct but too
+        // narrow: real user edits to Yoast title or Orchestra schema_jsonld
+        // meta SHOULD invalidate the cache because preview output depends
+        // on those keys.
+        $all_meta = get_post_meta($post_id);
+        $allowed = array_intersect_key(
+            is_array($all_meta) ? $all_meta : array(),
+            array_flip(self::ALLOWED_META_KEYS)
+        );
+        ksort($allowed); // deterministic across runs
+        $payload = implode('|', array(
+            (string) $post->post_content,
+            (string) $post->post_title,
+            (string) $post->post_excerpt,
+            wp_json_encode($allowed),
+        ));
         return substr(md5($payload), 0, 16);
     }
 
@@ -206,14 +249,22 @@ class SEO_AEO_Preview_Cache {
      * the cardinality.
      */
     public static function log_event($event, $action_type, $post_id) {
+        // v3.42.3.3 — also error_log unconditionally so production diagnostics
+        // are available without WP_DEBUG_LOG. Format includes content_hash
+        // as correlation ID for cross-call cache miss anomaly investigation.
+        $hash = self::make_content_hash((int) $post_id) ?: 'null';
+        $line = sprintf(
+            '[AEO preview_cache] event=%s action_type=%s post_id=%d hash=%s',
+            (string) $event,
+            (string) $action_type,
+            (int) $post_id,
+            $hash
+        );
         if (function_exists('seo_aeo_debug_log')) {
-            seo_aeo_debug_log(sprintf(
-                '[v3.42.3 preview_cache] event=%s action_type=%s post_id=%d',
-                (string) $event,
-                (string) $action_type,
-                (int) $post_id
-            ));
+            seo_aeo_debug_log($line);
         }
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+        error_log($line);
     }
 
     /**
@@ -225,14 +276,23 @@ class SEO_AEO_Preview_Cache {
         if ($registered) return;
         $registered = true;
 
-        // Invalidate on any post update (title, content, status, etc).
+        // Invalidate on real post update (title/content/status). save_post
+        // fires on user edits via WP admin OR wp_update_post calls. The
+        // v3.42.3.2 in-preview guard suppresses invalidation during the
+        // preview AJAX path itself.
         add_action('save_post', array(__CLASS__, 'invalidate_post'), 10, 1);
 
-        // Invalidate on post meta change (Yoast / RankMath / Orchestra meta
-        // edits that don't trigger save_post directly).
-        add_action('updated_post_meta', function($meta_id, $post_id) {
+        // 3.42.3.3 — tracked-keys filter on meta hooks. Only invalidate when
+        // ONE OF the keys in TRACKED_KEYS changes. Polylang's _pll_* writes,
+        // WPML's _wpml_*, analytics tokens, etc. don't invalidate Orchestra's
+        // cache because they don't change what preview produces.
+        $meta_filter = function($meta_id, $post_id, $meta_key) {
+            if (!in_array($meta_key, self::TRACKED_KEYS, true)) return;
             self::invalidate_post($post_id);
-        }, 10, 2);
+        };
+        add_action('updated_post_meta', $meta_filter, 10, 3);
+        add_action('added_post_meta',   $meta_filter, 10, 3);
+        add_action('deleted_post_meta', $meta_filter, 10, 3);
 
         // Wire metric observability into Sentry log if available.
         add_action('seo_aeo_preview_cache_hit', function($action_type, $post_id) {

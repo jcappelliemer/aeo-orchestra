@@ -1459,6 +1459,12 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
      *   - SEO_AEO_Preview_Cache class missing
      */
     private function aeo_send_preview_with_cache($action_type, $post_id, $payload) {
+        // 3.42.3.6 — defensive fallback. If caller passed $post_id=0 but
+        // $_POST['post_id'] is set, recover it. Belt + suspenders for
+        // refactor regressions where callers forget to pass $post_id.
+        if ((int) $post_id <= 0 && isset($_POST['post_id'])) {
+            $post_id = intval(wp_unslash($_POST['post_id'])); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+        }
         // 3.42.3.5 — capture EACH condition individually so debug shows
         // which gate failed. Simplified $will_cache to defensive minimum;
         // the SET helper validates post_id/action_type/class internally.
@@ -1546,7 +1552,14 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                     if ($resolved !== null) $agent = $resolved;
                 }
             }
-            $post_id = isset($data['post_id']) ? intval($data['post_id']) : 0;
+            // 3.42.3.6 — accept post_id from either action_data[post_id] (nested,
+            // legacy admin.js shape) OR top-level $_POST['post_id'] (Chrome MCP
+            // test shape + simpler curl). Debug session proved Chrome MCP was
+            // sending top-level post_id which legacy nested-only read missed,
+            // causing wrapper to receive 0 → cache_set rejected → no HIT ever.
+            $post_id = isset($data['post_id'])
+                ? intval($data['post_id'])
+                : (isset($_POST['post_id']) ? intval(wp_unslash($_POST['post_id'])) : 0);
             // 3.41.6 - resolve post_id from URL when 0 (URL-based analysis).
             if ($post_id <= 0 && !empty($data['url']) && function_exists('url_to_postid')) {
                 $resolved = url_to_postid((string) $data['url']);

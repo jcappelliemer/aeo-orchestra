@@ -1460,57 +1460,23 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
      */
     private function aeo_send_preview_with_cache($action_type, $post_id, $payload) {
         // 3.42.3.6 — defensive fallback. If caller passed $post_id=0 but
-        // $_POST['post_id'] is set, recover it. Belt + suspenders for
-        // refactor regressions where callers forget to pass $post_id.
+        // $_POST['post_id'] is set (Chrome MCP / direct curl shape sends
+        // post_id top-level instead of nested in action_data), recover it.
+        // Belt + suspenders for refactor regressions where callers forget
+        // to pass $post_id.
         if ((int) $post_id <= 0 && isset($_POST['post_id'])) {
             $post_id = intval(wp_unslash($_POST['post_id'])); // phpcs:ignore WordPress.Security.NonceVerification.Missing
         }
-        // 3.42.3.5 — capture EACH condition individually so debug shows
-        // which gate failed. Simplified $will_cache to defensive minimum;
-        // the SET helper validates post_id/action_type/class internally.
-        $cond_is_array      = is_array($payload);
-        $cond_no_error      = $cond_is_array && empty($payload['error']);
-        $cond_has_proposed  = $cond_is_array && !empty($payload['proposed']);
-        $cond_post_id_ok    = ((int) $post_id) > 0;
-        $cond_action_type_ok = is_string($action_type) && $action_type !== '';
-        $cond_class_exists  = class_exists('SEO_AEO_Preview_Cache');
-
-        // 3.42.3.5 fix — defensive minimal: cache if payload is a valid
-        // preview (no error, has proposed). The SET helper itself
-        // validates post_id/action_type/class — duplicating those checks
-        // here had a discriminator that returned false in HTTP context
-        // (Chrome MCP _will_cache=false with _has_error=false +
-        // _has_proposed=true — narrowing the cause to one of the
-        // post_id/action_type/class_exists checks).
-        $will_cache = $cond_is_array && $cond_no_error && $cond_has_proposed;
-
-        $set_result = null;
-        $hash_post_ai = null;
-        if ($will_cache && $cond_class_exists) {
-            $hash_post_ai = SEO_AEO_Preview_Cache::make_content_hash($post_id);
-            $set_result = SEO_AEO_Preview_Cache::set($action_type, $post_id, $payload);
-        }
-        if (is_array($payload)) {
-            $payload['_debug_set'] = array(
-                '_v'                      => '3.42.3.5-debug',
-                '_will_cache'             => $will_cache ? 'true' : 'false',
-                '_set_result'             => var_export($set_result, true),
-                '_hash_post_ai'           => $hash_post_ai,
-                '_payload_keys'           => array_keys($payload),
-                // Granular condition breakdown — proves which gate fails.
-                '_cond_is_array'          => $cond_is_array ? 'true' : 'false',
-                '_cond_no_error'          => $cond_no_error ? 'true' : 'false',
-                '_cond_has_proposed'      => $cond_has_proposed ? 'true' : 'false',
-                '_cond_post_id_ok'        => $cond_post_id_ok ? 'true' : 'false',
-                '_cond_action_type_ok'    => $cond_action_type_ok ? 'true' : 'false',
-                '_cond_class_exists'      => $cond_class_exists ? 'true' : 'false',
-                // Echo received values to spot wrong-scope params.
-                '_received_action_type'   => (string) $action_type,
-                '_received_post_id'       => (int) $post_id,
-                '_received_post_id_type'  => gettype($post_id),
-            );
-            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-            error_log('[AEO 3.42.3.5-debug] cache-set=' . wp_json_encode($payload['_debug_set']));
+        // 3.42.3.5 — $will_cache defensive minimum: cache only if payload
+        // is a valid preview (array, no error, has proposed). The SET
+        // helper validates post_id/action_type/class internally; the
+        // pre-3.42.3.5 6-condition version had a context-specific gate
+        // that silently skipped SET in HTTP context.
+        $will_cache = is_array($payload)
+                   && empty($payload['error'])
+                   && !empty($payload['proposed']);
+        if ($will_cache && class_exists('SEO_AEO_Preview_Cache')) {
+            SEO_AEO_Preview_Cache::set($action_type, $post_id, $payload);
         }
         wp_send_json($payload);
     }
@@ -1566,70 +1532,26 @@ class SEO_AEO_Orchestra_Ajax_Handlers {
                 if ($resolved > 0) $post_id = $resolved;
             }
 
-            // 3.42.3 P0 — WP transient preview cache (LAUNCH BLOCKER).
-            // 3.42.3.4 DEBUG — added _debug payload to capture full state.
-            $aeo_debug = array(
-                '_v'                => '3.42.3.4-debug',
-                '_request_ts'       => microtime(true),
-                '_action_type'      => $action_type,
-                '_post_id'          => (int) $post_id,
-                '_agent'            => $agent,
-                '_class_exists'     => class_exists('SEO_AEO_Preview_Cache') ? 'true' : 'false',
-            );
+            // 3.42.4 — WP transient preview cache. Cache CHECK at function
+            // entry: if the same (action_type, post_id, content_hash) was
+            // previewed within TTL, return cached payload with preview_cost:0
+            // — saves credits on back-to-back-clicks on the same card.
+            // Architecturally Polylang/WPML-resilient via ALLOWED_META_KEYS
+            // allow-list in SEO_AEO_Preview_Cache::make_content_hash.
             if (class_exists('SEO_AEO_Preview_Cache') && (int) $post_id > 0 && $action_type !== '') {
-                $aeo_hash_at_entry = SEO_AEO_Preview_Cache::make_content_hash($post_id);
-                $aeo_debug['_hash_at_entry'] = $aeo_hash_at_entry;
-                $aeo_cache_key = SEO_AEO_Preview_Cache::make_key($action_type, $post_id, (string) $aeo_hash_at_entry);
-                $aeo_debug['_cache_key'] = $aeo_cache_key;
-                $aeo_debug['_transient_full_name'] = '_transient_' . $aeo_cache_key;
-                // Raw get_transient — bypasses the GET helper's null wrapping
-                $aeo_raw = get_transient($aeo_cache_key);
-                $aeo_debug['_get_transient_type']     = gettype($aeo_raw);
-                $aeo_debug['_get_transient_is_null']  = ($aeo_raw === null) ? 'true' : 'false';
-                $aeo_debug['_get_transient_is_false'] = ($aeo_raw === false) ? 'true' : 'false';
-                $aeo_debug['_get_transient_is_array'] = is_array($aeo_raw) ? 'true' : 'false';
-                global $wpdb;
-                $aeo_debug['_transient_count_in_db'] = (int) $wpdb->get_var(
-                    "SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name LIKE '_transient_aeo_pv_%'"
-                );
-                $aeo_debug['_transient_names_in_db'] = (array) $wpdb->get_col(
-                    "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE '_transient_aeo_pv_%' LIMIT 5"
-                );
-                // Now call the helper
                 $aeo_cached_preview = SEO_AEO_Preview_Cache::get($action_type, $post_id);
-                $aeo_debug['_cached_type']     = gettype($aeo_cached_preview);
-                $aeo_debug['_cached_is_null']  = ($aeo_cached_preview === null) ? 'true' : 'false';
-                $aeo_debug['_cached_is_false'] = ($aeo_cached_preview === false) ? 'true' : 'false';
-                $aeo_debug['_cached_is_array'] = is_array($aeo_cached_preview) ? 'true' : 'false';
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log('[AEO 3.42.3.4-debug] cache-check=' . wp_json_encode($aeo_debug));
                 if (is_array($aeo_cached_preview)) {
                     if (isset($aeo_cached_preview['pricing_breakdown']) && is_array($aeo_cached_preview['pricing_breakdown'])) {
                         $aeo_cached_preview['pricing_breakdown']['preview_cost'] = 0;
                     }
                     $aeo_cached_preview['preview_credits_consumed'] = 0;
                     $aeo_cached_preview['_cache_hit'] = true;
-                    $aeo_cached_preview['_debug'] = $aeo_debug;
                     wp_send_json($aeo_cached_preview);
                     return;
                 }
-                // 3.42.3.1 — Cache SET strategy switched from ob_start callback
-                // (broken in production; buffer flush didn't fire callback on
-                // wp_die path) to a TICK guard. Each wp_send_json site below
-                // remains untouched, but we register a shutdown function that
-                // captures the LAST args passed to wp_send_json by overriding
-                // it... actually simpler: track an $aeo_will_cache flag here
-                // and call cache_set() inline at the end of the AI flow,
-                // right before wp_send_json. See injected sites below.
-                $GLOBALS['aeo_pv_pending'] = array(
-                    'action_type' => $action_type,
-                    'post_id'     => (int) $post_id,
-                );
                 // 3.42.3.2 — set the in-preview guard so any post_meta writes
-                // OR wp_update_post calls during preview generation (schema
-                // persist, meta_title/desc preview save) skip cache
-                // invalidation. Real user edits outside this request still
-                // invalidate normally. wp_die ends the request so the guard
+                // OR wp_update_post calls during preview generation skip
+                // cache invalidation. wp_die ends the request so the guard
                 // doesn't leak beyond this AJAX call.
                 $GLOBALS['_seo_aeo_in_preview'] = true;
             }
